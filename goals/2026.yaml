@@ -1,0 +1,41 @@
+year: 2026
+
+domains:
+
+  professional:
+    outcomes:
+      migrations_completed: 100
+      ps_revenue_usd: 1000000
+      promotion: director
+      books_read: 5
+      github_commits: 100
+
+    systems:
+      migration_management: maia
+      project_tracking: automated
+      weekly_review: true
+
+  fitness:
+    outcomes:
+      marathon_completed: true
+      squat_max_lbs: 350
+      bodyweight_lbs_max: 190
+      running_miles: 350
+      crossfit_classes: 160
+
+    data_sources:
+      crossfit: sugarwod
+      running: manual
+
+  family:
+    outcomes:
+      weekly_partner_time: true
+      daily_child_time_minutes: 30
+      monthly_family_rituals: 12
+
+  finance:
+    outcomes:
+      roth_ira: max
+      hsa: max
+      monthly_savings_usd: 2000
+
