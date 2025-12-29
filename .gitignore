@@ -6,10 +6,15 @@ __pycache__/
 # C extensions
 *.so
 
+# Raw + processed data should not be committed
+data/**
+# Allow documentation files inside data directories
+!data/**/
+!data/**/README.md
+
 # Distribution / packaging
 .Python
 build/
-data/
 develop-eggs/
 dist/
 downloads/
