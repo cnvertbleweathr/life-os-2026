@@ -8,7 +8,6 @@ import yaml
 
 GOALS_PATH = Path("goals/2026.yaml")
 CLEAN_PATH = Path("data/hardcover/processed/books_read_clean.csv")
-OUT_PATH = Path("data/hardcover/metrics/reading_summary_2026.csv")
 
 def parse_year(dt_str: str):
     if not dt_str:
@@ -24,6 +23,8 @@ def main():
     parser.add_argument("--year", type=int, default=2026)
     args = parser.parse_args()
     year = args.year
+    OUT_PATH = Path(f"data/hardcover/metrics/reading_summary_{year}.csv")
+    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     if not GOALS_PATH.exists():
         raise SystemExit(f"Missing {GOALS_PATH}")
