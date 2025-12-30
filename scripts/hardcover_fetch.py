@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+"""
+Fetch "Read" books from Hardcover and write:
+- raw JSON snapshot to data/hardcover/raw/
+- cleaned CSV to data/hardcover/processed/books_read_clean.csv
+
+Classification approach (A):
+- Uses Hardcover's `cached_tags` field on `books` (per your schema introspection)
+- Heuristic:
+  - nonfiction if any tag contains "nonfiction"
+  - fiction if any tag contains "fiction"
+  - else unknown
+"""
+
+from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -10,7 +25,8 @@ from typing import Any, Dict, List, Optional
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+# Explicitly load .env from repo root (avoids python-dotenv find_dotenv issues on Python 3.13)
+load_dotenv(dotenv_path=".env")
 
 DEFAULT_API_URL = "https://api.hardcover.app/v1/graphql"
 
@@ -23,8 +39,7 @@ query Me {
 }
 """
 
-# status_id 3 = Read (per Hardcover Books schema)
-# Pulls updated_at as our "marked read" timestamp (good enough for year-based tracking)
+# status_id 3 = Read
 USER_BOOKS_READ_QUERY = """
 query UserBooksRead($user_id: Int!, $limit: Int!, $offset: Int!) {
   user_books(
@@ -38,7 +53,7 @@ query UserBooksRead($user_id: Int!, $limit: Int!, $offset: Int!) {
     book {
       id
       title
-      tags
+      cached_tags
       contributions {
         author { name }
       }
@@ -50,34 +65,58 @@ query UserBooksRead($user_id: Int!, $limit: Int!, $offset: Int!) {
 
 def hc_post(api_url: str, token: str, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     headers = {
-        "authorization": token,  # Hardcover docs use lowercase 'authorization'
+        "authorization": token,
         "content-type": "application/json",
         "user-agent": "life-os-2026 (personal goal tracking script)",
-    }   
-    payload = {
-        "query": query,
-        "variables": variables or {},
     }
+
+    payload = {"query": query, "variables": variables or {}}
+
     resp = requests.post(api_url, headers=headers, json=payload, timeout=30)
     if resp.status_code != 200:
         raise RuntimeError(f"Hardcover API HTTP {resp.status_code}: {resp.text[:500]}")
+
     data = resp.json()
     if "errors" in data:
-        raise RuntimeError(
-            f"Hardcover API GraphQL errors: {json.dumps(data['errors'], indent=2)[:1000]}"
-        )
+        raise RuntimeError(f"Hardcover API GraphQL errors: {json.dumps(data['errors'], indent=2)[:1000]}")
+
     return data["data"]
 
-def classify_from_tags(tags) -> str:
+
+def normalize_cached_tags(val: Any) -> List[str]:
     """
-    Heuristic:
-    - Nonfiction if tags contain 'nonfiction' (case-insensitive)
-    - Fiction if tags contain 'fiction' (case-insensitive)
-    - Otherwise unknown (we'll refine once we confirm schema fields)
+    Hardcover `cached_tags` can appear as:
+    - list (ideal)
+    - JSON string (e.g. '["fiction","mystery"]')
+    - comma-separated string
+    - null
     """
-    if not tags:
-        return "unknown"
-    lowered = [str(t).lower() for t in tags]
+    if val is None:
+        return []
+    if isinstance(val, list):
+        return [str(x).strip() for x in val if str(x).strip()]
+    if isinstance(val, str):
+        s = val.strip()
+        if not s:
+            return []
+        # Try JSON list
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, list):
+                return [str(x).strip() for x in parsed if str(x).strip()]
+        except Exception:
+            pass
+        # Fallback: comma-separated
+        if "," in s:
+            return [p.strip() for p in s.split(",") if p.strip()]
+        return [s]
+    # Fallback: coerce scalar
+    s = str(val).strip()
+    return [s] if s else []
+
+
+def classify_from_cached_tags(tags: List[str]) -> str:
+    lowered = [t.lower() for t in tags]
     if any("nonfiction" in t for t in lowered):
         return "nonfiction"
     if any("fiction" in t for t in lowered):
@@ -85,9 +124,24 @@ def classify_from_tags(tags) -> str:
     return "unknown"
 
 
-def main():
+def coerce_me(me_resp: Any) -> Dict[str, Any]:
+    """
+    Hardcover sometimes returns `me` as an object or a single-item list.
+    """
+    if isinstance(me_resp, list):
+        if not me_resp:
+            raise RuntimeError("Hardcover `me` query returned an empty list")
+        if not isinstance(me_resp[0], dict):
+            raise RuntimeError("Hardcover `me` list element is not an object")
+        return me_resp[0]
+    if isinstance(me_resp, dict):
+        return me_resp
+    raise RuntimeError(f"Unexpected Hardcover `me` response type: {type(me_resp)}")
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=50)
+    parser.add_argument("--limit", type=int, default=50, help="Pagination page size (default: 50)")
     args = parser.parse_args()
 
     token = os.getenv("HARDCOVER_TOKEN")
@@ -97,27 +151,21 @@ def main():
         print("Missing HARDCOVER_TOKEN. Add it to your .env file.", file=sys.stderr)
         sys.exit(1)
 
-    me_resp = hc_post(api_url, token, ME_QUERY)["me"]
-
-    # Hardcover sometimes returns `me` as an object or a single-item list
-    if isinstance(me_resp, list):
-        if not me_resp:
-            raise RuntimeError("Hardcover `me` query returned an empty list")
-        me = me_resp[0]
-    elif isinstance(me_resp, dict):
-        me = me_resp
-    else:
-        raise RuntimeError(f"Unexpected Hardcover `me` response type: {type(me_resp)}")
-
+    me_data = hc_post(api_url, token, ME_QUERY)["me"]
+    me = coerce_me(me_data)
     user_id = int(me["id"])
-   
 
     all_rows: List[Dict[str, Any]] = []
     offset = 0
     limit = args.limit
 
     while True:
-        page = hc_post(api_url, token, USER_BOOKS_READ_QUERY, {"user_id": user_id, "limit": limit, "offset": offset})
+        page = hc_post(
+            api_url,
+            token,
+            USER_BOOKS_READ_QUERY,
+            {"user_id": user_id, "limit": limit, "offset": offset},
+        )
         rows = page.get("user_books", [])
         if not rows:
             break
@@ -135,37 +183,45 @@ def main():
     csv_path = "data/hardcover/processed/books_read_clean.csv"
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow([
-        "marked_read_at",
-        "book_id",
-        "title",
-        "authors",
-        "tags",
-        "classification",
-    ])
+        w.writerow(
+            [
+                "marked_read_at",
+                "book_id",
+                "title",
+                "authors",
+                "cached_tags",
+                "classification",
+            ]
+        )
+
         for ub in all_rows:
             book = ub.get("book") or {}
-            authors = []
+
+            authors: List[str] = []
             for c in (book.get("contributions") or []):
                 a = (c.get("author") or {}).get("name")
                 if a:
                     authors.append(a)
-            tags = book.get("tags") or []
-            classification = classify_from_tags(tags)
-            w.writerow([
-                ub.get("updated_at") or "",
-                book.get("id") or "",
-                book.get("title") or "",
-                "; ".join(authors),
-                "; ".join(tags) if isinstance(tags, list) else str(tags),
-                classification,
-            ])
+
+            cached_tags = normalize_cached_tags(book.get("cached_tags"))
+            classification = classify_from_cached_tags(cached_tags)
+
+            w.writerow(
+                [
+                    ub.get("updated_at") or "",
+                    book.get("id") or "",
+                    book.get("title") or "",
+                    "; ".join(authors),
+                    "; ".join(cached_tags),
+                    classification,
+                ]
+            )
 
     print(f"User: {me.get('username')} (id={user_id})")
     print(f"Fetched read books: {len(all_rows)}")
     print(f"Wrote raw: {raw_path}")
     print(f"Wrote clean: {csv_path}")
 
+
 if __name__ == "__main__":
     main()
-
