@@ -7,7 +7,7 @@ domains:
       migrations_completed: 100
       ps_revenue_usd: 1000000
       promotion: director
-      books_read: 5
+      nonfiction_books_goal: 5
       github_commits: 100
 
     systems:
@@ -33,9 +33,13 @@ domains:
       daily_child_time_minutes: 30
       monthly_family_rituals: 12
 
+  personal:
+    outcomes:
+      fiction_books_goal: 5
+      spotify_minutes_goal: 50000
+
   finance:
     outcomes:
       roth_ira: max
       hsa: max
       monthly_savings_usd: 2000
-
