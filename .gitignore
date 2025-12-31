@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Secrets
+secrets/
+
 # Raw + processed data should not be committed
 data/**
 # Allow documentation files inside data directories
