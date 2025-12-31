@@ -13,7 +13,6 @@ domains:
     systems:
       migration_management: maia
       project_tracking: automated
-      weekly_review: true
 
   fitness:
     outcomes:
@@ -29,9 +28,7 @@ domains:
 
   family:
     outcomes:
-      weekly_partner_time: true
-      daily_child_time_minutes: 30
-      monthly_family_rituals: 12
+      date_night_per_week: 1
 
   personal:
     outcomes:
