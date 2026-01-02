@@ -9,6 +9,9 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()
 
+import time
+import random
+
 BASE = "https://pixe.la/v1/users"
 
 
@@ -44,7 +47,7 @@ class PixelaClient:
     def _handle(self, r: requests.Response) -> Dict[str, Any]:
         """
         Pixela returns JSON with {isSuccess, message}.
-        We still rely on HTTP status codes, but also surface Pixela message on failure.
+        We rely on HTTP status codes, but also surface Pixela message on failure.
         """
         try:
             data = r.json()
@@ -55,9 +58,58 @@ class PixelaClient:
             msg = ""
             if isinstance(data, dict):
                 msg = data.get("message") or data.get("raw") or ""
+
             raise PixelaError(f"Pixela HTTP {r.status_code}: {msg}".strip())
 
         return data if isinstance(data, dict) else {"data": data}
+
+    def _request(self, method: str, url: str, *, json_body: Optional[dict] = None, params: Optional[dict] = None,
+                 retries: int = 6, base_sleep: float = 0.4) -> Dict[str, Any]:
+        """
+        Pixela may intentionally reject some requests (503) for non-supporters.
+        This wrapper retries transient failures with exponential backoff + jitter.
+        """
+        last_err: Optional[Exception] = None
+
+        for attempt in range(retries + 1):
+            try:
+                r = requests.request(
+                    method,
+                    url,
+                    headers=self._headers(),
+                    json=json_body,
+                    params=params,
+                    timeout=30,
+                )
+                # Retry on transient server errors / throttling
+                if r.status_code in (429, 500, 502, 503, 504):
+                    # try to capture message for debugging, but don't fail yet
+                    try:
+                        msg = (r.json() or {}).get("message", "")
+                    except Exception:
+                        msg = r.text[:200]
+
+                    # If we've exhausted retries, raise
+                    if attempt >= retries:
+                        raise PixelaError(f"Pixela HTTP {r.status_code}: {msg}".strip())
+
+                    # Exponential backoff + jitter
+                    sleep_s = base_sleep * (2 ** attempt) + random.uniform(0, 0.25)
+                    time.sleep(sleep_s)
+                    continue
+
+                return self._handle(r)
+
+            except Exception as e:
+                last_err = e
+                if attempt >= retries:
+                    raise
+                sleep_s = base_sleep * (2 ** attempt) + random.uniform(0, 0.25)
+                time.sleep(sleep_s)
+
+        # Should never get here
+        raise PixelaError(f"Pixela request failed: {last_err}")
+
 
     # --------------------------
     # Graphs
@@ -83,7 +135,7 @@ class PixelaClient:
             "color": color,
             "timezone": timezone,
         }
-        r = requests.post(url, headers=self._headers(), json=payload, timeout=30)
+        return self._request("POST", url, json_body=payload)
         return self._handle(r)
 
     # --------------------------
@@ -96,8 +148,7 @@ class PixelaClient:
         """
         url = f"{self.base_url}/{self.username}/graphs/{graph_id}/{yyyymmdd}"
         payload = {"quantity": str(int(quantity))}
-        r = requests.put(url, headers=self._headers(), json=payload, timeout=30)
-        return self._handle(r)
+        return self._request("PUT", url, json_body=payload)
 
     def get_pixel(self, graph_id: str, yyyymmdd: str) -> Optional[Dict[str, Any]]:
         """
@@ -108,14 +159,13 @@ class PixelaClient:
         r = requests.get(url, headers=self._headers(), timeout=30)
         if r.status_code == 404:
             return None
-        return self._handle(r)  # includes quantity when present
+        # Use handler for non-404 responses
+        return self._handle(r)
 
     def get_pixels_range(self, graph_id: str, date_from: str, date_to: str) -> Dict[str, Any]:
         """
         GET /v1/users/<username>/graphs/<graphID>/pixels?from=...&to=...&withBody=true
         Returns: {"pixels":[{"date":"YYYYMMDD","quantity":"1"}, ...]}
         """
-        url = f"{self.base_url}/{self.username}/graphs/{graph_id}/pixels"
-        params = {"from": date_from, "to": date_to, "withBody": "true"}
-        r = requests.get(url, headers=self._headers(), params=params, timeout=30)
-        return self._handle(r)
+        url = f"{self.base_url}/{self.username}/graphs/{graph_id}/{yyyymmdd}"
+        return self._request("GET", url, params=params)
