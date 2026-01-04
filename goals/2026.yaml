@@ -34,6 +34,23 @@ domains:
     outcomes:
       fiction_books_goal: 5
       spotify_minutes_goal: 50000
+    habits:
+      meditation:
+        cadence: daily
+        target: 1
+        source: pixela
+      pushups_100:
+        cadence: daily
+        target: 1
+        source: pixela
+      nonfiction_pages_10:
+        cadence: daily
+        target: 1
+        source: pixela
+      fiction_pages_10:
+        cadence: daily
+        target: 1
+        source: pixela
 
   finance:
     outcomes:

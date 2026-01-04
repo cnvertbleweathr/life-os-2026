@@ -10,10 +10,14 @@ __pycache__/
 secrets/
 *.token.json
 
-# Raw + processed data should not be committed
-data/**
-# Allow documentation files inside data directories
-!data/**/README.md
+# Ignore all data artifacts
+/data/*
+
+# Re-allow directories so we can track README.md files
+!/data/**/
+
+# Allow documentation inside data directories
+!/data/**/README.md
 
 # Distribution / packaging
 .Python
