@@ -334,6 +334,11 @@ def main() -> int:
             cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
             run_if_exists=repo_root / "scripts" / "shows_metrics.py",
         ),
+        Step(
+            name="ticketmaster_fetch",
+            cmd=["python3", "scripts/ticketmaster_fetch_denver.py"],
+            run_if_exists=repo_root / "scripts" / "ticketmaster_fetch_denver.py",
+        ),
 
     ]
 
