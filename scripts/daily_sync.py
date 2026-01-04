@@ -42,13 +42,14 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     Reads existing metric outputs and appends one consolidated row to:
       data/daily/history_daily.csv
 
-    This function is intentionally "best effort": missing inputs never raise.
+    Best-effort: missing inputs never raise.
+    Header is managed safely: if new columns appear, the file is rewritten
+    with an expanded header (preserving existing rows).
     """
     history_path = repo_root / "data" / "daily" / "history_daily.csv"
     history_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- Fitness (SugarWOD) ---
-    # Your current fitness_metrics writes fitness_summary_2026.csv (not year-parametrized yet).
     fitness_path = first_existing([
         repo_root / f"data/sugarwod/metrics/fitness_summary_{year}.csv",
         repo_root / "data/sugarwod/metrics/fitness_summary_2026.csv",
@@ -68,7 +69,6 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     date_night_summary = read_single_row_csv(date_night_path) if date_night_path else {}
 
     # --- Running (Strava-derived) ---
-    # Try a few common possibilities without breaking.
     running_path = first_existing([
         repo_root / f"data/strava/metrics/running_summary_{year}.csv",
         repo_root / f"data/running/metrics/running_summary_{year}.csv",
@@ -77,7 +77,12 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     ])
     running_summary = read_single_row_csv(running_path) if running_path else {}
 
-    # Build one row (stable keys even if some sources missing)
+    # --- Shows (AEG / Denver feed) ---
+    shows_path = first_existing([
+        repo_root / f"data/shows/metrics/shows_summary_{year}.csv",
+    ])
+    shows_summary = read_single_row_csv(shows_path) if shows_path else {}
+
     row = {
         "date": today,
         "year": str(year),
@@ -134,17 +139,57 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
             or ""
         ),
         "running_progress_pct": running_summary.get("running_progress_pct", ""),
+
+        # Shows (Denver upcoming)
+        "denver_upcoming_show_count": shows_summary.get("denver_upcoming_show_count", ""),
+        "next_show_date": shows_summary.get("next_show_date", ""),
+        "next_show_title": shows_summary.get("next_show_title", ""),
+        "next_show_venue": shows_summary.get("next_show_venue", ""),
+        "next_show_url": shows_summary.get("next_show_url", ""),
+        "unique_venues_count": shows_summary.get("unique_venues_count", ""),
     }
 
-    # Append row; write header once
-    write_header = not history_path.exists()
-    with open(history_path, "a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=list(row.keys()))
-        if write_header:
+    # ---- Safe header management ----
+    existing_rows = []
+    existing_header: List[str] = []
+
+    if history_path.exists():
+        try:
+            with open(history_path, "r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                existing_header = reader.fieldnames or []
+                for r in reader:
+                    existing_rows.append(r)
+        except Exception:
+            # If unreadable, fall back to overwrite with just this row.
+            existing_rows = []
+            existing_header = []
+
+    # union headers
+    new_keys = list(row.keys())
+    header = list(existing_header) if existing_header else []
+    for k in new_keys:
+        if k not in header:
+            header.append(k)
+
+    # if header changed, rewrite file preserving old rows
+    header_changed = bool(existing_header) and header != existing_header
+
+    if not history_path.exists() or not existing_header or header_changed:
+        with open(history_path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=header)
             writer.writeheader()
-        writer.writerow(row)
+            for r in existing_rows:
+                writer.writerow({h: r.get(h, "") for h in header})
+            writer.writerow({h: row.get(h, "") for h in header})
+    else:
+        # append only
+        with open(history_path, "a", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=header)
+            writer.writerow({h: row.get(h, "") for h in header})
 
     return history_path
+
 
 
 @dataclass
@@ -277,6 +322,19 @@ def main() -> int:
             cmd=["python3", "scripts/calendar_metrics.py", "--year", str(args.year)],
             run_if_exists=repo_root / "scripts/calendar_metrics.py",
         ),
+
+        #AEG Shows
+        Step(
+            name="aeg_events_fetch",
+            cmd=["python3", "scripts/aeg_events_fetch.py"],
+            run_if_exists=repo_root / "scripts" / "aeg_events_fetch.py",
+        ),
+        Step(
+            name="shows_metrics",
+            cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
+            run_if_exists=repo_root / "scripts" / "shows_metrics.py",
+        ),
+
     ]
 
     for extra in args.also_run:
