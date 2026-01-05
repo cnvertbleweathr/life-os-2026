@@ -37,94 +37,47 @@ def first_existing(paths: List[Path]) -> Optional[Path]:
     return None
 
 
-def upsert_history_row(history_path: Path, row: dict, key_field: str = "date") -> None:
-    """
-    If a row with row[key_field] exists, replace it; otherwise append.
-    Also expands header if new columns are introduced.
-    """
-    existing_rows = []
-    existing_header: List[str] = []
-
-    if history_path.exists():
-        with open(history_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            existing_header = reader.fieldnames or []
-            for r in reader:
-                existing_rows.append(r)
-
-    # Union header
-    header = list(existing_header) if existing_header else []
-    for k in row.keys():
-        if k not in header:
-            header.append(k)
-
-    # Replace or append
-    key_val = row.get(key_field, "")
-    replaced = False
-    new_rows = []
-    for r in existing_rows:
-        if r.get(key_field, "") == key_val:
-            new_rows.append({h: row.get(h, "") for h in header})
-            replaced = True
-        else:
-            new_rows.append({h: r.get(h, "") for h in header})
-
-    if not replaced:
-        new_rows.append({h: row.get(h, "") for h in header})
-
-    # Rewrite file
-    history_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(history_path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=header)
-        writer.writeheader()
-        for r in new_rows:
-            writer.writerow(r)
-
-
 def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     """
-    Reads existing metric outputs and appends one consolidated row to:
+    Reads existing metric outputs and UPSERTS one consolidated row into:
       data/daily/history_daily.csv
 
-    Best-effort: missing inputs never raise.
-    Header is managed safely: if new columns appear, the file is rewritten
-    with an expanded header (preserving existing rows).
+    UPSERT key: 'date' (one row per day).
+    Missing inputs never raise.
     """
     history_path = repo_root / "data" / "daily" / "history_daily.csv"
     history_path.parent.mkdir(parents=True, exist_ok=True)
 
     # --- Fitness (SugarWOD) ---
-    fitness_path = first_existing([
-        repo_root / f"data/sugarwod/metrics/fitness_summary_{year}.csv",
-        repo_root / "data/sugarwod/metrics/fitness_summary_2026.csv",
-    ])
+    fitness_path = first_existing(
+        [
+            repo_root / f"data/sugarwod/metrics/fitness_summary_{year}.csv",
+            repo_root / "data/sugarwod/metrics/fitness_summary_2026.csv",
+        ]
+    )
     fitness_summary = read_single_row_csv(fitness_path) if fitness_path else {}
 
     # --- Reading (Hardcover) ---
-    reading_path = first_existing([
-        repo_root / f"data/hardcover/metrics/reading_summary_{year}.csv",
-    ])
+    reading_path = first_existing([repo_root / f"data/hardcover/metrics/reading_summary_{year}.csv"])
     reading_summary = read_single_row_csv(reading_path) if reading_path else {}
 
     # --- Date Night (Calendar) ---
-    date_night_path = first_existing([
-        repo_root / f"data/calendar/metrics/date_night_summary_{year}.csv",
-    ])
+    date_night_path = first_existing([repo_root / f"data/calendar/metrics/date_night_summary_{year}.csv"])
     date_night_summary = read_single_row_csv(date_night_path) if date_night_path else {}
 
-    # --- Running (Strava-derived) ---
-    running_path = first_existing([
-        repo_root / f"data/strava/metrics/running_summary_{year}.csv",
-        repo_root / f"data/running/metrics/running_summary_{year}.csv",
-        repo_root / f"data/strava/metrics/strava_summary_{year}.csv",
-        repo_root / f"data/running/metrics/running_metrics_{year}.csv",
-    ])
+    # --- Running ---
+    running_path = first_existing(
+        [
+            repo_root / f"data/strava/metrics/running_summary_{year}.csv",
+            repo_root / f"data/running/metrics/running_summary_{year}.csv",
+            repo_root / f"data/strava/metrics/strava_summary_{year}.csv",
+            repo_root / f"data/running/metrics/running_metrics_{year}.csv",
+        ]
+    )
     running_summary = read_single_row_csv(running_path) if running_path else {}
 
-    # --- Shows (AEG / Denver feed) ---
-    shows_path = first_existing([
-        repo_root / f"data/shows/metrics/shows_summary_{year}.csv",
-    ])
+    # --- Shows (AEG+TM) ---
+    shows_path = first_existing([repo_root / f"data/shows/metrics/shows_summary_{year}.csv"])
     shows_summary = read_single_row_csv(shows_path) if shows_path else {}
 
     row = {
@@ -171,7 +124,7 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
         "date_night_goal_per_week": date_night_summary.get("date_night_goal_per_week", ""),
         "date_night_completion_rate_pct": date_night_summary.get("completion_rate_pct", ""),
 
-        # Running (best-effort)
+        # Running
         "running_miles_ytd": (
             running_summary.get("running_miles_ytd")
             or running_summary.get("miles_ytd")
@@ -184,8 +137,12 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
         ),
         "running_progress_pct": running_summary.get("running_progress_pct", ""),
 
-        # Shows (Denver upcoming)
-        "denver_upcoming_show_count": shows_summary.get("denver_upcoming_show_count", ""),
+        # Shows
+        "denver_upcoming_show_count": (
+            shows_summary.get("denver_upcoming_show_count")
+            or shows_summary.get("denver_events_upcoming_count")
+            or ""
+        ),
         "next_show_date": shows_summary.get("next_show_date", ""),
         "next_show_title": shows_summary.get("next_show_title", ""),
         "next_show_venue": shows_summary.get("next_show_venue", ""),
@@ -193,40 +150,54 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
         "unique_venues_count": shows_summary.get("unique_venues_count", ""),
     }
 
-    # ---- Safe header management ----
+    # --- UPSERT (by date) ---
+    key_field = "date"
+    key_val = row.get(key_field, "")
+
     existing_rows = []
     existing_header: List[str] = []
-
     if history_path.exists():
-        try:
-            with open(history_path, "r", encoding="utf-8", newline="") as f:
-                reader = csv.DictReader(f)
-                existing_header = reader.fieldnames or []
-                for r in reader:
-                    existing_rows.append(r)
-        except Exception:
-            # If unreadable, fall back to overwrite with just this row.
-            existing_rows = []
-            existing_header = []
+        with open(history_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            existing_header = reader.fieldnames or []
+            for r in reader:
+                existing_rows.append(r)
 
-    # union headers
-    new_keys = list(row.keys())
     header = list(existing_header) if existing_header else []
-    for k in new_keys:
+    for k in row.keys():
         if k not in header:
             header.append(k)
 
-    # if header changed, rewrite file preserving old rows
-    upsert_history_row(history_path, row, key_field="date")
+    new_rows = []
+    replaced = False
+    for r in existing_rows:
+        if r.get(key_field, "") == key_val:
+            if not replaced:
+                # first match: replace it
+                new_rows.append({h: row.get(h, "") for h in header})
+                replaced = True
+            else:
+                # extra duplicate match: drop it
+                continue
+        else:
+            new_rows.append({h: r.get(h, "") for h in header})
 
+
+    with open(history_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+        for r in new_rows:
+            writer.writerow(r)
+
+    return history_path
 
 
 @dataclass
 class Step:
     name: str
     cmd: List[str]
-    required: bool = False  # if True, failing stops the run
-    run_if_exists: Optional[Path] = None  # if set, only run if this file exists
+    required: bool = False
+    run_if_exists: Optional[Path] = None
 
 
 def run_step(step: Step, cwd: Path, log_dir: Path) -> dict:
@@ -316,7 +287,7 @@ def main() -> int:
             run_if_exists=repo_root / "scripts/fitness_metrics.py",
         ),
 
-        # Strava (fetch activities; auth is not a daily step)
+        # Strava
         Step(
             name="strava_fetch",
             cmd=["python3", "scripts/fetch_strava_activities.py", "--year", str(args.year)],
@@ -352,23 +323,26 @@ def main() -> int:
             run_if_exists=repo_root / "scripts/calendar_metrics.py",
         ),
 
-        #AEG Shows
+        # AEG Shows
         Step(
             name="aeg_events_fetch",
             cmd=["python3", "scripts/aeg_events_fetch.py"],
             run_if_exists=repo_root / "scripts" / "aeg_events_fetch.py",
         ),
+
+        # Ticketmaster Shows
         Step(
             name="ticketmaster_fetch",
             cmd=["python3", "scripts/ticketmaster_fetch_denver.py"],
             run_if_exists=repo_root / "scripts" / "ticketmaster_fetch_denver.py",
         ),
+
+        # Shows metrics (combined)
         Step(
             name="shows_metrics",
             cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
             run_if_exists=repo_root / "scripts" / "shows_metrics.py",
         ),
-
     ]
 
     for extra in args.also_run:
@@ -408,12 +382,12 @@ def main() -> int:
     with open(out_dir / "summary.md", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
-    # Append consolidated daily history row (best-effort, never fatal)
+    # Upsert consolidated daily history row (best-effort, never fatal)
     try:
         history_path = append_history_row(repo_root, today=today, year=args.year)
-        print(f"Appended: {history_path}", flush=True)
+        print(f"Upserted: {history_path}", flush=True)
     except Exception as e:
-        print(f"Warning: failed to append history_daily.csv: {e}", file=sys.stderr, flush=True)
+        print(f"Warning: failed to upsert history_daily.csv: {e}", file=sys.stderr, flush=True)
 
     print(f"Wrote: {out_dir / 'summary.json'}")
     print(f"Wrote: {out_dir / 'summary.md'}")
