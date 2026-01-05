@@ -30,25 +30,20 @@ def _parse_dt(value: str) -> Optional[datetime]:
       - TM:  2026-01-09T03:00:00Z  (UTC)
       - TM alt: 2026-01-09T20:00:00  (naive)
       - TM alt: 2026-01-09  (date-only)
-
-    Returns a datetime that may be naive or aware.
     """
     if not value:
         return None
-
     s = value.strip()
 
     # Handle trailing Z (UTC)
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
 
-    # Try fromisoformat
     try:
         return datetime.fromisoformat(s)
     except ValueError:
         pass
 
-    # Fallback date-only
     for fmt in ("%Y-%m-%d", "%Y/%m/%d"):
         try:
             return datetime.strptime(s, fmt)
@@ -61,7 +56,7 @@ def _parse_dt(value: str) -> Optional[datetime]:
 def _as_aware_denver(dt: datetime) -> datetime:
     """
     Ensure dt is timezone-aware in America/Denver.
-    - If naive: assume it is already local Denver time.
+    - If naive: assume it's already Denver local time.
     - If aware: convert to Denver.
     """
     if dt.tzinfo is None:
@@ -71,10 +66,9 @@ def _as_aware_denver(dt: datetime) -> datetime:
 
 def _utc_ts(dt: datetime) -> float:
     """
-    Convert datetime to a comparable UTC timestamp.
+    Comparable UTC timestamp for sorting.
     """
-    aware_denver = _as_aware_denver(dt)
-    return aware_denver.astimezone(UTC).timestamp()
+    return _as_aware_denver(dt).astimezone(UTC).timestamp()
 
 
 def _read_csv(path: Path) -> List[Dict[str, str]]:
@@ -100,7 +94,6 @@ def _dedupe_key(row: Dict[str, str]) -> str:
     url = row.get("event_url", "").strip()
     if url:
         return f"url:{url}"
-
     title = _norm(row.get("title", ""))
     venue = _norm(row.get("venue_name", ""))
     start = row.get("start_datetime", "").strip()
@@ -112,6 +105,8 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Compute combined Denver shows metrics (AEG + Ticketmaster).")
     p.add_argument("--year", type=int, required=True)
     args = p.parse_args()
+
+    now_denver = datetime.now(tz=DENVER_TZ)
 
     rows_aeg = _read_csv(IN_AEG)
     rows_tm = _read_csv(IN_TM)
@@ -125,25 +120,34 @@ def main() -> int:
             dedup[k] = row
     rows = list(dedup.values())
 
-    # Filter to year (using Denver-local year), and prepare sortable tuples
-    filtered: List[Tuple[float, datetime, Dict[str, str]]] = []
+    # Parse + filter to year (Denver-local year)
+    in_year: List[Tuple[float, datetime, Dict[str, str]]] = []
+    in_year_future: List[Tuple[float, datetime, Dict[str, str]]] = []
+
     for row in rows:
         dt_raw = _parse_dt(row.get("start_datetime", ""))
         if not dt_raw:
             continue
 
         dt_denver = _as_aware_denver(dt_raw)
+
         if dt_denver.year != args.year:
             continue
 
-        filtered.append((_utc_ts(dt_raw), dt_denver, row))
+        sort_key = _utc_ts(dt_raw)
+        in_year.append((sort_key, dt_denver, row))
 
-    filtered.sort(key=lambda x: x[0])
+        if dt_denver > now_denver:
+            in_year_future.append((sort_key, dt_denver, row))
 
-    upcoming_count = len(filtered)
+    in_year.sort(key=lambda x: x[0])
+    in_year_future.sort(key=lambda x: x[0])
 
-    if filtered:
-        _, next_dt_denver, next_row = filtered[0]
+    denver_upcoming_show_count = len(in_year)
+    denver_future_show_count = len(in_year_future)
+
+    if in_year_future:
+        _, next_dt_denver, next_row = in_year_future[0]
         next_show_date = next_dt_denver.date().isoformat()
         next_show_datetime = next_dt_denver.isoformat()
         next_show_title = next_row.get("title", "")
@@ -156,13 +160,13 @@ def main() -> int:
         next_show_venue = ""
         next_show_url = ""
 
-    unique_venues = {r.get("venue_name", "").strip() for _, _, r in filtered if r.get("venue_name", "").strip()}
-
+    unique_venues = {r.get("venue_name", "").strip() for _, _, r in in_year if r.get("venue_name", "").strip()}
     sources_present = sorted({(r.get("source") or "").strip() for r in rows if (r.get("source") or "").strip()})
 
     summary = {
         "year": str(args.year),
-        "denver_upcoming_show_count": str(upcoming_count),
+        "denver_upcoming_show_count": str(denver_upcoming_show_count),
+        "denver_future_show_count": str(denver_future_show_count),
         "next_show_date": next_show_date,
         "next_show_datetime": next_show_datetime,
         "next_show_title": next_show_title,
@@ -173,6 +177,7 @@ def main() -> int:
         "aeg_rows": str(len(rows_aeg)),
         "ticketmaster_rows": str(len(rows_tm)),
         "combined_deduped_rows": str(len(rows)),
+        "computed_at_denver": now_denver.isoformat(timespec="seconds"),
     }
 
     out_path = OUT_DIR / f"shows_summary_{args.year}.csv"

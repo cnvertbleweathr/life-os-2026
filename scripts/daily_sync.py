@@ -37,6 +37,50 @@ def first_existing(paths: List[Path]) -> Optional[Path]:
     return None
 
 
+def upsert_history_row(history_path: Path, row: dict, key_field: str = "date") -> None:
+    """
+    If a row with row[key_field] exists, replace it; otherwise append.
+    Also expands header if new columns are introduced.
+    """
+    existing_rows = []
+    existing_header: List[str] = []
+
+    if history_path.exists():
+        with open(history_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            existing_header = reader.fieldnames or []
+            for r in reader:
+                existing_rows.append(r)
+
+    # Union header
+    header = list(existing_header) if existing_header else []
+    for k in row.keys():
+        if k not in header:
+            header.append(k)
+
+    # Replace or append
+    key_val = row.get(key_field, "")
+    replaced = False
+    new_rows = []
+    for r in existing_rows:
+        if r.get(key_field, "") == key_val:
+            new_rows.append({h: row.get(h, "") for h in header})
+            replaced = True
+        else:
+            new_rows.append({h: r.get(h, "") for h in header})
+
+    if not replaced:
+        new_rows.append({h: row.get(h, "") for h in header})
+
+    # Rewrite file
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(history_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=header)
+        writer.writeheader()
+        for r in new_rows:
+            writer.writerow(r)
+
+
 def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     """
     Reads existing metric outputs and appends one consolidated row to:
@@ -173,22 +217,7 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
             header.append(k)
 
     # if header changed, rewrite file preserving old rows
-    header_changed = bool(existing_header) and header != existing_header
-
-    if not history_path.exists() or not existing_header or header_changed:
-        with open(history_path, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=header)
-            writer.writeheader()
-            for r in existing_rows:
-                writer.writerow({h: r.get(h, "") for h in header})
-            writer.writerow({h: row.get(h, "") for h in header})
-    else:
-        # append only
-        with open(history_path, "a", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=header)
-            writer.writerow({h: row.get(h, "") for h in header})
-
-    return history_path
+    upsert_history_row(history_path, row, key_field="date")
 
 
 
@@ -330,14 +359,14 @@ def main() -> int:
             run_if_exists=repo_root / "scripts" / "aeg_events_fetch.py",
         ),
         Step(
-            name="shows_metrics",
-            cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
-            run_if_exists=repo_root / "scripts" / "shows_metrics.py",
-        ),
-        Step(
             name="ticketmaster_fetch",
             cmd=["python3", "scripts/ticketmaster_fetch_denver.py"],
             run_if_exists=repo_root / "scripts" / "ticketmaster_fetch_denver.py",
+        ),
+        Step(
+            name="shows_metrics",
+            cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
+            run_if_exists=repo_root / "scripts" / "shows_metrics.py",
         ),
 
     ]
