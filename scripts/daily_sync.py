@@ -80,6 +80,13 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
     shows_path = first_existing([repo_root / f"data/shows/metrics/shows_summary_{year}.csv"])
     shows_summary = read_single_row_csv(shows_path) if shows_path else {}
 
+    spotify_path = first_existing([
+    repo_root / f"data/spotify/metrics/spotify_summary_{year}.csv"
+        ])
+    spotify_summary = read_single_row_csv(spotify_path) if spotify_path else {}
+
+    
+
     row = {
         "date": today,
         "year": str(year),
@@ -148,6 +155,16 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
         "next_show_venue": shows_summary.get("next_show_venue", ""),
         "next_show_url": shows_summary.get("next_show_url", ""),
         "unique_venues_count": shows_summary.get("unique_venues_count", ""),
+
+        "spotify_minutes_ytd": spotify_summary.get("spotify_minutes_ytd", ""),
+        "spotify_goal_minutes": spotify_summary.get("spotify_goal_minutes", ""),
+        "spotify_progress_pct": spotify_summary.get("spotify_progress_pct", ""),
+        "spotify_days_listened_ytd": spotify_summary.get("spotify_days_listened_ytd", ""),
+        "spotify_unique_artists_ytd": spotify_summary.get("spotify_unique_artists_ytd", ""),
+        "spotify_unique_tracks_ytd": spotify_summary.get("spotify_unique_tracks_ytd", ""),
+        "spotify_top_artist_ytd": spotify_summary.get("spotify_top_artist_ytd", ""),
+        "spotify_top_track_ytd": spotify_summary.get("spotify_top_track_ytd", ""),
+
     }
 
     # --- UPSERT (by date) ---
@@ -182,6 +199,8 @@ def append_history_row(repo_root: Path, today: str, year: int) -> Path:
         else:
             new_rows.append({h: r.get(h, "") for h in header})
 
+    if not replaced:
+        new_rows.append({h: row.get(h, "") for h in header})
 
     with open(history_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=header)
@@ -343,6 +362,22 @@ def main() -> int:
             cmd=["python3", "scripts/shows_metrics.py", "--year", str(args.year)],
             run_if_exists=repo_root / "scripts" / "shows_metrics.py",
         ),
+        Step(
+            name="spotify_daily10_playlist",
+            cmd=["python3", "scripts/spotify_daily10_playlist.py"],
+            run_if_exists=repo_root / "scripts" / "spotify_daily10_playlist.py",
+        ),
+        Step(
+            name="spotify_metrics",
+            cmd=["python3", "scripts/spotify_metrics.py", "--year", str(args.year)],
+            run_if_exists=repo_root / "scripts" / "spotify_metrics.py",
+        ),
+        Step(
+            name="spotify_daily10_playlist",
+            cmd=["python3", "scripts/spotify_daily10_playlist.py"],
+            run_if_exists=repo_root / "scripts" / "spotify_daily10_playlist.py",
+        ),
+
     ]
 
     for extra in args.also_run:
