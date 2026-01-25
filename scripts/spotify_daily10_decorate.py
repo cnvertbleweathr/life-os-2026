@@ -62,6 +62,20 @@ def _clean_html(s: str) -> str:
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+def _is_sensitive_event_text(text: str) -> bool:
+    t = (text or "").lower()
+
+    # keep this conservative: avoid executions/violence/death-heavy events
+    banned = [
+        "hanged", "hung", "execution", "executed",
+        "killing", "killed", "murder", "assassinat",
+        "massacre", "terror", "bomb", "shoot", "shot",
+        "war", "battle", "genocide",
+        "crash", "plane", "air crash", "explosion",
+        "death", "died", "fatal", "dead",
+    ]
+    return any(b in t for b in banned)
+
 
 def _short(s: str, n: int = 240) -> str:
     s = (s or "").strip()
@@ -152,6 +166,11 @@ def _pick_event_for_date(d: date, *, seed: Optional[int] = None) -> Dict[str, An
     for ev in events:
         year = ev.get("year")
         text = _clean_html(ev.get("text", ""))
+        if not text or not isinstance(year, int):
+            continue
+
+        if _is_sensitive_event_text(text):
+            continue
         lower = text.lower()
         ban = ["killing", "killed", "dies", "dead", "crash", "crashes", "explosion", "massacre", "assassination", "bomb"]
         if any(w in lower for w in ban):
@@ -234,51 +253,49 @@ def _event_to_assets(ev: Dict[str, Any], d: date) -> Tuple[str, str, str]:
     return image_prompt, desc.strip(), title_text
 
 
-def _openai_generate_image_bytes(prompt: str, *, model: str, size: str) -> bytes:
+def _openai_generate_image_bytes(prompt: str, *, model: str, size: str = "1024x1024") -> bytes:
+    """
+    Calls OpenAI Images API and returns raw image bytes.
+    Handles both:
+      - b64_json (preferred when available)
+      - url (fallback)
+    """
     api_key = _require_env("OPENAI_API_KEY")
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
 
-    # Note: Different image models have slightly different supported params.
-    # We'll keep it minimal and accept URL response.
-    payload = {"model": model, "prompt": prompt, "size": size}
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "size": size,
+    }
 
-    last_err = None
-    for attempt in range(OPENAI_MAX_RETRIES + 1):
+    r = requests.post(OPENAI_IMAGES_ENDPOINT, json=payload, headers=headers, timeout=90)
+
+    if not r.ok:
+        # Print useful error details
         try:
-            r = requests.post(OPENAI_IMAGES_ENDPOINT, json=payload, headers=headers, timeout=90)
-            if r.status_code in (429, 500, 502, 503, 504):
-                if attempt < OPENAI_MAX_RETRIES:
-                    sleep_s = min(OPENAI_BACKOFF_CAP_SEC, OPENAI_BACKOFF_BASE_SEC * (2 ** attempt))
-                    sleep_s = sleep_s * (0.7 + random.random() * 0.6)
-                    time.sleep(sleep_s)
-                    continue
-            r.raise_for_status()
-            data = r.json()
+            print("OpenAI error:", r.status_code, r.json())
+        except Exception:
+            print("OpenAI error:", r.status_code, (r.text or "")[:800])
+        r.raise_for_status()
 
-            # Most common: image URL
-            item = (data.get("data") or [{}])[0]
-            if "url" in item and item["url"]:
-                img_url = item["url"]
-                ir = requests.get(img_url, timeout=90)
-                ir.raise_for_status()
-                return ir.content
+    data = r.json()  # <-- this is what you were missing / shadowed
 
-            # Some responses may include b64_json
-            if "b64_json" in item and item["b64_json"]:
-                return base64.b64decode(item["b64_json"])
+    item = (data.get("data") or [{}])[0]
 
-            raise RuntimeError(f"OpenAI image response missing url/b64_json: {list(item.keys())}")
+    # Preferred: b64_json
+    b64 = item.get("b64_json")
+    if b64:
+        return base64.b64decode(b64)
 
-        except Exception as e:
-            last_err = e
-            if attempt >= OPENAI_MAX_RETRIES:
-                raise
-            sleep_s = min(OPENAI_BACKOFF_CAP_SEC, OPENAI_BACKOFF_BASE_SEC * (2 ** attempt))
-            sleep_s = sleep_s * (0.7 + random.random() * 0.6)
-            time.sleep(sleep_s)
+    # Fallback: url
+    url = item.get("url")
+    if url:
+        img = requests.get(url, timeout=90)
+        img.raise_for_status()
+        return img.content
 
-    raise RuntimeError(f"OpenAI request failed: {last_err}")
-
+    raise RuntimeError(f"OpenAI response missing image payload keys. Keys: {list(item.keys())}")
 
 def _to_jpeg_bytes(img_bytes: bytes, *, target_max_base64_bytes: int = MAX_SPOTIFY_BASE64_BYTES) -> Tuple[bytes, str]:
     """
