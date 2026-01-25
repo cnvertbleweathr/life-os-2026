@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import os
 import random
+import subprocess
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -24,11 +26,16 @@ STREAMS_CSV = ROOT / "data" / "spotify" / "processed" / "streams_clean.csv"
 OUT_DIR = ROOT / "data" / "spotify" / "processed"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-URI_CACHE_CSV = OUT_DIR / "spotify_uri_cache.csv"       # query_key,track_uri
-DAILY_AUDIT_CSV = OUT_DIR / "daily10_audit.csv"         # audit output
+URI_CACHE_CSV = OUT_DIR / "spotify_uri_cache.csv"
+DAILY_AUDIT_CSV = OUT_DIR / "daily10_audit.csv"
+LATEST_JSON = OUT_DIR / "daily10_latest.json"
+
 TOKEN_CACHE = ROOT / "secrets" / "spotify_token_cache.json"
 
 
+# --------------------
+# Utilities
+# --------------------
 def norm(s: str) -> str:
     return " ".join((s or "").strip().split())
 
@@ -36,6 +43,18 @@ def norm(s: str) -> str:
 def norm_key(s: str) -> str:
     return norm(s).lower()
 
+def spotify_safe_text(s: str, *, max_len: int) -> str:
+    """
+    Spotify playlist name/description limits are strict and errors are opaque.
+    - Remove newlines
+    - Collapse whitespace
+    - Hard-truncate to max_len
+    """
+    s = (s or "").replace("\r", " ").replace("\n", " ")
+    s = " ".join(s.split()).strip()
+    if len(s) > max_len:
+        s = s[: max_len - 1] + "…"
+    return s
 
 @dataclass(frozen=True)
 class TrackKey:
@@ -43,42 +62,25 @@ class TrackKey:
     track: str
 
 
-def load_uri_cache(path: Path) -> Dict[str, str]:
-    cache: Dict[str, str] = {}
-    if not path.exists():
-        return cache
-    with open(path, "r", encoding="utf-8", newline="") as f:
-        r = csv.DictReader(f)
-        for row in r:
-            k = (row.get("query_key") or "").strip()
-            v = (row.get("track_uri") or "").strip()
-            if k and v:
-                cache[k] = v
-    return cache
-
-
-def append_uri_cache(path: Path, items: Dict[str, str]) -> None:
-    if not items:
-        return
-    exists = path.exists()
-    with open(path, "a", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["query_key", "track_uri"])
-        if not exists:
-            w.writeheader()
-        for k, v in items.items():
-            w.writerow({"query_key": k, "track_uri": v})
-
-
+# --------------------
+# Spotify Client
+# --------------------
 def build_spotify_client() -> spotipy.Spotify:
-
     client_id = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
     client_secret = os.getenv("SPOTIFY_CLIENT_SECRET", "").strip()
     redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI", "http://127.0.0.1:8888/callback").strip()
 
     if not client_id or not client_secret:
-        raise SystemExit("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in .env")
+        raise SystemExit("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET")
 
-    scope = "playlist-modify-private playlist-modify-public playlist-read-private playlist-read-collaborative"
+    scope = (
+        "playlist-modify-private "
+        "playlist-modify-public "
+        "playlist-read-private "
+        "playlist-read-collaborative "
+        "ugc-image-upload"
+    )
+
     TOKEN_CACHE.parent.mkdir(parents=True, exist_ok=True)
 
     auth = SpotifyOAuth(
@@ -92,390 +94,201 @@ def build_spotify_client() -> spotipy.Spotify:
     return spotipy.Spotify(auth_manager=auth)
 
 
-def read_listening_history(streams_csv: Path) -> Tuple[Dict[TrackKey, int], Set[Tuple[str, str]]]:
-    """
-    Returns:
-      - totals: dict TrackKey -> total_ms_played
-      - listened_pairs: set of (artist_lower, track_lower) seen in history
-    """
-    if not streams_csv.exists():
-        raise SystemExit(f"Missing {streams_csv}. Run spotify_ingest_streaming.py first.")
+# --------------------
+# History + Tewnidge
+# --------------------
+def read_listening_history(streams_csv: Path):
+    totals = defaultdict(int)
+    listened = set()
 
-    totals: Dict[TrackKey, int] = defaultdict(int)
-    listened_pairs: Set[Tuple[str, str]] = set()
-
-    with open(streams_csv, "r", encoding="utf-8", newline="") as f:
+    with open(streams_csv, "r", encoding="utf-8") as f:
         r = csv.DictReader(f)
         for row in r:
-            artist = norm(row.get("artist_name") or "")
-            track = norm(row.get("track_name") or "")
+            artist = norm(row.get("artist_name"))
+            track = norm(row.get("track_name"))
             if not artist or not track:
                 continue
-
-            try:
-                ms = int(row.get("ms_played") or 0)
-            except Exception:
-                ms = 0
-
-            tk = TrackKey(artist=artist, track=track)
+            ms = int(row.get("ms_played") or 0)
+            tk = TrackKey(artist, track)
             totals[tk] += ms
-            listened_pairs.add((norm_key(artist), norm_key(track)))
+            listened.add((norm_key(artist), norm_key(track)))
 
-    return totals, listened_pairs
+    return totals, listened
 
 
 def top_n_tracks(totals: Dict[TrackKey, int], n: int) -> List[TrackKey]:
-    ranked = sorted(totals.items(), key=lambda x: x[1], reverse=True)
-    return [k for k, _ in ranked[:n]]
+    return [k for k, _ in sorted(totals.items(), key=lambda x: x[1], reverse=True)[:n]]
 
 
-def fetch_tewnidge(sp: spotipy.Spotify, playlist_id: str) -> Tuple[Set[str], List[str]]:
-    """
-    Returns:
-      - tewnidge_track_uris: all track URIs in playlist
-      - tewnidge_artists: unique primary-artist names in playlist (display-case)
-    """
-    tewnidge_track_uris: Set[str] = set()
-    artists_seen: Set[str] = set()
-    tewnidge_artists: List[str] = []
+def fetch_tewnidge(sp: spotipy.Spotify, playlist_id: str):
+    uris, artists = set(), []
+    seen = set()
 
     offset = 0
-    limit = 100
     while True:
         page = sp.playlist_items(
             playlist_id,
             offset=offset,
-            limit=limit,
-            additional_types=["track"],
-            fields="items(track(uri,name,artists(name))),next",
+            limit=100,
+            fields="items(track(uri,artists(name))),next",
         )
-        for it in page.get("items") or []:
-            tr = it.get("track") or {}
-            uri = (tr.get("uri") or "").strip()
-            artists = tr.get("artists") or []
-            artist = ((artists[0].get("name") if artists else "") or "").strip()
-
+        for it in page["items"]:
+            tr = it["track"] or {}
+            uri = tr.get("uri")
+            arts = tr.get("artists") or []
             if uri:
-                tewnidge_track_uris.add(uri)
-            if artist:
-                key = artist.lower()
-                if key not in artists_seen:
-                    artists_seen.add(key)
-                    tewnidge_artists.append(artist)
-
-        if page.get("next") is None:
+                uris.add(uri)
+            if arts:
+                name = arts[0]["name"]
+                key = name.lower()
+                if key not in seen:
+                    seen.add(key)
+                    artists.append(name)
+        if not page["next"]:
             break
-        offset += limit
+        offset += 100
 
-    return tewnidge_track_uris, tewnidge_artists
-
-
-def search_tracks_by_artist(
-    sp: spotipy.Spotify,
-    artist_name: str,
-    max_pages: int = 6,
-    page_size: int = 50,
-) -> List[dict]:
-    """
-    Returns raw Spotify 'track' objects from search results for artist:"..."
-    """
-    results: List[dict] = []
-    q = f'artist:"{artist_name}"'
-    for page in range(max_pages):
-        res = sp.search(q=q, type="track", limit=page_size, offset=page * page_size)
-        items = ((res.get("tracks") or {}).get("items") or [])
-        if not items:
-            break
-        results.extend(items)
-        # If fewer than page_size returned, no more pages
-        if len(items) < page_size:
-            break
-    return results
+    return uris, artists
 
 
-def pick_unheard_non_tewnidge_track_uri_for_artist(
-    sp: spotipy.Spotify,
-    artist_name: str,
-    tewnidge_track_uris: Set[str],
-    listened_pairs: Set[Tuple[str, str]],
-    rng: random.Random,
-    max_pages: int = 6,
-) -> Optional[Tuple[str, str]]:
-    """
-    Returns (track_uri, track_name) meeting constraints:
-      - primary artist matches artist_name
-      - uri NOT in tewnidge playlist
-      - (artist, track) NOT in listened_pairs (ever)
-    """
-    artist_lower = artist_name.lower()
-    items = search_tracks_by_artist(sp, artist_name, max_pages=max_pages)
-
-    candidates: List[Tuple[str, str]] = []
-    for tr in items:
-        uri = (tr.get("uri") or "").strip()
-        name = norm(tr.get("name") or "")
-        artists = tr.get("artists") or []
-        primary = ((artists[0].get("name") if artists else "") or "").strip()
-        if not uri or not name or not primary:
-            continue
-
-        # strict primary-artist match
-        if primary.lower() != artist_lower:
-            continue
-
-        if uri in tewnidge_track_uris:
-            continue
-
-        if (artist_lower, norm_key(name)) in listened_pairs:
-            continue
-
-        candidates.append((uri, name))
-
-    if not candidates:
-        return None
-
-    return rng.choice(candidates)
-
-
-def find_existing_playlist_id(sp: spotipy.Spotify, playlist_name: str) -> Optional[str]:
-    """
-    Searches current user's playlists for a playlist with an exact name match.
-    Returns playlist id if found, else None.
-    """
+# --------------------
+# Playlist Helpers
+# --------------------
+def find_existing_playlist_id(sp: spotipy.Spotify, name: str) -> Optional[str]:
     offset = 0
-    limit = 50
     while True:
-        page = sp.current_user_playlists(limit=limit, offset=offset)
-        items = page.get("items") or []
-        for pl in items:
-            if (pl.get("name") or "") == playlist_name:
-                return pl.get("id")
-        if page.get("next") is None:
+        page = sp.current_user_playlists(limit=50, offset=offset)
+        for pl in page["items"]:
+            if pl["name"] == name:
+                return pl["id"]
+        if not page["next"]:
             break
-        offset += limit
+        offset += 50
     return None
 
 
-def replace_playlist_items(sp: spotipy.Spotify, playlist_id: str, uris: List[str]) -> None:
-    """
-    Replaces playlist contents with provided URIs (chunked).
-    """
-    if not uris:
-        return
-    sp.playlist_replace_items(playlist_id, uris[:100])
+def replace_playlist_items(sp: spotipy.Spotify, pid: str, uris: List[str]) -> None:
+    sp.playlist_replace_items(pid, uris[:100])
     for i in range(100, len(uris), 100):
-        sp.playlist_add_items(playlist_id, uris[i : i + 100])
+        sp.playlist_add_items(pid, uris[i:i + 100])
 
 
-def create_or_replace_playlist(
-    sp: spotipy.Spotify,
-    playlist_name: str,
-    description: str,
-    public: bool,
-    uris: List[str],
-) -> str:
-    """
-    Idempotent:
-      - If playlist with same name exists: replace its items
-      - Else: create new playlist and add items
-    Returns playlist id.
-    """
-    existing_id = find_existing_playlist_id(sp, playlist_name)
-    if existing_id:
-        replace_playlist_items(sp, existing_id, uris)
-        return existing_id
+def create_or_replace_playlist(sp, name, description, public, uris) -> str:
+    pid = find_existing_playlist_id(sp, name)
+    if pid:
+        replace_playlist_items(sp, pid, uris)
+        return pid
 
-    me = sp.me()
-    user_id = me["id"]
-    pl = sp.user_playlist_create(
-        user=user_id,
-        name=playlist_name,
-        public=public,
-        description=description,
-    )
+    user_id = sp.me()["id"]
+    pl = sp.user_playlist_create(user_id, name=name, public=public, description=description)
     pid = pl["id"]
     replace_playlist_items(sp, pid, uris)
     return pid
 
 
-def resolve_trackkey_to_uri(
-    sp: spotipy.Spotify,
-    tk: TrackKey,
-    uri_cache: Dict[str, str],
-    new_cache: Dict[str, str],
-) -> Optional[str]:
-    """
-    Resolve TrackKey -> Spotify track URI via search, caching by query_key.
-    """
-    cache_key = f"{tk.artist}|||{tk.track}".lower()
-    if cache_key in uri_cache:
-        return uri_cache[cache_key]
-
-    q = f'track:"{tk.track}" artist:"{tk.artist}"'
-    res = sp.search(q=q, type="track", limit=5)
-    items = ((res.get("tracks") or {}).get("items") or [])
-    if not items:
-        return None
-
-    uri = (items[0].get("uri") or "").strip()
-    if not uri:
-        return None
-
-    uri_cache[cache_key] = uri
-    new_cache[cache_key] = uri
-    return uri
+# --------------------
+# Latest Pointer + Decorate
+# --------------------
+def write_latest_pointer(date_str: str, playlist_id: str):
+    payload = {
+        "date": date_str,
+        "playlist_id": playlist_id,
+        "updated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+    }
+    LATEST_JSON.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"Wrote latest pointer: {LATEST_JSON}")
 
 
+def maybe_run_decorate(date_str: str, playlist_id: str):
+    script = ROOT / "scripts" / "spotify_daily10_decorate.py"
+    if not script.exists():
+        print("Decorate skipped: script missing")
+        return
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Decorate skipped: OPENAI_API_KEY missing")
+        return
+
+    cmd = [
+        "python3",
+        str(script),
+        "--playlist-id",
+        playlist_id,
+        "--date",
+        date_str,
+    ]
+    print("Running decorate:", " ".join(cmd))
+    subprocess.run(cmd, cwd=str(ROOT))
+
+
+# --------------------
+# Main
+# --------------------
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--date", default=datetime.now().strftime("%Y-%m-%d"))
     p.add_argument("--top-n", type=int, default=500)
     p.add_argument("--top-picks", type=int, default=5)
     p.add_argument("--b-picks", type=int, default=5)
-    p.add_argument("--public", action="store_true", help="Create playlist as public (default private).")
+    p.add_argument("--public", action="store_true")
+    p.add_argument("--no-decorate", action="store_true")
     p.add_argument(
         "--tewnidge-playlist-id",
         default=os.getenv("SPOTIFY_TEWNIDGE_PLAYLIST_ID", "").strip(),
-        help="Spotify playlist ID for Tewnidge (or set SPOTIFY_TEWNIDGE_PLAYLIST_ID in .env).",
     )
     args = p.parse_args()
 
     if not args.tewnidge_playlist_id:
-        raise SystemExit("Missing --tewnidge-playlist-id (or SPOTIFY_TEWNIDGE_PLAYLIST_ID in .env).")
+        raise SystemExit("Missing Tewnidge playlist id")
 
     sp = build_spotify_client()
-
-    # Seeded RNG so "Daily 10 — YYYY-MM-DD" is stable if you rerun same day
     rng = random.Random(args.date)
 
-    # Load listening history
     totals, listened_pairs = read_listening_history(STREAMS_CSV)
-    top500 = top_n_tracks(totals, n=args.top_n)
-    if len(top500) < args.top_picks:
-        print(f"Warning: only {len(top500)} tracks available for top {args.top_n}.", file=sys.stderr)
+    top500 = top_n_tracks(totals, args.top_n)
 
-    # Load Tewnidge artists + tracks
-    tewnidge_track_uris, tewnidge_artists = fetch_tewnidge(sp, args.tewnidge_playlist_id)
-    if len(tewnidge_artists) < args.b_picks:
-        print(f"Warning: only {len(tewnidge_artists)} unique artists found in Tewnidge.", file=sys.stderr)
+    tewnidge_uris, tewnidge_artists = fetch_tewnidge(sp, args.tewnidge_playlist_id)
 
-    # ----------------------------
-    # Bucket A: 5 from top 500
-    # ----------------------------
-    bucket_a_keys = rng.sample(top500, k=min(args.top_picks, len(top500)))
+    bucket_a = rng.sample(top500, min(args.top_picks, len(top500)))
+    bucket_b = rng.sample(tewnidge_artists, min(args.b_picks, len(tewnidge_artists)))
 
-    # Resolve Bucket A to URIs
-    uri_cache = load_uri_cache(URI_CACHE_CSV)
-    new_cache: Dict[str, str] = {}
-    bucket_a_uris: List[str] = []
-    bucket_a_audit: List[Tuple[str, str, str]] = []  # (artist, track, uri)
-
-    for tk in bucket_a_keys:
-        uri = resolve_trackkey_to_uri(sp, tk, uri_cache, new_cache)
-        if uri:
-            bucket_a_uris.append(uri)
-            bucket_a_audit.append((tk.artist, tk.track, uri))
-        else:
-            bucket_a_audit.append((tk.artist, tk.track, ""))
-
-    # ----------------------------
-    # Bucket B: 5 random artists from Tewnidge
-    # For each: pick 1 track by that artist that:
-    #  - is NOT on Tewnidge
-    #  - is NOT ever listened (per export)
-    # ----------------------------
-    bucket_b_uris: List[str] = []
-    bucket_b_audit: List[Tuple[str, str, str]] = []  # (artist, track, uri)
-
-    # Start with 5 random artists, but we may need to try more to fill
-    attempted_artists: Set[str] = set()
-
-    def try_artist(artist: str) -> bool:
-        attempted_artists.add(artist.lower())
-        pick = pick_unheard_non_tewnidge_track_uri_for_artist(
-            sp=sp,
-            artist_name=artist,
-            tewnidge_track_uris=tewnidge_track_uris,
-            listened_pairs=listened_pairs,
-            rng=rng,
-            max_pages=8,
-        )
-        if not pick:
-            return False
-        uri, track_name = pick
-        if uri in bucket_b_uris:
-            return False
-        bucket_b_uris.append(uri)
-        bucket_b_audit.append((artist, track_name, uri))
-        return True
-
-    # First pass: 5 random artists
-    initial_artists = rng.sample(tewnidge_artists, k=min(args.b_picks, len(tewnidge_artists)))
-    for a in initial_artists:
-        if len(bucket_b_uris) >= args.b_picks:
-            break
-        try_artist(a)
-
-    # Fill pass: keep sampling artists until we fill or hit attempt cap
-    attempt_cap = 120
-    attempts = 0
-    while len(bucket_b_uris) < args.b_picks and attempts < attempt_cap:
-        attempts += 1
-        a = rng.choice(tewnidge_artists)
-        if a.lower() in attempted_artists:
-            continue
-        try_artist(a)
-
-    if len(bucket_b_uris) < args.b_picks:
-        print(
-            f"Warning: Only found {len(bucket_b_uris)}/{args.b_picks} Bucket B tracks "
-            f"meeting constraints (not on Tewnidge + never listened).",
-            file=sys.stderr,
-        )
-
-    # Persist cache updates
-    if new_cache:
-        append_uri_cache(URI_CACHE_CSV, new_cache)
-
-    # Combine and create playlist
-    # Keep order: top500 first, then new/unheard
-    final_uris = [u for u in bucket_a_uris if u] + [u for u in bucket_b_uris if u]
-    # Enforce uniqueness
-    seen = set()
-    final_uris = [u for u in final_uris if not (u in seen or seen.add(u))]
-
-    if not final_uris:
-        raise SystemExit("No URIs resolved; cannot create playlist.")
+    final_uris = []
+    for tk in bucket_a:
+        q = f'track:"{tk.track}" artist:"{tk.artist}"'
+        res = sp.search(q=q, type="track", limit=1)
+        items = res["tracks"]["items"]
+        if items:
+            final_uris.append(items[0]["uri"])
 
     playlist_name = f"Daily 10 — {args.date}"
     description = (
-        "Bucket A: 5 random tracks from my top 500 most-played (Spotify export). "
-        "Bucket B: 5 tracks by artists from my Tewnidge playlist, filtered to tracks "
-        "not on Tewnidge and never played (Spotify export)."
+        "Bucket A: 5 random tracks from my top 500 most-played.\n"
+        "Bucket B: 5 unheard tracks by artists from Tewnidge."
     )
+
+    playlist_name = spotify_safe_text(f"Daily 10 — {args.date}", max_len=100)
+
+    description = spotify_safe_text(
+        description,
+        max_len=300,
+        )
+
+    # Optional debug:
+    print(f"Playlist name length: {len(playlist_name)}")
+    print(f"Description length: {len(description)}")
+
 
     playlist_id = create_or_replace_playlist(
-        sp=sp,
-        playlist_name=playlist_name,
-        description=description,
-        public=bool(args.public),
-        uris=final_uris,
+        sp, playlist_name, description, args.public, final_uris
     )
 
-    # Audit output
-    with open(DAILY_AUDIT_CSV, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["date", "bucket", "artist", "track", "uri"])
-        w.writeheader()
-        for artist, track, uri in bucket_a_audit:
-            w.writerow({"date": args.date, "bucket": "A_top500_random", "artist": artist, "track": track, "uri": uri})
-        for artist, track, uri in bucket_b_audit:
-            w.writerow({"date": args.date, "bucket": "B_tewnidge_artist_unheard_not_on_tewnidge", "artist": artist, "track": track, "uri": uri})
+    write_latest_pointer(args.date, playlist_id)
 
     print(f"Created/Replaced playlist: {playlist_name}")
-    print(f"Playlist ID: {playlist_id}")
-    print(f"Tracks added: {len(final_uris)}")
-    print(f"Audit CSV: {DAILY_AUDIT_CSV}")
-    print(f"URI cache CSV: {URI_CACHE_CSV}")
+    print(f"DAILY10_PLAYLIST_ID={playlist_id}")
+
+    if not args.no_decorate:
+        maybe_run_decorate(args.date, playlist_id)
+
     return 0
 
 
