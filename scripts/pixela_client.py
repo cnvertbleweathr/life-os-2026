@@ -2,17 +2,22 @@
 from __future__ import annotations
 
 import os
+import random
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 import requests
 from dotenv import load_dotenv
+
 load_dotenv()
 
-import time
-import random
-
 BASE = "https://pixe.la/v1/users"
+
+# Retry defaults (override via env if you want)
+PIXELA_MAX_RETRIES = int(os.environ.get("PIXELA_MAX_RETRIES", "6"))
+PIXELA_BACKOFF_BASE_SEC = float(os.environ.get("PIXELA_BACKOFF_BASE_SEC", "0.8"))
+PIXELA_BACKOFF_CAP_SEC = float(os.environ.get("PIXELA_BACKOFF_CAP_SEC", "12"))
 
 
 class PixelaError(RuntimeError):
@@ -35,10 +40,12 @@ class PixelaClient:
         """
         username = os.getenv("PIXELA_USERNAME") or os.getenv("PIXELA_USER")
         token = os.getenv("PIXELA_TOKEN")
+
         if not username:
             raise PixelaError("Missing PIXELA_USERNAME (or PIXELA_USER) in environment.")
         if not token:
             raise PixelaError("Missing PIXELA_TOKEN in environment.")
+
         return cls(username=username, token=token)
 
     def _headers(self) -> Dict[str, str]:
@@ -58,20 +65,26 @@ class PixelaClient:
             msg = ""
             if isinstance(data, dict):
                 msg = data.get("message") or data.get("raw") or ""
-
             raise PixelaError(f"Pixela HTTP {r.status_code}: {msg}".strip())
 
         return data if isinstance(data, dict) else {"data": data}
 
-    def _request(self, method: str, url: str, *, json_body: Optional[dict] = None, params: Optional[dict] = None,
-                 retries: int = 6, base_sleep: float = 0.4) -> Dict[str, Any]:
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        json_body: Optional[dict] = None,
+        params: Optional[dict] = None,
+        timeout: int = 30,
+    ) -> Dict[str, Any]:
         """
-        Pixela may intentionally reject some requests (503) for non-supporters.
-        This wrapper retries transient failures with exponential backoff + jitter.
+        Pixela may reject ~25% of some requests for non-supporters (503).
+        Retry transient failures with exponential backoff + jitter on 503/429 and other 5xx.
         """
-        last_err: Optional[Exception] = None
+        last_exc: Optional[Exception] = None
 
-        for attempt in range(retries + 1):
+        for attempt in range(PIXELA_MAX_RETRIES + 1):
             try:
                 r = requests.request(
                     method,
@@ -79,37 +92,40 @@ class PixelaClient:
                     headers=self._headers(),
                     json=json_body,
                     params=params,
-                    timeout=30,
+                    timeout=timeout,
                 )
-                # Retry on transient server errors / throttling
+
                 if r.status_code in (429, 500, 502, 503, 504):
-                    # try to capture message for debugging, but don't fail yet
-                    try:
-                        msg = (r.json() or {}).get("message", "")
-                    except Exception:
-                        msg = r.text[:200]
+                    body = (r.text or "")[:300].lower()
+                    should_retry = ("please retry" in body) or (r.status_code in (429, 503, 500, 502, 504))
 
-                    # If we've exhausted retries, raise
-                    if attempt >= retries:
-                        raise PixelaError(f"Pixela HTTP {r.status_code}: {msg}".strip())
-
-                    # Exponential backoff + jitter
-                    sleep_s = base_sleep * (2 ** attempt) + random.uniform(0, 0.25)
-                    time.sleep(sleep_s)
-                    continue
+                    if should_retry and attempt < PIXELA_MAX_RETRIES:
+                        sleep_s = min(
+                            PIXELA_BACKOFF_CAP_SEC,
+                            PIXELA_BACKOFF_BASE_SEC * (2 ** attempt),
+                        )
+                        # jitter to avoid hammering
+                        sleep_s *= (0.7 + random.random() * 0.6)
+                        time.sleep(sleep_s)
+                        continue
 
                 return self._handle(r)
 
-            except Exception as e:
-                last_err = e
-                if attempt >= retries:
-                    raise
-                sleep_s = base_sleep * (2 ** attempt) + random.uniform(0, 0.25)
-                time.sleep(sleep_s)
+            except (requests.Timeout, requests.ConnectionError) as e:
+                last_exc = e
+                if attempt < PIXELA_MAX_RETRIES:
+                    sleep_s = min(
+                        PIXELA_BACKOFF_CAP_SEC,
+                        PIXELA_BACKOFF_BASE_SEC * (2 ** attempt),
+                    )
+                    sleep_s *= (0.7 + random.random() * 0.6)
+                    time.sleep(sleep_s)
+                    continue
+                raise
 
-        # Should never get here
-        raise PixelaError(f"Pixela request failed: {last_err}")
-
+        if last_exc:
+            raise last_exc
+        raise PixelaError("Pixela request failed after retries.")
 
     # --------------------------
     # Graphs
@@ -136,7 +152,6 @@ class PixelaClient:
             "timezone": timezone,
         }
         return self._request("POST", url, json_body=payload)
-        return self._handle(r)
 
     # --------------------------
     # Pixels
@@ -153,19 +168,23 @@ class PixelaClient:
     def get_pixel(self, graph_id: str, yyyymmdd: str) -> Optional[Dict[str, Any]]:
         """
         GET /v1/users/<username>/graphs/<graphID>/<yyyyMMdd>
-        If no pixel exists, Pixela typically returns 404.
+        If no pixel exists, Pixela returns 404.
         """
         url = f"{self.base_url}/{self.username}/graphs/{graph_id}/{yyyymmdd}"
         r = requests.get(url, headers=self._headers(), timeout=30)
         if r.status_code == 404:
             return None
-        # Use handler for non-404 responses
         return self._handle(r)
 
-    def get_pixels_range(self, graph_id: str, date_from: str, date_to: str) -> Dict[str, Any]:
+    def get_pixels_range(self, graph_id: str, date_from: str, date_to: str, with_body: bool = True) -> Dict[str, Any]:
         """
         GET /v1/users/<username>/graphs/<graphID>/pixels?from=...&to=...&withBody=true
         Returns: {"pixels":[{"date":"YYYYMMDD","quantity":"1"}, ...]}
         """
-        url = f"{self.base_url}/{self.username}/graphs/{graph_id}/{yyyymmdd}"
+        url = f"{self.base_url}/{self.username}/graphs/{graph_id}/pixels"
+        params = {
+            "from": date_from,
+            "to": date_to,
+            "withBody": "true" if with_body else "false",
+        }
         return self._request("GET", url, params=params)
