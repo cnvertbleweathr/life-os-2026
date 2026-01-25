@@ -96,7 +96,9 @@ def main() -> int:
             unique_tracks = 0
 
         if track_col and track_col in ytd.columns:
-            track_counts = Counter([t for t in ytd[track_col].dropna().astype(str)])
+            tracks = [t.strip() for t in ytd[track_col].dropna().astype(str)]
+            tracks = [t for t in tracks if t and t.lower() != "unknown track"]
+            track_counts = Counter(tracks)
             top_track = track_counts.most_common(1)[0][0] if track_counts else ""
         else:
             top_track = ""
