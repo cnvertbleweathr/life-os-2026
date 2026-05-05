@@ -1,0 +1,4 @@
+year,domain,goal_key,current_value,status,updated_at,notes
+2026,fitness,running_miles,0,in_progress,2026-01-01,Example numeric goal
+2026,fitness,marathon_completed,0,not_started,2026-01-01,Example boolean goal
+2026,finance,roth_ira,,in_progress,2026-01-01,Example non-numeric goal
