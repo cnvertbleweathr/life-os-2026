@@ -32,6 +32,12 @@ try:
     order by domain, goal_key
     """).df()
 
+    goal_progress = con.execute("""
+    select *
+    from main_marts.mart_goal_progress
+    order by domain, goal_key
+    """).df()
+
     st.subheader("System Status")
     st.dataframe(healthcheck, use_container_width=True)
 
@@ -44,6 +50,9 @@ try:
     st.bar_chart(
         goals.set_index("domain")["goal_count"]
     )
+
+    st.subheader("Goal Progress")
+    st.dataframe(goal_progress, use_container_width=True)
 
 finally:
     con.close()

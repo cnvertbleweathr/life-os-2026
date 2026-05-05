@@ -16,12 +16,13 @@ def main() -> None:
     df = pd.read_csv(PROGRESS_PATH)
 
     required_columns = {
-        "year",
-        "domain",
-        "goal_key",
-        "current_value",
-        "updated_at",
-        "notes",
+    "year",
+    "domain",
+    "goal_key",
+    "current_value",
+    "status",
+    "updated_at",
+    "notes",
     }
 
     missing_columns = required_columns - set(df.columns)
@@ -38,7 +39,8 @@ def main() -> None:
                 cast(year as integer) as year,
                 lower(trim(domain)) as domain,
                 lower(trim(goal_key)) as goal_key,
-                current_value,
+                try_cast(current_value as double) as current_value,
+                lower(trim(status)) as status,
                 cast(updated_at as date) as updated_at,
                 notes
             from goal_progress_df

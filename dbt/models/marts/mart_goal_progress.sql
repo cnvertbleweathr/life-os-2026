@@ -20,9 +20,9 @@ select
     goals.goal_value_type,
     goals.target_numeric,
     progress.current_value,
+    progress.status,
     progress.updated_at,
     progress.notes,
-
     case
         when goals.target_numeric is null then null
         when goals.target_numeric = 0 then null
