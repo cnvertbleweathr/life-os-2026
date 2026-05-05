@@ -1,0 +1,8 @@
+lifeos:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: /Users/kg/life-os-2026/data/warehouse/lifeos.duckdb
+      schema: main
+      threads: 4

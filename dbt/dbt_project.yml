@@ -1,0 +1,20 @@
+name: lifeos
+version: "1.0.0"
+config-version: 2
+
+profile: lifeos
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+models:
+  lifeos:
+    staging:
+      +schema: staging
+      +materialized: view
+    intermediate:
+      +schema: intermediate
+      +materialized: view
+    marts:
+      +schema: marts
+      +materialized: table
