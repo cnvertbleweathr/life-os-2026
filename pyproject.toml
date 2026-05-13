@@ -13,5 +13,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pyyaml>=6.0.3",
     "requests>=2.32.0",
+    "spotipy>=2.26.0",
     "streamlit>=1.57.0",
 ]
