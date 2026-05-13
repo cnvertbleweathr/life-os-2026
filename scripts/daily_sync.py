@@ -306,28 +306,25 @@ def main() -> int:
             run_if_exists=repo_root / "scripts/fitness_metrics.py",
         ),
 
-        # Strava
+        # Strava — DLT pipeline (replaces fetch_strava_activities + running_metrics)
         Step(
-            name="strava_fetch",
-            cmd=["python3", "scripts/fetch_strava_activities.py", "--year", str(args.year)],
-            run_if_exists=repo_root / "scripts/fetch_strava_activities.py",
-        ),
-        Step(
-            name="running_metrics",
-            cmd=["python3", "scripts/running_metrics.py", "--year", str(args.year)],
-            run_if_exists=repo_root / "scripts/running_metrics.py",
+            name="strava_pipeline",
+            cmd=["python3", "run_pipelines.py", "--only", "strava", "--year", str(args.year)],
+            run_if_exists=repo_root / "pipelines/strava_pipeline.py",
         ),
 
-        # Hardcover
+        # Hardcover — DLT pipeline (replaces hardcover_fetch + hardcover_metrics)
         Step(
-            name="hardcover_fetch",
-            cmd=["python3", "scripts/hardcover_fetch.py"],
-            run_if_exists=repo_root / "scripts/hardcover_fetch.py",
+            name="hardcover_pipeline",
+            cmd=["python3", "run_pipelines.py", "--only", "hardcover", "--year", str(args.year)],
+            run_if_exists=repo_root / "pipelines/hardcover_pipeline.py",
         ),
+
+        # Habits — DLT pipeline (replaces Pixela entirely)
         Step(
-            name="hardcover_metrics",
-            cmd=["python3", "scripts/hardcover_metrics.py", "--year", str(args.year)],
-            run_if_exists=repo_root / "scripts/hardcover_metrics.py",
+            name="habits_pipeline",
+            cmd=["python3", "run_pipelines.py", "--only", "habits", "--year", str(args.year)],
+            run_if_exists=repo_root / "pipelines/habits_pipeline.py",
         ),
 
         # Google Calendar
