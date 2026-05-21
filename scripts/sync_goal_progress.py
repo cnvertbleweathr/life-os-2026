@@ -60,20 +60,15 @@ def build_rows(year: int) -> list[dict]:
     rows.append(row("fitness", "running_miles", running_miles, notes="auto: strava"))
 
     # ------------------------------------------------------------------
-    # Fitness — CrossFit classes (SugarWOD via fitness_summary CSV)
+    # Fitness — CrossFit classes (SugarWOD processed CSV)
     # ------------------------------------------------------------------
-    fitness_csv = ROOT / f"data/sugarwod/metrics/fitness_summary_{year}.csv"
+    wod_csv = ROOT / "data" / "sugarwod" / "processed" / "workouts_clean.csv"
     crossfit_classes = None
-    if fitness_csv.exists():
-        import csv as _csv
-        with fitness_csv.open() as f:
-            for rec in _csv.DictReader(f):
-                v = rec.get("classes_attended_2026") or rec.get("classes_attended_ytd")
-                if v:
-                    try:
-                        crossfit_classes = int(float(v))
-                    except ValueError:
-                        pass
+    if wod_csv.exists():
+        import pandas as _pd
+        wods = _pd.read_csv(wod_csv)
+        wods['date'] = _pd.to_datetime(wods['date'], errors='coerce')
+        crossfit_classes = int(wods[wods['date'].dt.year == year]['date'].nunique())
     rows.append(row("fitness", "crossfit_classes", crossfit_classes, notes="auto: sugarwod"))
 
     # ------------------------------------------------------------------

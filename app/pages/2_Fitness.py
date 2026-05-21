@@ -5,10 +5,12 @@ Fitness page — running (Strava) + CrossFit (SugarWOD).
 import streamlit as st
 import duckdb
 import pandas as pd
+import plotly.graph_objects as go
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+SUGARWOD_CLEAN = ROOT / "data" / "sugarwod" / "processed" / "workouts_clean.csv"
 
 st.set_page_config(page_title="Fitness · Life OS", page_icon="💪", layout="wide")
 st.title("💪 Fitness")
@@ -26,15 +28,23 @@ def safe_query(sql: str, params=None) -> pd.DataFrame | None:
         return None
 
 
+def load_sugarwod() -> pd.DataFrame | None:
+    if not SUGARWOD_CLEAN.exists():
+        return None
+    df = pd.read_csv(SUGARWOD_CLEAN)
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["best_result_raw"] = pd.to_numeric(df["best_result_raw"], errors="coerce")
+    df["is_pr"] = df["pr"].astype(str).str.strip().str.upper() == "PR"
+    return df[df["date"].dt.year == 2026].copy()
+
+
 # ---------------------------------------------------------------------------
 # Running summary
 # ---------------------------------------------------------------------------
 
 st.subheader("🏃 Running")
 
-running = safe_query("""
-    SELECT * FROM strava.running_summary WHERE year = 2026
-""")
+running = safe_query("SELECT * FROM strava.running_summary WHERE year = 2026")
 
 if running is not None and not running.empty:
     r = running.iloc[0]
@@ -46,29 +56,34 @@ if running is not None and not running.empty:
         mins = int(r["avg_pace_min_per_mile"])
         secs = int((r["avg_pace_min_per_mile"] - mins) * 60)
         c4.metric("Avg Pace", f"{mins}:{secs:02d}/mi")
-
     pct = float(r["miles_progress_pct"])
     st.progress(min(int(pct), 100), text=f"{pct:.1f}% of annual goal")
 else:
     st.info("No running data. Run `python run_pipelines.py --only strava`.")
 
-# Weekly mileage chart
+# Weekly mileage — all weeks including zeros
 weekly = safe_query("""
-    SELECT
-        strftime(start_date, '%Y-W%W') as week,
-        sum(distance_miles) as miles,
-        count(*) as runs
-    FROM strava.activities
-    WHERE is_run = true AND year = 2026
-    GROUP BY week
-    ORDER BY week
+    WITH all_weeks AS (
+        SELECT strftime(range::date, '%Y-W%W') as week
+        FROM range(DATE '2026-01-01', current_date + INTERVAL 1 DAY, INTERVAL 1 WEEK)
+    ),
+    run_weeks AS (
+        SELECT strftime(start_date::date, '%Y-W%W') as week,
+               sum(distance_miles) as miles
+        FROM strava.activities
+        WHERE is_run = true AND year = 2026
+        GROUP BY week
+    )
+    SELECT a.week, coalesce(r.miles, 0) as miles
+    FROM all_weeks a
+    LEFT JOIN run_weeks r ON a.week = r.week
+    ORDER BY a.week
 """)
 
 if weekly is not None and not weekly.empty:
     st.markdown("**Weekly Miles**")
     st.bar_chart(weekly.set_index("week")["miles"], use_container_width=True)
 
-# Recent runs
 recent_runs = safe_query("""
     SELECT
         start_date::date as date,
@@ -93,19 +108,158 @@ if recent_runs is not None and not recent_runs.empty:
 st.divider()
 st.subheader("🏋️ CrossFit")
 
-fitness_summary = safe_query("""
-    SELECT * FROM main_marts.mart_goal_progress
-    WHERE domain = 'fitness' AND goal_key = 'crossfit_classes'
-""")
+wods = load_sugarwod()
 
-if fitness_summary is not None and not fitness_summary.empty:
-    row = fitness_summary.iloc[0]
-    current = row.get("current_value") or 0
-    target = row.get("target_numeric") or 160
-    pct = float(row.get("progress_percent") or 0)
-    c1, c2 = st.columns(2)
-    c1.metric("Classes YTD", int(current), f"goal: {int(target)}")
-    c2.metric("Progress", f"{pct:.1f}%")
-    st.progress(min(int(pct), 100))
-else:
-    st.info("No CrossFit data. Import SugarWOD CSV via `scripts/import_sugarwod_csv.py`.")
+if wods is None:
+    st.info("No CrossFit data. Run `python scripts/import_sugarwod_csv.py --input /path/to/workouts.csv`.")
+    st.stop()
+
+# ---------------------------------------------------------------------------
+# Top-line metrics
+# ---------------------------------------------------------------------------
+
+total_classes = wods["date"].nunique()
+total_prs = wods["is_pr"].sum()
+rx_count = (wods["rx_or_scaled"].str.upper() == "RX").sum()
+rx_rate = round(rx_count / len(wods) * 100, 1) if len(wods) else 0
+goal_classes = 160
+
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Classes YTD", total_classes, f"goal: {goal_classes}")
+c2.metric("Progress", f"{round(total_classes / goal_classes * 100, 1)}%")
+c3.metric("PRs Set", int(total_prs))
+c4.metric("RX Rate", f"{rx_rate}%")
+
+st.progress(min(int(total_classes / goal_classes * 100), 100))
+
+# ---------------------------------------------------------------------------
+# Attendance — classes per week
+# ---------------------------------------------------------------------------
+
+st.markdown("**Classes Per Week**")
+
+wods["week"] = wods["date"].dt.strftime("%Y-W%W")
+classes_per_week = (
+    wods.groupby("week")["date"]
+    .nunique()
+    .reset_index()
+    .rename(columns={"date": "classes"})
+    .sort_values("week")
+)
+
+# Fill in zero weeks
+all_weeks = pd.date_range("2026-01-01", pd.Timestamp.today(), freq="W-MON")
+all_week_labels = [d.strftime("%Y-W%W") for d in all_weeks]
+full_weeks = pd.DataFrame({"week": all_week_labels})
+classes_per_week = full_weeks.merge(classes_per_week, on="week", how="left").fillna(0)
+classes_per_week["classes"] = classes_per_week["classes"].astype(int)
+
+st.bar_chart(classes_per_week.set_index("week")["classes"], use_container_width=True)
+
+# ---------------------------------------------------------------------------
+# Lift progressions
+# ---------------------------------------------------------------------------
+
+st.markdown("**Lift Progressions**")
+
+lifts_df = wods[
+    (wods["score_type"] == "Load") &
+    wods["barbell_lift"].notna() &
+    (wods["barbell_lift"].str.strip() != "")
+].copy()
+
+if not lifts_df.empty:
+    available_lifts = sorted(lifts_df["barbell_lift"].unique())
+    selected_lifts = st.multiselect(
+        "Select lifts to compare",
+        options=available_lifts,
+        default=[l for l in ["Front Squat", "Back Squat", "Clean & Jerk"] if l in available_lifts],
+    )
+
+    if selected_lifts:
+        fig = go.Figure()
+
+        colors = [
+            "#4FC3F7", "#81C784", "#FFB74D", "#F06292",
+            "#CE93D8", "#80DEEA", "#FFCC02", "#FF8A65",
+        ]
+
+        for i, lift in enumerate(selected_lifts):
+            subset = lifts_df[lifts_df["barbell_lift"] == lift].sort_values("date")
+            color = colors[i % len(colors)]
+
+            fig.add_trace(go.Scatter(
+                x=subset["date"],
+                y=subset["best_result_raw"],
+                mode="lines+markers",
+                name=lift,
+                line=dict(color=color, width=2),
+                marker=dict(size=7, color=color),
+                hovertemplate=f"<b>{lift}</b><br>%{{x|%b %d}}<br>%{{y}} lbs<extra></extra>",
+            ))
+
+            prs = subset[subset["is_pr"]]
+            if not prs.empty:
+                fig.add_trace(go.Scatter(
+                    x=prs["date"],
+                    y=prs["best_result_raw"],
+                    mode="markers",
+                    name=f"{lift} PR",
+                    marker=dict(
+                        size=14,
+                        color=color,
+                        symbol="star",
+                        line=dict(color="white", width=1),
+                    ),
+                    hovertemplate=f"<b>⭐ PR — {lift}</b><br>%{{x|%b %d}}<br>%{{y}} lbs<extra></extra>",
+                    showlegend=False,
+                ))
+
+        fig.update_layout(
+            xaxis_title=None,
+            yaxis_title="Weight (lbs)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#FAFAFA"),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+            hovermode="x unified",
+            margin=dict(l=0, r=0, t=30, b=0),
+            xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        lift_maxes = (
+            lifts_df[lifts_df["barbell_lift"].isin(selected_lifts)]
+            .groupby("barbell_lift")["best_result_raw"]
+            .agg(["max", "min", "count"])
+            .reset_index()
+            .rename(columns={
+                "barbell_lift": "Lift",
+                "max": "Best (lbs)",
+                "min": "First (lbs)",
+                "count": "Sessions",
+            })
+            .sort_values("Best (lbs)", ascending=False)
+        )
+        st.dataframe(lift_maxes, use_container_width=True, hide_index=True)
+
+# ---------------------------------------------------------------------------
+# PR log
+# ---------------------------------------------------------------------------
+
+st.markdown("**PR Log · 2026**")
+
+prs = wods[wods["is_pr"]].sort_values("date", ascending=False)[
+    ["date", "title", "barbell_lift", "best_result_display", "rx_or_scaled"]
+].rename(columns={
+    "date": "Date",
+    "title": "Workout",
+    "barbell_lift": "Lift",
+    "best_result_display": "Result",
+    "rx_or_scaled": "RX/Scaled",
+})
+
+if not prs.empty:
+    st.dataframe(prs, use_container_width=True, hide_index=True)
