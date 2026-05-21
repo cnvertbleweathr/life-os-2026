@@ -97,13 +97,37 @@ def build_rows(year: int) -> list[dict]:
     nonfiction = int(r[0]) if r else None
     rows.append(row("professional", "nonfiction_books_goal", nonfiction, notes="auto: hardcover"))
 
-    # ------------------------------------------------------------------
+# ------------------------------------------------------------------
     # Personal — fiction reading (Hardcover)
     # ------------------------------------------------------------------
     r = safe_query(con, "SELECT fiction_read FROM hardcover.reading_summary WHERE year = ?", [year])
     fiction = int(r[0]) if r else None
     rows.append(row("personal", "fiction_books_goal", fiction, notes="auto: hardcover"))
 
+    # ------------------------------------------------------------------
+    # Personal — habits (from DuckDB habit_summary)
+    # ------------------------------------------------------------------
+    for habit_key in ["meditation", "pushups_100", "fiction_pages_10", "nonfiction_pages_10"]:
+        r = safe_query(con, "SELECT done_days FROM habits.habit_summary WHERE year = ? AND habit = ?", [year, habit_key])
+        val = int(r[0]) if r else None
+        rows.append(row("personal", habit_key, val, notes="auto: habits"))
+
+    # ------------------------------------------------------------------
+    # Personal — Spotify (from metrics CSV if exists)
+    # ------------------------------------------------------------------
+    spotify_csv = ROOT / f"data/spotify/metrics/spotify_summary_{year}.csv"
+    spotify_minutes = None
+    if spotify_csv.exists():
+        import pandas as _pd
+        sp = _pd.read_csv(spotify_csv)
+        v = sp.get("minutes_streamed_ytd", sp.get("total_minutes"))
+        if v is not None:
+            try:
+                spotify_minutes = int(float(v.iloc[0]))
+            except Exception:
+                pass
+    rows.append(row("personal", "spotify_minutes_goal", spotify_minutes, notes="auto: spotify"))
+    
     # ------------------------------------------------------------------
     # Family — date nights (calendar metrics CSV)
     # ------------------------------------------------------------------
