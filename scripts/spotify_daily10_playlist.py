@@ -243,8 +243,15 @@ def main() -> int:
     sp = build_spotify_client()
     rng = random.Random(args.date)
 
-    totals, listened_pairs = read_listening_history(STREAMS_CSV)
-    top500 = top_n_tracks(totals, args.top_n)
+    if STREAMS_CSV.exists():
+        totals, listened_pairs = read_listening_history(STREAMS_CSV)
+        top500 = top_n_tracks(totals, args.top_n)
+    else:
+        print("No streaming history found — running Tewnidge-only mode (10 tracks from Bucket B).")
+        totals, listened_pairs = {}, set()
+        top500 = []
+        args.top_picks = 0
+        args.b_picks = 10
 
     tewnidge_uris, tewnidge_artists = fetch_tewnidge(sp, args.tewnidge_playlist_id)
 
