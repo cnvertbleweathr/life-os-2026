@@ -121,3 +121,26 @@ site/public/generated/
 # Local app/build outputs
 /site
 target/
+
+# DuckDB warehouse
+data/warehouse/
+data/warehouse/lifeos.duckdb
+
+# Local habit log
+data/habits/habits_log.jsonl
+
+# DLT pipeline state
+.dlt/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.env
+
+# macOS
+.DS_Store
+
+# dbt
+dbt/target/
+dbt/logs/
