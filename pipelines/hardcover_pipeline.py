@@ -102,12 +102,26 @@ def _normalize_tags(val: Any) -> List[str]:
     return [str(val).strip()] if str(val).strip() else []
 
 
-def _classify(tags: List[str]) -> str:
+# Known nonfiction authors — fallback when tags are missing
+NONFICTION_AUTHORS = {
+    "evan osnos", "michael lewis", "malcolm gladwell", "patrick radden keefe",
+    "matthew walker", "daniel kahneman", "walter isaacson", "bob woodward",
+    "david grann", "erik larson", "jon krakauer", "sebastian junger",
+}
+
+def _classify(tags: List[str], authors: List[str] = None) -> str:
     lowered = [t.lower() for t in tags]
     if any("nonfiction" in t for t in lowered):
         return "nonfiction"
     if any("fiction" in t for t in lowered):
         return "fiction"
+
+    # Fallback: check author against known nonfiction list
+    if authors:
+        for author in authors:
+            if author.lower().strip() in NONFICTION_AUTHORS:
+                return "nonfiction"
+
     return "unknown"
 
 
@@ -149,7 +163,7 @@ def hardcover_books_resource() -> Iterator[dict]:
                 if c.get("author", {}).get("name")
             ]
             tags = _normalize_tags(book.get("cached_tags"))
-            classification = _classify(tags)
+            classification = _classify(tags, authors=authors)
 
             marked_read_at = ub.get("updated_at") or ""
             year = None
