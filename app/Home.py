@@ -163,6 +163,28 @@ else:
                     f"[▶ Watch]({match.get('watch_url', '')})"
                 )
 
+# ---------------------------------------------------------------------------
+# My artist show alerts
+# ---------------------------------------------------------------------------
+
+MY_SHOWS_PATH = ROOT / "data" / "shows" / "my_artist_shows.json"
+if MY_SHOWS_PATH.exists():
+    try:
+        my_shows_data = json.loads(MY_SHOWS_PATH.read_text())
+        my_shows_list = my_shows_data.get("shows", [])
+        if my_shows_list:
+            st.subheader("⭐ Your Artists Have Shows Coming Up")
+            for show in my_shows_list[:5]:  # cap at 5 on home page
+                ticket_link = f" · [🎟 Tickets]({show['event_url']})" if show.get("event_url") else ""
+                st.success(
+                    f"**{show['artist']}** — {show['title']}  \n"
+                    f"📍 {show['venue']} · {show['date_str']} at {show['time_str']}{ticket_link}"
+                )
+            if len(my_shows_list) > 5:
+                st.caption(f"+ {len(my_shows_list) - 5} more on the Shows page.")
+    except Exception:
+        pass
+
 st.divider()
 
 # ---------------------------------------------------------------------------

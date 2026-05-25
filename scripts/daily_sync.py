@@ -171,6 +171,7 @@ def build_steps(year: int) -> List[Step]:
         Step(
             name="spotify_ingest",
             cmd=["python3", "scripts/spotify_ingest_streaming.py"],
+            # Only runs if raw streaming history files exist
             run_if_exists=ROOT / "data/spotify/raw/streaming_history",
             tags=["spotify"],
         ),
@@ -185,6 +186,26 @@ def build_steps(year: int) -> List[Step]:
             cmd=["python3", "scripts/spotify_daily10_playlist.py", "--no-decorate"],
             run_if_exists=ROOT / "scripts/spotify_daily10_playlist.py",
             tags=["spotify"],
+        ),
+
+        # ------------------------------------------------------------------
+        # Streams (streamed.pk)
+        # ------------------------------------------------------------------
+        Step(
+            name="fetch_streams",
+            cmd=["python3", "scripts/fetch_streams.py"],
+            run_if_exists=ROOT / "scripts/fetch_streams.py",
+            tags=["streams"],
+        ),
+
+        # ------------------------------------------------------------------
+        # Playlist artists + show cross-reference
+        # ------------------------------------------------------------------
+        Step(
+            name="sync_playlist_artists",
+            cmd=["python3", "scripts/sync_playlist_artists.py"],
+            run_if_exists=ROOT / "scripts/sync_playlist_artists.py",
+            tags=["shows", "spotify"],
         ),
 
         # ------------------------------------------------------------------
@@ -211,7 +232,6 @@ def build_steps(year: int) -> List[Step]:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    sys.stdout.reconfigure(line_buffering=True)
     p = argparse.ArgumentParser(description="Life OS daily sync.")
     p.add_argument("--year", type=int, default=datetime.now().year)
     p.add_argument("--skip", nargs="+", default=[], metavar="STEP",
@@ -226,6 +246,7 @@ def main() -> int:
 
     all_steps = build_steps(args.year)
 
+    # Filter by --only / --skip
     if args.only:
         only_set = set(args.only)
         steps = [s for s in all_steps if s.name in only_set or bool(only_set & set(s.tags))]
@@ -259,12 +280,15 @@ def main() -> int:
                 print(f"\n  Required step '{step.name}' failed — stopping.\n")
                 break
 
+    # Summary JSON
     summary = {"date": today, "year": args.year, "steps": results}
-    with open(log_dir / "summary.json", "w", encoding="utf-8") as f:
+    summary_path = log_dir / "summary.json"
+    with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 
+    # Print summary
     print(f"\n{'='*50}")
-    ok      = [r for r in results if r["status"] == "ok"]
+    ok    = [r for r in results if r["status"] == "ok"]
     skipped = [r for r in results if r["status"] == "skipped"]
     failed  = [r for r in results if r["status"] == "failed"]
 
