@@ -183,7 +183,7 @@ def build_steps(year: int) -> List[Step]:
         ),
         Step(
             name="spotify_daily10",
-            cmd=["python3", "scripts/spotify_daily10_playlist.py", "--no-decorate"],
+            cmd=["python3", "scripts/spotify_daily10_playlist.py"],
             run_if_exists=ROOT / "scripts/spotify_daily10_playlist.py",
             tags=["spotify"],
         ),

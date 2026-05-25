@@ -414,7 +414,26 @@ def main() -> int:
     print(f"Description preview:\n{_spotify_sanitize_description(desc, max_len=args.max_desc)}\n")
 
     print("Generating image via OpenAI…")
-    img = _openai_generate_image_bytes(prompt, model=args.image_model, size=args.size)
+    img = None
+    for _attempt in range(5):
+        try:
+            img = _openai_generate_image_bytes(prompt, model=args.image_model, size=args.size)
+            break
+        except Exception as e:
+            if "moderation_blocked" in str(e) or "safety" in str(e).lower():
+                print(f"  Moderation block on attempt {_attempt + 1}, trying different event...")
+                try:
+                    ev = _pick_event_for_date(d, seed=_attempt + 99)
+                    prompt, desc, title = _event_to_assets(ev, d)
+                    print(f"  Retrying with: {title}")
+                except Exception:
+                    pass
+            else:
+                raise
+
+    if img is None:
+        print("All attempts blocked by moderation — skipping cover art.")
+        return 0
 
     jpeg_bytes, b64 = _to_jpeg_bytes(img, target_max_base64_bytes=MAX_SPOTIFY_BASE64_BYTES)
     print(f"JPEG bytes: {len(jpeg_bytes)} | base64 bytes: {len(b64.encode('utf-8'))} (limit {MAX_SPOTIFY_BASE64_BYTES})")
