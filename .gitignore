@@ -144,3 +144,12 @@ __pycache__/
 # dbt
 dbt/target/
 dbt/logs/
+
+# OAuth secrets
+secrets/
+
+# Stream data (regenerated daily)
+data/streams/
+
+# Spotify raw export (personal data)
+data/spotify/raw/streaming_history/
