@@ -153,3 +153,7 @@ data/streams/
 
 # Spotify raw export (personal data)
 data/spotify/raw/streaming_history/
+
+# Spotify token cache
+.spotify_token_cache
+secrets/.spotify_cache
