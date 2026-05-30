@@ -35,7 +35,7 @@ TM_RADIUS_MILES = (os.getenv("TM_RADIUS_MILES") or "50").strip()
 TM_CLASSIFICATION = (os.getenv("TM_CLASSIFICATION") or "music").strip()
 TM_SIZE = int((os.getenv("TM_SIZE") or "200").strip())
 
-USER_AGENT = "life-os-2026/1.0 (personal use)"
+USER_AGENT = "ons-2026/1.0 (personal use)"
 
 
 def _today_yyyymmdd() -> str:

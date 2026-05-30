@@ -3,7 +3,7 @@ _Last updated: 2026-05-29_
 
 ## Summary
 
-Life OS 2026 integrates with eight external data sources plus two AI providers. All integrations are polling-based (no webhooks). Authentication uses a mix of OAuth 2.0 (Strava, Google Calendar, Spotify) and static API tokens (Hardcover, Ticketmaster, OpenAI). Credentials live in `.env` and OAuth token caches live in `secrets/`.
+Operating Narcisystem 2026 integrates with eight external data sources plus two AI providers. All integrations are polling-based (no webhooks). Authentication uses a mix of OAuth 2.0 (Strava, Google Calendar, Spotify) and static API tokens (Hardcover, Ticketmaster, OpenAI). Credentials live in `.env` and OAuth token caches live in `secrets/`.
 
 ---
 
@@ -192,7 +192,7 @@ Life OS 2026 integrates with eight external data sources plus two AI providers. 
 
 **Env vars:** None required
 
-**SDK/Client:** Raw `requests` with `User-Agent: life-os/1.0`
+**SDK/Client:** Raw `requests` with `User-Agent: ons/1.0`
 
 **Endpoints used:**
 - `GET https://streamed.pk/api/matches/all-today` — all matches today
@@ -211,7 +211,7 @@ Life OS 2026 integrates with eight external data sources plus two AI providers. 
 
 **Auth:** None — public API
 
-**SDK/Client:** Raw `requests` with `User-Agent: life-os-2026/1.0 (contact: karey.graham@gmail.com)`
+**SDK/Client:** Raw `requests` with `User-Agent: ons-2026/1.0 (contact: karey.graham@gmail.com)`
 
 **Endpoint:** `GET https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/{mm}/{dd}`
 
@@ -233,7 +233,7 @@ Life OS 2026 integrates with eight external data sources plus two AI providers. 
 
 ## Data Storage
 
-**Primary store:** DuckDB at `data/warehouse/lifeos.duckdb` — gitignored, local only
+**Primary store:** DuckDB at `data/warehouse/ons.duckdb` — gitignored, local only
 
 **File-based intermediates:**
 - `data/habits/habits_log.jsonl` — habit log written by Streamlit UI; source for habits DLT pipeline

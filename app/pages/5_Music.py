@@ -18,7 +18,7 @@ SPOTIFY_SUMMARY = ROOT / "data" / "spotify" / "metrics" / f"spotify_summary_{dat
 DAILY10_LATEST  = ROOT / "data" / "spotify" / "processed" / "daily10_latest.json"
 DAILY10_AUDIT   = ROOT / "data" / "spotify" / "processed" / "daily10_audit.csv"
 
-st.set_page_config(page_title="Music · Life OS", page_icon="🎵", layout="wide")
+st.set_page_config(page_title="Music · Operating Narcisystem", page_icon="🎵", layout="wide")
 st.title("🎵 Music")
 st.caption("Spotify · 2026")
 

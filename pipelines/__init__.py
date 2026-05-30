@@ -1,5 +1,5 @@
 """
-Life OS DLT pipelines package.
+Operating Narcisystem DLT pipelines package.
 
 Available pipelines:
   - habits_pipeline    : local habit log → DuckDB (replaces Pixela)

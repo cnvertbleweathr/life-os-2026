@@ -3,7 +3,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-DB_PATH = Path("data/warehouse/lifeos.duckdb")
+DB_PATH = Path("data/warehouse/ons.duckdb")
 PROGRESS_PATH = Path("data/manual/goal_progress.csv")
 
 

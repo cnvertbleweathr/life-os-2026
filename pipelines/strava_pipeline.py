@@ -35,7 +35,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 TOKENS_PATH = ROOT / "data" / "running" / "raw" / "strava_tokens.json"
 
 API_BASE = "https://www.strava.com/api/v3"
@@ -158,7 +158,7 @@ def running_summary_resource(year: int) -> Iterator[dict]:
     """
     import duckdb
 
-    db_path = ROOT / "data" / "warehouse" / "lifeos.duckdb"
+    db_path = ROOT / "data" / "warehouse" / "ons.duckdb"
     if not db_path.exists():
         return
 

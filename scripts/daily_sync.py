@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-daily_sync.py — Life OS daily orchestrator.
+daily_sync.py — Operating Narcisystem daily orchestrator.
 
 Runs all pipelines, syncs goal progress, runs dbt, generates Spotify playlist,
 and writes a summary log.
@@ -232,7 +232,7 @@ def build_steps(year: int) -> List[Step]:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Life OS daily sync.")
+    p = argparse.ArgumentParser(description="Operating Narcisystem daily sync.")
     p.add_argument("--year", type=int, default=datetime.now().year)
     p.add_argument("--skip", nargs="+", default=[], metavar="STEP",
                    help="Step names to skip")
@@ -257,7 +257,7 @@ def main() -> int:
         skip_set = set(args.skip)
         steps = [s for s in steps if s.name not in skip_set]
 
-    print(f"Life OS daily sync — {today}")
+    print(f"Operating Narcisystem daily sync — {today}")
     print(f"Running {len(steps)} steps\n")
 
     results = []

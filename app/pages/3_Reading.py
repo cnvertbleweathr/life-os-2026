@@ -8,9 +8,9 @@ import pandas as pd
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
-st.set_page_config(page_title="Reading · Life OS", page_icon="📚", layout="wide")
+st.set_page_config(page_title="Reading · Operating Narcisystem", page_icon="📚", layout="wide")
 st.title("📚 Reading")
 st.caption("Hardcover · 2026")
 

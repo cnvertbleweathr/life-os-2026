@@ -147,7 +147,7 @@ def _matches_venue_filter(venue_name: str) -> bool:
 
 
 def fetch_json(url: str) -> Dict[str, Any]:
-    r = requests.get(url, timeout=30, headers={"User-Agent": "life-os-2026/1.0 (personal use)"})
+    r = requests.get(url, timeout=30, headers={"User-Agent": "ons-2026/1.0 (personal use)"})
     r.raise_for_status()
     return r.json()
 

@@ -146,7 +146,7 @@ def _spotify_headers_from_client(sp: spotipy.Spotify) -> Dict[str, str]:
 
 def _http_get_json(url: str, timeout: int = 30) -> dict:
     headers = {
-        "User-Agent": "life-os-2026/1.0 (contact: karey.graham@gmail.com)",
+        "User-Agent": "ons-2026/1.0 (contact: karey.graham@gmail.com)",
         "Accept": "application/json",
     }
     r = requests.get(url, headers=headers, timeout=timeout)

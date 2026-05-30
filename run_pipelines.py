@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Run Life OS DLT pipelines.
+Run Operating Narcisystem DLT pipelines.
 
 Usage:
   python run_pipelines.py                    # run all
@@ -43,7 +43,7 @@ def run_pipeline(name: str, year: int) -> bool:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Run Life OS DLT pipelines.")
+    p = argparse.ArgumentParser(description="Run Operating Narcisystem DLT pipelines.")
     p.add_argument(
         "--only",
         nargs="+",

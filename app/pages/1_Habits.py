@@ -14,11 +14,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 LOG_PATH = ROOT / "data" / "habits" / "habits_log.jsonl"
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
 LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-st.set_page_config(page_title="Habits · Life OS", page_icon="✅", layout="wide")
+st.set_page_config(page_title="Habits · Operating Narcisystem", page_icon="✅", layout="wide")
 
 st.title("✅ Habits")
 st.caption("Check off what you did today. No app. No BS.")

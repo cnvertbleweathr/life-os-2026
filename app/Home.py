@@ -1,5 +1,5 @@
 """
-Life OS — Home page / Daily Digest.
+Operating Narcisystem — Home page / Daily Digest.
 
 First page opened. Shows:
   - Today's streams (your teams first, top 5 nationally, all popular)
@@ -19,16 +19,16 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parents[1]
 EVENTS_CSV   = ROOT / "data" / "calendar" / "processed" / "events_clean_2026.csv"
 STREAMS_PATH = ROOT / "data" / "streams" / "today.json"
-DB_PATH      = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH      = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
 st.set_page_config(
-    page_title="Life OS",
+    page_title="Operating Narcisystem",
     page_icon="🧭",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("🧭 Life OS")
+st.title("🧭 Operating Narcisystem")
 st.caption(f"{date.today().strftime('%A, %B %d, %Y')}")
 
 

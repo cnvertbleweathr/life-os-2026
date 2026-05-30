@@ -1,14 +1,14 @@
-name: lifeos
+name: ons
 version: "1.0.0"
 config-version: 2
 
-profile: lifeos
+profile: ons
 
 model-paths: ["models"]
 macro-paths: ["macros"]
 
 models:
-  lifeos:
+  ons:
     staging:
       +schema: staging
       +materialized: view

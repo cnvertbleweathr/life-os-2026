@@ -53,7 +53,7 @@ TEAM_LABELS = {
 
 def fetch_json(url: str, timeout: int = 15) -> list | dict | None:
     try:
-        r = requests.get(url, timeout=timeout, headers={"User-Agent": "life-os/1.0"})
+        r = requests.get(url, timeout=timeout, headers={"User-Agent": "ons/1.0"})
         r.raise_for_status()
         return r.json()
     except Exception as e:

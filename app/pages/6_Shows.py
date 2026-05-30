@@ -19,7 +19,7 @@ MY_SHOWS     = ROOT / "data" / "shows" / "my_artist_shows.json"
 MY_ARTISTS   = ROOT / "data" / "spotify" / "processed" / "my_artists.json"
 DENVER_TZ    = ZoneInfo("America/Denver")
 
-st.set_page_config(page_title="Shows · Life OS", page_icon="🎸", layout="wide")
+st.set_page_config(page_title="Shows · Operating Narcisystem", page_icon="🎸", layout="wide")
 st.title("🎸 Shows")
 st.caption("Upcoming Denver concerts & events · ⭐ = your Tewnidge/Deeds artists")
 

@@ -1,4 +1,4 @@
-# Life OS – Checkpoint (2026-01-01)
+# Operating Narcisystem – Checkpoint (2026-01-01)
 
 ## What works
 - daily_sync.py runs end-to-end

@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 DEFAULT_API_URL = "https://api.hardcover.app/v1/graphql"
 
 ME_QUERY = """
@@ -71,7 +71,7 @@ def _hc_post(token: str, query: str, variables: Optional[Dict] = None) -> Dict:
         headers={
             "authorization": token,
             "content-type": "application/json",
-            "user-agent": "life-os-2026 (personal goal tracking)",
+            "user-agent": "ons-2026 (personal goal tracking)",
         },
         json={"query": query, "variables": variables or {}},
         timeout=30,
@@ -197,7 +197,7 @@ def reading_summary_resource(year: int) -> Iterator[dict]:
     import duckdb
     import yaml
 
-    db_path = ROOT / "data" / "warehouse" / "lifeos.duckdb"
+    db_path = ROOT / "data" / "warehouse" / "ons.duckdb"
     if not db_path.exists():
         return
 

@@ -76,7 +76,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 
 # Module-level path constants
-DB_PATH = ROOT / "data" / "warehouse" / "lifeos.duckdb"
+DB_PATH = ROOT / "data" / "warehouse" / "ons.duckdb"
 SOME_PATH = ROOT / "data" / ...
 
 # ---------------------------------------------------------------------------

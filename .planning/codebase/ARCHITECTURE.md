@@ -3,7 +3,7 @@ _Last updated: 2026-05-29_
 
 ## Summary
 
-Life OS 2026 is a personal analytics platform built on a modern data stack: external APIs and local inputs are ingested via DLT pipelines into a local DuckDB warehouse, transformed by dbt into clean mart tables, and surfaced through a Streamlit multi-page dashboard. The entire pipeline runs automatically every morning at 9am via macOS launchd, with zero manual intervention required to keep data fresh.
+Operating Narcisystem 2026 is a personal analytics platform built on a modern data stack: external APIs and local inputs are ingested via DLT pipelines into a local DuckDB warehouse, transformed by dbt into clean mart tables, and surfaced through a Streamlit multi-page dashboard. The entire pipeline runs automatically every morning at 9am via macOS launchd, with zero manual intervention required to keep data fresh.
 
 ---
 
@@ -26,7 +26,7 @@ External APIs         Local Inputs
                  ▼
 ┌────────────────────────────────────────┐
 │      DuckDB Warehouse                  │
-│   data/warehouse/lifeos.duckdb         │
+│   data/warehouse/ons.duckdb         │
 │                                        │
 │  strava.*   hardcover.*   habits.*     │
 │  raw.*      calendar.*                 │
@@ -56,7 +56,7 @@ External APIs         Local Inputs
 | Orchestrator | Runs all steps in order daily, logs results | `scripts/daily_sync.py` |
 | DLT Pipelines | API extraction + upsert into DuckDB | `pipelines/` |
 | Fetch Scripts | Secondary data fetch (shows, streams, Spotify) | `scripts/` |
-| DuckDB Warehouse | Single local database, all raw + transformed data | `data/warehouse/lifeos.duckdb` |
+| DuckDB Warehouse | Single local database, all raw + transformed data | `data/warehouse/ons.duckdb` |
 | dbt Models | Staging views + mart tables built on raw schemas | `dbt/models/` |
 | Streamlit Dashboard | 7-page interactive UI, queries marts directly | `app/` |
 | Goals Definition | Declarative YAML intent file | `goals/2026.yaml` |
@@ -103,7 +103,7 @@ User opens `app/pages/1_Habits.py` → checks boxes → Streamlit writes/updates
 
 ### Dashboard Query Path
 
-Any page in `app/` opens read-only connection to `data/warehouse/lifeos.duckdb` and queries `main_marts.*` (or `main_staging.*`) tables. Data is cached with `@st.cache_data(ttl=300–600)`.
+Any page in `app/` opens read-only connection to `data/warehouse/ons.duckdb` and queries `main_marts.*` (or `main_staging.*`) tables. Data is cached with `@st.cache_data(ttl=300–600)`.
 
 ---
 
@@ -116,7 +116,7 @@ Any page in `app/` opens read-only connection to `data/warehouse/lifeos.duckdb` 
 | `habits` | `habit_log`, `habit_summary` | DLT / local JSONL |
 | `raw` | `raw_goals`, `raw_goal_progress` | load scripts |
 | `main_staging` | `stg_goals__annual_goals`, `stg_goals__progress`, `stg_habits__log`, `stg_habits__summary` | dbt views |
-| `main_marts` | `mart_goal_progress`, `mart_goal_detail`, `mart_habit_performance`, `mart_habit_streaks`, `mart_lifeos_healthcheck`, `mart_goal_inventory` | dbt tables |
+| `main_marts` | `mart_goal_progress`, `mart_goal_detail`, `mart_habit_performance`, `mart_habit_streaks`, `mart_ons_healthcheck`, `mart_goal_inventory` | dbt tables |
 
 ---
 
@@ -133,10 +133,10 @@ Mart models (materialized as tables) build business logic:
 - `dbt/models/marts/mart_goal_progress.sql` — joins goals + actuals, computes `progress_percent`
 - `dbt/models/marts/mart_habit_performance.sql` — daily pivot table + completion %
 - `dbt/models/marts/mart_habit_streaks.sql` — current streak + longest streak per habit
-- `dbt/models/marts/mart_lifeos_healthcheck.sql` — system health metrics
+- `dbt/models/marts/mart_ons_healthcheck.sql` — system health metrics
 - `dbt/models/marts/mart_goal_inventory.sql` — full goal list
 
-dbt profile targets DuckDB at `/Users/kg/life-os-2026/data/warehouse/lifeos.duckdb`, schema `main`, 4 threads.
+dbt profile targets DuckDB at `/Users/kg/ons-2026/data/warehouse/ons.duckdb`, schema `main`, 4 threads.
 
 ---
 

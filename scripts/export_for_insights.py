@@ -21,7 +21,7 @@ import duckdb
 import pandas as pd
 
 ROOT     = Path(__file__).resolve().parents[1]
-DB_PATH  = ROOT / "data" / "warehouse" / "lifeos.duckdb"
+DB_PATH  = ROOT / "data" / "warehouse" / "ons.duckdb"
 OUT_DIR  = ROOT / "data" / "exports"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 

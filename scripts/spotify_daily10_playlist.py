@@ -256,15 +256,42 @@ def main() -> int:
     tewnidge_uris, tewnidge_artists = fetch_tewnidge(sp, args.tewnidge_playlist_id)
 
     bucket_a = rng.sample(top500, min(args.top_picks, len(top500)))
-    bucket_b = rng.sample(tewnidge_artists, min(args.b_picks, len(tewnidge_artists)))
+    bucket_b_artists = rng.sample(tewnidge_artists, min(args.b_picks * 3, len(tewnidge_artists)))
 
     final_uris = []
+
+    # Bucket A — top 500 random tracks
     for tk in bucket_a:
         q = f'track:"{tk.track}" artist:"{tk.artist}"'
         res = sp.search(q=q, type="track", limit=1)
         items = res["tracks"]["items"]
         if items:
             final_uris.append(items[0]["uri"])
+
+    # Bucket B — unheard tracks from random Tewnidge artists
+    b_count = 0
+    for artist_name in bucket_b_artists:
+        if b_count >= args.b_picks:
+            break
+        # Fetch top tracks for this artist
+        res = sp.search(q=f'artist:"{artist_name}"', type="track", limit=10)
+        tracks = res["tracks"]["items"]
+        # Shuffle so we don't always pick the most popular
+        rng.shuffle(tracks)
+        for track in tracks:
+            uri = track["uri"]
+            # Skip if already in playlist
+            if uri in final_uris:
+                continue
+            # Skip if already listened to
+            t_norm = (norm_key(artist_name), norm_key(track["name"]))
+            if t_norm in listened_pairs:
+                continue
+            # Also skip if it's in tewnidge already (we want new discoveries)
+            final_uris.append(uri)
+            b_count += 1
+            print(f"  Bucket B: {artist_name} — {track['name']}")
+            break
 
     playlist_name = f"Daily 10 — {args.date}"
     description = (

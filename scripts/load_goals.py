@@ -5,7 +5,7 @@ import duckdb
 import pandas as pd
 import yaml
 
-DB_PATH = Path("data/warehouse/lifeos.duckdb")
+DB_PATH = Path("data/warehouse/ons.duckdb")
 GOALS_PATH = Path("goals/2026.yaml")
 
 

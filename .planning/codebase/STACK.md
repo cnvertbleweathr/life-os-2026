@@ -3,7 +3,7 @@ _Last updated: 2026-05-29_
 
 ## Summary
 
-Life OS 2026 is a pure-Python personal analytics platform. It uses Python 3.12 as the sole language, managed by `uv` for packaging and virtual environment. The stack follows a modern data-engineering pattern: DLT for extraction, DuckDB as the local warehouse, dbt for transformation, and Streamlit for the dashboard UI.
+Operating Narcisystem 2026 is a pure-Python personal analytics platform. It uses Python 3.12 as the sole language, managed by `uv` for packaging and virtual environment. The stack follows a modern data-engineering pattern: DLT for extraction, DuckDB as the local warehouse, dbt for transformation, and Streamlit for the dashboard UI.
 
 ---
 
@@ -42,7 +42,7 @@ No JavaScript, TypeScript, or frontend build tooling. Streamlit renders the UI e
 - `dlt[duckdb]` extra — DLT writes directly to DuckDB
 
 **Data Warehouse:**
-- `duckdb` 1.5.2 — embedded analytical database at `data/warehouse/lifeos.duckdb`; all pipelines, scripts, and the dashboard query this file directly
+- `duckdb` 1.5.2 — embedded analytical database at `data/warehouse/ons.duckdb`; all pipelines, scripts, and the dashboard query this file directly
 
 **Transformation:**
 - `dbt-core` 1.11.8 — SQL transformation layer in `dbt/`
@@ -90,7 +90,7 @@ No JavaScript, TypeScript, or frontend build tooling. Streamlit renders the UI e
 
 **dbt:**
 - `dbt run --profiles-dir dbt/profiles --project-dir dbt` — run by `daily_sync.py` as the final step
-- Profile config: `dbt/profiles/profiles.yml` — points to `data/warehouse/lifeos.duckdb`, schema `main`, 4 threads
+- Profile config: `dbt/profiles/profiles.yml` — points to `data/warehouse/ons.duckdb`, schema `main`, 4 threads
 
 ---
 

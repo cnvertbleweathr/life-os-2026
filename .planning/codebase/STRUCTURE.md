@@ -7,7 +7,7 @@ The repository is organized into five primary source areas: `app/` (Streamlit da
 ## Directory Tree
 
 ```
-life-os-2026/
+ons-2026/
 ├── app/                        # Streamlit dashboard
 │   ├── Home.py                 # Home/overview page
 │   └── pages/
@@ -66,12 +66,12 @@ life-os-2026/
 │   │       ├── mart_goal_progress.sql
 │   │       ├── mart_habit_performance.sql
 │   │       ├── mart_habit_streaks.sql
-│   │       └── mart_lifeos_healthcheck.sql
+│   │       └── mart_ons_healthcheck.sql
 │   └── target/                # dbt compiled output (generated — do not edit)
 │
 ├── data/                       # All data files
 │   ├── warehouse/
-│   │   └── lifeos.duckdb       # Primary database
+│   │   └── ons.duckdb       # Primary database
 │   ├── exports/                # CSV files read by Streamlit pages
 │   │   ├── books_read.csv
 │   │   ├── crossfit_lifts.csv
@@ -159,7 +159,7 @@ life-os-2026/
 - `data/*/metrics/` — aggregated metric CSVs
 - `data/spotify/processed/daily10_latest.json`, `streams_clean.csv`
 - `data/shows/*.json` — radar/artist show caches
-- `data/warehouse/lifeos.duckdb` — primary database
+- `data/warehouse/ons.duckdb` — primary database
 
 **Generated (gitignored):**
 - `data/daily/` — per-day sync logs

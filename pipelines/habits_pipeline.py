@@ -27,7 +27,7 @@ import dlt
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG_PATH = ROOT / "data" / "habits" / "habits_log.jsonl"
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
 HABIT_KEYS = ["meditation", "pushups_100", "nonfiction_pages_10", "fiction_pages_10"]
 

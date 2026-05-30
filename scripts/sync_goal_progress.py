@@ -25,7 +25,7 @@ from pathlib import Path
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "data" / "warehouse" / "lifeos.duckdb"
+DB_PATH = ROOT / "data" / "warehouse" / "ons.duckdb"
 PROGRESS_PATH = ROOT / "data" / "manual" / "goal_progress.csv"
 
 

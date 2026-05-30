@@ -9,10 +9,10 @@ import plotly.graph_objects as go
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = str(ROOT / "data" / "warehouse" / "lifeos.duckdb")
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 SUGARWOD_CLEAN = ROOT / "data" / "sugarwod" / "processed" / "workouts_clean.csv"
 
-st.set_page_config(page_title="Fitness · Life OS", page_icon="💪", layout="wide")
+st.set_page_config(page_title="Fitness · Operating Narcisystem", page_icon="💪", layout="wide")
 st.title("💪 Fitness")
 st.caption("Running · CrossFit · 2026")
 

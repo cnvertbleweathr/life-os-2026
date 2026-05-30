@@ -1,25 +1,27 @@
-# Life OS 2026
+# Operating Narcisystem (ONS) 2026
 
-**Life OS 2026** is a personal analytics platform that treats life as a system — observable, measurable, automatable, and continuously improvable.
+**Because if you're going to be obsessed with yourself, you might as well make it a data pipeline.**
 
-It uses the same principles that power modern data stacks: declarative intent, automated ingestion, transformation pipelines, and a dashboard for daily reflection and decision-making.
+ONS is a personal analytics platform that treats life as a system — observable, measurable, automatable, and continuously improvable. It ingests your entire existence, runs it through a data stack, and tells you whether you're actually getting shit done or just think you are.
+
+Built on the same principles as modern data infrastructure, because your 9am runs and CrossFit PRs deserve the same rigor as production databases.
 
 ---
 
 ## Architecture
 
 ```
-External Sources → DLT Pipelines → DuckDB → dbt → Streamlit Dashboard
-                                     ↑
-                              Local Inputs
-                         (habits, SugarWOD CSV)
+Your Life → DLT Pipelines → DuckDB → dbt → Streamlit Dashboard
+                                ↑
+                         Local Inputs
+                    (habits, SugarWOD CSV)
 ```
 
 ### Full Data Flow
 
 ```mermaid
 flowchart TD
-    subgraph Sources["📡 Data Sources"]
+    subgraph Sources["📡 Data Sources (your whole life)"]
         STRAVA[Strava API]
         HARDCOVER[Hardcover API]
         SPOTIFY[Spotify API]
@@ -134,7 +136,7 @@ flowchart TD
         MHS[mart_habit_streaks\ncurrent + longest streak]
         MGD[mart_goal_detail]
         MGP[mart_goal_progress\ntargets + actuals]
-        MHC[mart_lifeos_healthcheck]
+        MHC[mart_ons_healthcheck]
     end
 
     RG --> SGA --> MGD --> MGP
@@ -174,9 +176,9 @@ sequenceDiagram
 ## Repository Structure
 
 ```
-life-os-2026/
+ons-2026/
 ├── goals/
-│   └── 2026.yaml                    # Declarative intent — all goals defined here
+│   └── 2026.yaml                    # What you said you'd do. No judgment.
 │
 ├── pipelines/                       # DLT ingestion pipelines
 │   ├── strava_pipeline.py           # Strava API → DuckDB
@@ -184,12 +186,12 @@ life-os-2026/
 │   └── habits_pipeline.py           # Local JSONL → DuckDB
 │
 ├── scripts/                         # Orchestration + auxiliary scripts
-│   ├── daily_sync.py                # ← Run this every morning (or let launchd)
+│   ├── daily_sync.py                # ← The one command to rule them all
 │   ├── sync_goal_progress.py        # Pull actuals from DuckDB → goal_progress.csv
 │   ├── sync_playlist_artists.py     # Tewnidge + Deeds artists → show cross-reference
 │   ├── fetch_streams.py             # Today's sports streams via streamed.pk
 │   ├── calendar_export.py           # Google Calendar → CSV
-│   ├── calendar_metrics.py          # Date night tracking
+│   ├── calendar_metrics.py          # Date night tracking (you're welcome)
 │   ├── import_sugarwod_csv.py       # SugarWOD CSV → DuckDB
 │   ├── spotify_ingest_streaming.py  # Spotify JSON export → streams_clean.csv
 │   ├── spotify_metrics.py           # Compute YTD listening stats
@@ -207,15 +209,15 @@ life-os-2026/
 ├── app/                             # Streamlit dashboard
 │   ├── Home.py                      # Entry point — digest, streams, artist alerts
 │   └── pages/
-│       ├── 1_Habits.py              # Checkbox logging + streaks + history heatmap
+│       ├── 1_Habits.py              # Did you do the things? (checkbox edition)
 │       ├── 2_Fitness.py             # Running (Strava) + CrossFit lift progressions
-│       ├── 3_Reading.py             # Hardcover fiction + nonfiction tracking
-│       ├── 4_Goals.py               # Goal progress by domain
+│       ├── 3_Reading.py             # Books: fiction escapism + nonfiction guilt
+│       ├── 4_Goals.py               # The gap between ambition and reality
 │       ├── 5_Music.py               # Spotify stats + Daily 10 embed
 │       └── 6_Shows.py               # Denver concerts + ⭐ artist matching
 │
-├── data/                            # Local data (gitignored except examples)
-│   ├── warehouse/lifeos.duckdb      # DuckDB warehouse (gitignored)
+├── data/                            # Your entire life, locally stored
+│   ├── warehouse/ons.duckdb         # DuckDB warehouse (gitignored, obviously)
 │   ├── habits/habits_log.jsonl      # Habit log (gitignored)
 │   ├── calendar/
 │   ├── spotify/
@@ -224,22 +226,23 @@ life-os-2026/
 │   └── manual/goal_progress.csv
 │
 ├── run_pipelines.py                 # Run DLT pipelines directly
-└── secrets/                         # OAuth tokens (gitignored)
+└── secrets/                         # OAuth tokens (gitignored, not that kind)
 ```
 
 ---
 
 ## Daily Workflow
 
-The system runs automatically at 9am via launchd. To run manually:
+Runs automatically at 9am via launchd. You don't have to do anything. The system knows.
 
 ```bash
+# Manual override if you're impatient
 source .venv/bin/activate
 python scripts/daily_sync.py
 streamlit run app/Home.py
 ```
 
-**Run specific steps:**
+**Surgical strikes:**
 ```bash
 python scripts/daily_sync.py --only pipelines    # DLT only
 python scripts/daily_sync.py --only dbt          # sync + dbt only
@@ -254,11 +257,12 @@ python scripts/daily_sync.py --only aeg_events ticketmaster shows_metrics
 ### Prerequisites
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv)
+- A concerning amount of self-interest
 
 ### Install
 ```bash
-git clone https://github.com/cnvertbleweathr/life-os-2026.git
-cd life-os-2026
+git clone https://github.com/cnvertbleweathr/ons-2026.git
+cd ons-2026
 uv sync
 source .venv/bin/activate
 ```
@@ -266,7 +270,7 @@ source .venv/bin/activate
 ### Configure
 ```bash
 cp .env.example .env
-# Fill in credentials
+# Fill in your credentials. All of them.
 ```
 
 | Key | Source |
@@ -279,29 +283,27 @@ cp .env.example .env
 
 ### First Run
 ```bash
-# One-time OAuth flows
+# One-time OAuth dances
 python scripts/strava_auth.py
 python scripts/calendar_export.py  # opens browser
 
 # Create directories
 mkdir -p data/warehouse data/habits
 
-# Run everything
+# Boot the system
 python scripts/daily_sync.py
 
-# Open dashboard
+# Open the dashboard and contemplate your life choices
 streamlit run app/Home.py
 ```
 
-### SugarWOD (manual)
-Export a CSV from SugarWOD → Settings → Export Data, then:
+### SugarWOD (manual — they don't have an API, barbarians)
 ```bash
 python scripts/import_sugarwod_csv.py --input /path/to/workouts.csv
 ```
 
 ### Spotify Streaming History
-Request your data from Spotify → Account → Privacy Settings → Request Data.
-Once received, copy JSON files to `data/spotify/raw/streaming_history/` and run:
+Request from Spotify → Account → Privacy Settings → Request Data. Takes a few days. Worth it.
 ```bash
 python scripts/spotify_ingest_streaming.py
 python scripts/spotify_metrics.py
@@ -316,7 +318,7 @@ python scripts/spotify_metrics.py
 | Strava | DLT + OAuth | Daily | Running miles, pace, weekly volume |
 | Hardcover | DLT + GraphQL | Daily | Books read, fiction vs nonfiction |
 | Habits | Streamlit UI | Daily | Meditation, pushups, reading pages |
-| Google Calendar | OAuth API | Daily | Date nights, events, birthdays |
+| Google Calendar | OAuth API | Daily | Date nights, events, birthdays you shouldn't forget |
 | SugarWOD | CSV export | Manual | CrossFit classes, PRs, lift progressions |
 | Spotify | JSON export + API | Daily | Streaming stats, Daily 10 playlist + AI cover art |
 | AEG / Ticketmaster | Public API | Daily | Upcoming Denver concerts |
@@ -329,10 +331,10 @@ python scripts/spotify_metrics.py
 | Page | What it shows |
 |---|---|
 | 🧭 **Home** | AI daily digest, sports streams, ⭐ artist show alerts, calendar, goals scoreboard |
-| ✅ **Habits** | Checkbox logging, streaks, 60-day history heatmap, YTD completion rates |
+| ✅ **Habits** | Did you meditate? Do pushups? Read? The data knows. |
 | 💪 **Fitness** | Strava running metrics + weekly chart, CrossFit lift progressions + PR log |
 | 📚 **Reading** | Hardcover fiction/nonfiction progress, book list with classification |
-| 🎯 **Goals** | Full goal inventory with progress bars by domain |
+| 🎯 **Goals** | What you said you'd do vs what you actually did |
 | 🎵 **Music** | Spotify streaming stats, top artists/tracks, listening heatmap, Daily 10 embed |
 | 🎸 **Shows** | Upcoming Denver concerts, ⭐ Tewnidge/Deeds artist matching, ticket links |
 
@@ -340,12 +342,12 @@ python scripts/spotify_metrics.py
 
 ## Design Principles
 
-**Separation of concerns** — intent (`goals/2026.yaml`), facts (`data/`), and logic (`scripts/`, `dbt/`) are explicitly separated.
+**Separation of concerns** — intent (`goals/2026.yaml`), facts (`data/`), and logic (`scripts/`, `dbt/`) are explicitly separated. What you want to do and what you actually do live in different tables for a reason.
 
-**Automation over willpower** — runs at 9am daily via launchd. Zero manual effort to keep data fresh.
+**Automation over willpower** — runs at 9am daily via launchd. Willpower is finite. Cron jobs are not.
 
-**DuckDB as the hub** — all sources land in DuckDB. dbt builds clean marts on top. The dashboard queries marts only.
+**DuckDB as the hub** — all sources land in DuckDB. dbt builds clean marts on top. The dashboard queries marts only. No spaghetti.
 
-**DLT for extraction** — schema inference, merge semantics, and load state handled by DLT. No bespoke fetch scripts.
+**DLT for extraction** — schema inference, merge semantics, and load state handled by DLT. No bespoke fetch scripts held together with prayers.
 
-**AI as co-processor** — used for bounded tasks: daily digest, sports stream ranking, playlist cover art. Never for core data logic.
+**AI as co-processor** — used for bounded, testable tasks: daily digest, sports stream ranking, playlist cover art. Never for core data logic. The AI assists. The data tells the truth.

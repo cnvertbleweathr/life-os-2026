@@ -1,4 +1,4 @@
-# Life OS — Migration Notes (2026-05-12)
+# Operating Narcisystem — Migration Notes (2026-05-12)
 
 ## Summary of changes
 

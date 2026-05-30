@@ -1,8 +1,8 @@
-lifeos:
+ons:
   target: dev
   outputs:
     dev:
       type: duckdb
-      path: /Users/kg/life-os-2026/data/warehouse/lifeos.duckdb
+      path: /Users/kg/ons-2026/data/warehouse/ons.duckdb
       schema: main
       threads: 4
