@@ -2,16 +2,14 @@
 """
 pregame_lookup.py
 
-Given two teams and a spread, pull all relevant context factors and
-surface which historical edges apply — including team-specific ATS tendencies.
+Given two teams and a spread, pulls all context from DuckDB and surfaces
+which historical edges apply — including team-specific ATS profiles for
+all 263 FBS teams (2021-2025).
 
-Validated rules (2021-2025, cross-season):
+Validated rules:
   PRIMARY:  Home PPA gap >0.15 + spread <=14 → +31.8% ROI, 5/5 seasons
-  STRONG:   Home PPA gap >0.15 + SP+ agrees + spread <=17 → +28.3% ROI
-  TEAMS:    Notre Dame away dog (+75% ROI), Wazzu home dog (+33.6%)
-            Ohio State home + PPA edge (+22.7%), Kentucky home/away covers
-  FADES:    North Carolina home favorite (-39.5%), Stanford home fav (-76.1%)
-            Purdue home (-47.9%), Florida home (-24.1%)
+  STRONG:   PPA gap >0.15 + SP+ agrees + spread <=17 → +28.3% ROI
+  FADES:    STRONG_FADE tier teams as home favorites — avoid always
 
 Usage:
   python scripts/pregame_lookup.py --home "Ohio State" --away "Michigan" --spread -7 --ou 45.5
@@ -20,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 
@@ -34,231 +33,36 @@ load_dotenv(ROOT / ".env")
 API_BASE   = "https://api.collegefootballdata.com"
 CFBD_TOKEN = os.getenv("CFBD_API_TOKEN", "")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Team intelligence — validated across 2021-2025
-# ─────────────────────────────────────────────────────────────────────────────
-
-TEAM_INTEL = {
-    # ── STRONG BET teams ──────────────────────────────────────────────────
-    "Notre Dame": {
-        "tier": "ELITE",
-        "overall_roi": 29.91,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("away_dog", 75.0, "Away underdog: 91.7% cover, +75% ROI — AUTO BET"),
-            ("away_any",  43.2, "Road games generally: +43.2% ROI"),
-            ("home_fav",  33.2, "Home favorite: +33.2% ROI"),
-        ],
-        "ou_note": "Away games 69.4% overs — lean OVER on road",
-        "fade_situation": "home_dog",  # -58.4% ROI
-    },
-    "Washington State": {
-        "tier": "ELITE",
-        "overall_roi": 14.17,
-        "profitable_seasons": "5/5 — only team profitable every season",
-        "edges": [
-            ("home_dog", 33.6, "Home underdog: 70% cover, +33.6% ROI"),
-            ("home_any", 22.5, "Home games generally: +22.5% ROI"),
-            ("away_dog", 14.5, "Away underdog: +14.5% ROI"),
-        ],
-        "ou_note": "Consistent UNDER lean — 45% home overs, 47% away",
-        "fade_situation": "away_fav",  # -9.6% ROI
-    },
-    "Ohio State": {
-        "tier": "ELITE",
-        "overall_roi": 15.11,
-        "profitable_seasons": "4/5 — trending UP (2025: +43.5%)",
-        "edges": [
-            ("home_ppa", 22.7, "Home + PPA edge >0.15: 64.3% cover, +22.7% ROI (28 games)"),
-            ("home_fav", 20.6, "Home favorite: +20.6% ROI — never a home dog"),
-        ],
-        "ou_note": "Under lean — 47.8% home overs",
-        "fade_situation": None,
-    },
-    "Kentucky": {
-        "tier": "STRONG",
-        "overall_roi": 14.88,
-        "profitable_seasons": "4/5 — 2025 was weak (-20.4%), monitor",
-        "edges": [
-            ("home_dog", 19.3, "Home underdog: 62.5% cover, +19.3% ROI"),
-            ("home_fav", 15.4, "Home favorite: +15.4% ROI"),
-            ("away_fav", 27.3, "Away favorite: +27.3% ROI (rare)"),
-        ],
-        "ou_note": "Strong UNDER lean — 46.7% home, 39.1% away overs",
-        "fade_situation": None,
-    },
-    "Alabama": {
-        "tier": "STRONG",
-        "overall_roi": 11.69,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("home_ppa", 52.7, "PPA edge situations: +52.7% ROI"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "Boise State": {
-        "tier": "STRONG",
-        "overall_roi": 10.97,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("home_any", 10.97, "Consistent ATS performer — 4/5 profitable seasons"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "Penn State": {
-        "tier": "STRONG",
-        "overall_roi": 11.36,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("overall", 11.36, "Consistent Big Ten cover — 4/5 profitable seasons"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "Illinois": {
-        "tier": "STRONG",
-        "overall_roi": 11.09,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("overall", 11.09, "Consistent ATS performer in Big Ten"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "East Carolina": {
-        "tier": "STRONG",
-        "overall_roi": 15.08,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("overall", 15.08, "Best ATS record in AAC — 4/5 profitable seasons"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "UNLV": {
-        "tier": "STRONG",
-        "overall_roi": 12.75,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("ppa", 63.6, "PPA edge situations: 63.6% ROI over 14 games"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "South Carolina": {
-        "tier": "STRONG",
-        "overall_roi": 10.96,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("overall", 10.96, "Consistently underrated in SEC"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-    "James Madison": {
-        "tier": "STRONG",
-        "overall_roi": 20.30,
-        "profitable_seasons": "4/5",
-        "edges": [
-            ("overall", 20.30, "New FBS program — market still undervaluing"),
-        ],
-        "ou_note": "Neutral",
-        "fade_situation": None,
-    },
-
-    # ── FADE teams ────────────────────────────────────────────────────────
-    "North Carolina": {
-        "tier": "FADE",
-        "overall_roi": -35.84,
-        "profitable_seasons": "0/5",
-        "edges": [],
-        "fade_rules": [
-            ("home_fav", -39.5, "Home favorite: -39.5% ROI — NEVER BET"),
-            ("home_dog", -51.8, "Home underdog: -51.8% ROI — NEVER BET"),
-            ("away_fav", -46.5, "Away favorite: -46.5% ROI — NEVER BET"),
-        ],
-        "ou_note": "No strong lean",
-        "fade_situation": "always",
-    },
-    "Stanford": {
-        "tier": "FADE",
-        "overall_roi": -35.82,
-        "profitable_seasons": "0/5",
-        "edges": [],
-        "fade_rules": [
-            ("home_fav", -76.1, "Home favorite: 12.5% cover rate, -76.1% ROI — WORST IN DATASET"),
-            ("away_dog", -49.1, "Away underdog: -49.1% ROI"),
-        ],
-        "ou_note": "No strong lean",
-        "fade_situation": "home_fav",
-    },
-    "Purdue": {
-        "tier": "FADE",
-        "overall_roi": -32.24,
-        "profitable_seasons": "1/5",
-        "edges": [],
-        "fade_rules": [
-            ("home_fav", -44.3, "Home favorite: -44.3% ROI"),
-            ("home_dog", -52.3, "Home underdog: -52.3% ROI — NEVER BET AT HOME"),
-        ],
-        "ou_note": "54.5% home overs — slight over lean",
-        "fade_situation": "home_any",
-    },
-    "Florida": {
-        "tier": "FADE",
-        "overall_roi": -24.13,
-        "profitable_seasons": "1/5",
-        "edges": [],
-        "fade_rules": [
-            ("overall", -24.13, "0/5 profitable seasons — chronically overvalued"),
-        ],
-        "ou_note": "No strong lean",
-        "fade_situation": "home_fav",
-    },
-    "Cincinnati": {
-        "tier": "FADE",
-        "overall_roi": -26.72,
-        "profitable_seasons": "1/5",
-        "edges": [],
-        "fade_rules": [
-            ("overall", -26.72, "Worst P4 ATS record — overvalued post-AAC"),
-        ],
-        "ou_note": "No strong lean",
-        "fade_situation": "home_fav",
-    },
+TIER_EMOJI = {
+    "ELITE":       "🌟",
+    "STRONG":      "✅",
+    "NEUTRAL":     "➖",
+    "FADE":        "⚠️ ",
+    "STRONG_FADE": "❌",
 }
 
-# USC over lean
-USC_OVER_NOTE = "USC home games: 75% over rate — strong OVER lean at home"
-RUTGERS_OVER_NOTE = "Rutgers home games: 72.2% over rate"
-MISS_STATE_OVER_NOTE = "Mississippi State home: 73.6% over rate"
+SITUATION_LABELS = {
+    "home_fav":  "Home favorite",
+    "home_dog":  "Home underdog",
+    "away_fav":  "Away favorite",
+    "away_dog":  "Away underdog",
+    "home_ppa":  "Home w/ PPA edge",
+    "away_ppa":  "Away w/ PPA edge",
+}
 
 
-def cfbd_get(endpoint: str, params: dict = None) -> list | dict:
-    headers = {"Authorization": f"Bearer {CFBD_TOKEN}"}
-    r = requests.get(f"{API_BASE}{endpoint}", headers=headers,
-                     params=params or {}, timeout=15)
-    r.raise_for_status()
-    return r.json()
-
-
-def print_header(text: str) -> None:
+def sep(text: str) -> None:
     print(f"\n{'─'*60}")
     print(f"  {text}")
     print(f"{'─'*60}")
-
-
-def get_team_intel(team: str) -> dict | None:
-    return TEAM_INTEL.get(team)
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--home",   required=True)
     p.add_argument("--away",   required=True)
-    p.add_argument("--spread", type=float, default=None)
+    p.add_argument("--spread", type=float, default=None,
+                   help="Negative = home favored")
     p.add_argument("--ou",     type=float, default=None)
     p.add_argument("--year",   type=int, default=2025)
     args = p.parse_args()
@@ -271,19 +75,20 @@ def main() -> None:
 
     con = duckdb.connect(DB_PATH, read_only=True)
 
+    # ── Header ────────────────────────────────────────────────────────────
     print(f"\n{'='*60}")
     print(f"  🏈 PRE-GAME EDGE REPORT")
     print(f"  {away} @ {home}")
     if spread is not None:
-        fav     = home if spread < 0 else away
-        dog     = away if spread < 0 else home
+        fav = home if spread < 0 else away
+        dog = away if spread < 0 else home
         print(f"  Spread: {fav} -{abs(spread):.1f} | {dog} +{abs(spread):.1f}")
     if ou is not None:
         print(f"  O/U: {ou}")
     print(f"{'='*60}")
 
-    # ── SP+ Ratings ──────────────────────────────────────────────────────
-    print_header("📊 SP+ Ratings")
+    # ── SP+ Ratings ───────────────────────────────────────────────────────
+    sep("📊 SP+ Ratings")
     sp = con.execute("""
         SELECT team, rating, offense, defense
         FROM cfbd.sp_ratings
@@ -298,54 +103,55 @@ def main() -> None:
             print(f"  {tag} {row['team']}: {row['rating']:.1f} "
                   f"(Off: {row['offense']:.1f} / Def: {row['defense']:.1f})")
         if len(sp) == 2:
-            home_sp = sp[sp["team"] == home]["rating"].values
-            away_sp = sp[sp["team"] == away]["rating"].values
-            if len(home_sp) and len(away_sp):
-                sp_gap = home_sp[0] - away_sp[0]
-                print(f"\n  SP+ gap: {sp_gap:+.1f} ({'home' if sp_gap > 0 else 'away'} advantage)")
+            h_sp = sp[sp["team"] == home]["rating"].values
+            a_sp = sp[sp["team"] == away]["rating"].values
+            if len(h_sp) and len(a_sp):
+                sp_gap = float(h_sp[0]) - float(a_sp[0])
+                print(f"\n  SP+ gap: {sp_gap:+.1f} "
+                      f"({'home' if sp_gap > 0 else 'away'} advantage)")
     else:
         print(f"  No SP+ data for {year}")
 
-    # ── Advanced stats ───────────────────────────────────────────────────
-    print_header("💪 Team Efficiency")
+    # ── Advanced stats ────────────────────────────────────────────────────
+    sep("💪 Team Efficiency")
     adv = con.execute("""
         SELECT team,
-               round(off_ppa, 3) as off_ppa,
+               round(off_ppa, 3)         as off_ppa,
                round(off_success_rate, 3) as off_sr,
-               round(off_rush_ppa, 3) as rush_ppa,
-               round(def_ppa, 3) as def_ppa,
+               round(off_rush_ppa, 3)     as rush_ppa,
+               round(def_ppa, 3)          as def_ppa,
                round(def_success_rate, 3) as def_sr,
-               round(def_havoc_total, 3) as def_havoc
+               round(def_havoc_total, 3)  as def_havoc
         FROM cfbd.advanced_stats
         WHERE season = ? AND team IN (?, ?)
     """, [year, home, away]).df()
 
     ppa_gap = None
     if not adv.empty:
-        home_row = adv[adv["team"] == home]
-        away_row = adv[adv["team"] == away]
+        h_row = adv[adv["team"] == home]
+        a_row = adv[adv["team"] == away]
         for _, row in adv.iterrows():
             tag = "🏠" if row["team"] == home else "✈️ "
             print(f"\n  {tag} {row['team']}")
-            print(f"     Offense: PPA={row['off_ppa']} | SR={row['off_sr']} | Rush PPA={row['rush_ppa']}")
-            print(f"     Defense: PPA={row['def_ppa']} | SR={row['def_sr']} | Havoc={row['def_havoc']}")
-        if not home_row.empty and not away_row.empty:
-            ppa_gap = float(home_row["off_ppa"].values[0]) - float(away_row["off_ppa"].values[0])
-            print(f"\n  PPA Gap (home off - away off): {ppa_gap:+.3f}")
-            if ppa_gap > 0.15:
-                print(f"  ✅ PPA EDGE: Home team has significant offensive efficiency advantage")
-            elif ppa_gap < -0.15:
-                print(f"  ⚠️  PPA EDGE: Away team has significant offensive efficiency advantage")
+            print(f"     Off: PPA={row['off_ppa']} | SR={row['off_sr']} | Rush={row['rush_ppa']}")
+            print(f"     Def: PPA={row['def_ppa']} | SR={row['def_sr']} | Havoc={row['def_havoc']}")
+        if not h_row.empty and not a_row.empty:
+            ppa_gap = float(h_row["off_ppa"].values[0]) - float(a_row["off_ppa"].values[0])
+            print(f"\n  PPA Gap: {ppa_gap:+.3f} ", end="")
+            if ppa_gap > 0.30:   print("🔥 EXTREME home edge")
+            elif ppa_gap > 0.15: print("✅ Home efficiency edge")
+            elif ppa_gap < -0.15: print("✅ Away efficiency edge")
+            else:                 print("(even)")
     else:
         print(f"  No advanced stats for {year}")
 
-    # ── Returning production ─────────────────────────────────────────────
-    print_header("🔄 Returning Production")
+    # ── Returning production ──────────────────────────────────────────────
+    sep("🔄 Returning Production")
     ret = con.execute("""
         SELECT team,
-               round(percent_ppa * 100, 1) as pct_returning,
-               round(percent_rushing_ppa * 100, 1) as pct_rush_returning,
-               round(percent_passing_ppa * 100, 1) as pct_pass_returning
+               round(percent_ppa * 100, 1)         as pct_ret,
+               round(percent_rushing_ppa * 100, 1)  as pct_rush,
+               round(percent_passing_ppa * 100, 1)  as pct_pass
         FROM cfbd.returning_production
         WHERE season = ? AND team IN (?, ?)
     """, [year, home, away]).df()
@@ -353,17 +159,16 @@ def main() -> None:
     if not ret.empty:
         for _, row in ret.iterrows():
             tag = "🏠" if row["team"] == home else "✈️ "
-            print(f"  {tag} {row['team']}: {row['pct_returning']}% returning "
-                  f"(Rush: {row['pct_rush_returning']}% | Pass: {row['pct_pass_returning']}%)")
+            print(f"  {tag} {row['team']}: {row['pct_ret']}% returning "
+                  f"(Rush: {row['pct_rush']}% | Pass: {row['pct_pass']}%)")
     else:
         print(f"  No returning production data for {year}")
 
-    # ── Coaches ──────────────────────────────────────────────────────────
-    print_header("🎓 Head Coaches")
+    # ── Coaches ───────────────────────────────────────────────────────────
+    sep("🎓 Coaches")
     coaches = con.execute("""
         SELECT school, full_name, wins, losses
-        FROM cfbd.coaches
-        WHERE year = ? AND school IN (?, ?)
+        FROM cfbd.coaches WHERE year = ? AND school IN (?, ?)
     """, [year, home, away]).df()
 
     if not coaches.empty:
@@ -372,8 +177,8 @@ def main() -> None:
             print(f"  {tag} {row['school']}: {row['full_name']} "
                   f"({row['wins']}-{row['losses']} in {year})")
 
-    # ── Rivalry check ────────────────────────────────────────────────────
-    print_header("⚔️  Rivalry Check")
+    # ── Rivalry ───────────────────────────────────────────────────────────
+    sep("⚔️  Rivalry")
     rivalry = con.execute("""
         SELECT team1, team2, team1_wins, team2_wins, total_games,
                team1_last10_wins, team2_last10_wins, most_recent_winner
@@ -383,131 +188,203 @@ def main() -> None:
 
     is_rivalry = not rivalry.empty
     if is_rivalry:
-        row = rivalry.iloc[0]
-        t1, t2 = row["team1"], row["team2"]
-        print(f"  ✅ RIVALRY GAME")
-        print(f"     All-time: {t1} {row['team1_wins']} — {row['team2_wins']} {t2}")
-        print(f"     Last 10:  {t1} {row['team1_last10_wins']} — {row['team2_last10_wins']} {t2}")
-        print(f"     ⚠️  RIVALRY NOTE: Skip this game per model rules (3/5 seasons profitable)")
+        r = rivalry.iloc[0]
+        print(f"  ✅ RIVALRY — {r['team1']} {r['team1_wins']} vs "
+              f"{r['team2']} {r['team2_wins']} all-time")
+        print(f"     Last 10: {r['team1']} {r['team1_last10_wins']} — "
+              f"{r['team2_last10_wins']} {r['team2']}")
+        print(f"     ⚠️  Model rule: SKIP rivalry games (3/5 seasons profitable)")
     else:
         print("  Not a tracked rivalry")
 
-    # ── Team intelligence ────────────────────────────────────────────────
-    print_header("🧠 Team-Specific ATS History (2021-2025)")
+    # ── Team profiles from DuckDB ─────────────────────────────────────────
+    sep("🧠 Team ATS Profiles (2021-2025, all FBS)")
 
-    home_intel = get_team_intel(home)
-    away_intel = get_team_intel(away)
+    profiles = con.execute("""
+        SELECT * FROM cfbd.team_profiles
+        WHERE team IN (?, ?)
+    """, [home, away]).df()
 
-    for team, intel, role in [(home, home_intel, "HOME"), (away, away_intel, "AWAY")]:
-        if not intel:
-            print(f"  {role} {team}: No specific ATS history flagged")
+    home_profile = profiles[profiles["team"] == home].iloc[0] if not profiles[profiles["team"] == home].empty else None
+    away_profile = profiles[profiles["team"] == away].iloc[0] if not profiles[profiles["team"] == away].empty else None
+
+    for team, profile, role in [(home, home_profile, "HOME"), (away, away_profile, "AWAY")]:
+        if profile is None:
+            print(f"\n  {role} {team}: No profile in DB (< 15 games)")
             continue
 
-        tier_emoji = {"ELITE": "🌟", "STRONG": "✅", "FADE": "❌"}.get(intel["tier"], "")
-        print(f"\n  {tier_emoji} {role} — {team} [{intel['tier']}]")
-        print(f"     Overall ROI: {intel['overall_roi']:+.1f}% | "
-              f"Profitable: {intel['profitable_seasons']}")
+        tier    = profile["tier"]
+        emoji   = TIER_EMOJI.get(tier, "")
+        seasons = profile["profitable_seasons"]
+        total_r = profile["total_roi"]
 
-        if intel["tier"] == "FADE":
-            for sit, roi, note in intel.get("fade_rules", []):
-                print(f"     ⛔ {note}")
-        else:
-            for sit, roi, note in intel.get("edges", []):
-                print(f"     💰 {note}")
+        print(f"\n  {emoji} {role} — {team} [{tier}]")
+        print(f"     Overall: {profile['total_win_pct']}% cover | "
+              f"{total_r:+.1f}% ROI | Profitable {seasons}/5 seasons")
+        print(f"     Home: {profile['home_roi']:+.1f}% ROI | "
+              f"Away: {profile['away_roi']:+.1f}% ROI")
 
-        if intel.get("ou_note"):
-            print(f"     📊 O/U: {intel['ou_note']}")
+        # Situational splits
+        sits = [
+            ("home_fav", profile["home_fav_roi"], profile["home_fav_bets"]),
+            ("home_dog", profile["home_dog_roi"], profile["home_dog_bets"]),
+            ("away_fav", profile["away_fav_roi"], profile["away_fav_bets"]),
+            ("away_dog", profile["away_dog_roi"], profile["away_dog_bets"]),
+        ]
+        print(f"     Situations:")
+        for sit, roi, bets in sits:
+            if roi is not None and bets >= 5:
+                flag = " ✅" if roi > 20 else " ⛔" if roi < -20 else ""
+                print(f"       {SITUATION_LABELS[sit]:22s}: {roi:+.1f}% ROI "
+                      f"({int(bets)}g){flag}")
 
-    # ── Edge summary ─────────────────────────────────────────────────────
-    print_header("🎯 Applicable Edge Signals")
+        # PPA edge
+        if profile["home_ppa_bets"] >= 5:
+            print(f"     PPA edge (home): {profile['home_ppa_roi']:+.1f}% ROI "
+                  f"({int(profile['home_ppa_bets'])}g)")
+        if profile["away_ppa_bets"] >= 5:
+            print(f"     PPA edge (away): {profile['away_ppa_roi']:+.1f}% ROI "
+                  f"({int(profile['away_ppa_bets'])}g)")
+
+        # O/U
+        if profile["home_over_pct"]:
+            ou_note = ""
+            if profile["home_over_pct"] >= 65:   ou_note = " 📈 STRONG OVER lean"
+            elif profile["home_over_pct"] <= 35:  ou_note = " 📉 STRONG UNDER lean"
+            print(f"     O/U: {profile['home_over_pct']}% home overs | "
+                  f"{profile['away_over_pct']}% away overs{ou_note}")
+
+        # Season trend
+        try:
+            season_data = json.loads(profile["season_rois_json"])
+            trend = " ".join(
+                f"{s['season']}:{s['roi']:+.0f}%" for s in season_data
+                if s["roi"] is not None
+            )
+            print(f"     Trend: {trend}")
+        except Exception:
+            pass
+
+    # ── Edge signals ──────────────────────────────────────────────────────
+    sep("🎯 Active Edge Signals")
 
     edges    = []
     warnings = []
 
-    # PPA gap signal
+    # PPA gap
     if ppa_gap is not None:
         if ppa_gap > 0.30:
-            edges.append(("🔥 PPA gap >0.30", f"STRONGEST signal — +41.9% ROI historically. Bet HOME covers."))
+            edges.append(("🔥 PPA gap >0.30", "EXTREME signal — +41.9% ROI historically"))
         elif ppa_gap > 0.15:
-            edges.append(("📊 PPA gap >0.15", f"Primary signal — +19.0% ROI, profitable 5/5 seasons. Lean HOME covers."))
+            edges.append(("📊 PPA gap >0.15", "Primary signal — +19.0% ROI, 5/5 seasons"))
         elif ppa_gap < -0.15:
-            edges.append(("📊 PPA gap <-0.15", f"Away team efficiency edge — lean AWAY covers."))
+            edges.append(("📊 PPA gap >0.15 (away)", "Away team efficiency edge"))
 
-    # Spread filter
-    if spread is not None and ppa_gap is not None and ppa_gap > 0.15:
+    # Spread + PPA combo
+    if spread is not None and ppa_gap is not None and abs(ppa_gap) > 0.15:
         spread_abs = abs(spread)
+        favored_team = home if ppa_gap > 0 else away
         if spread_abs <= 14:
-            edges.append(("✅ Spread ≤14 + PPA edge", "BEST COMBO — +31.8% ROI, 69% win rate"))
+            edges.append(("✅ PPA + spread ≤14", f"BEST COMBO — +31.8% ROI, 69% win rate → {favored_team}"))
         elif spread_abs <= 17:
-            edges.append(("✅ Spread ≤17 + PPA edge", "Strong combo — +28.3% ROI"))
+            edges.append(("✅ PPA + spread ≤17", f"+28.3% ROI → {favored_team}"))
         else:
-            warnings.append("⚠️  Spread >17 with PPA edge — avoid (blowout risk)")
+            warnings.append("⚠️  Spread >17 with PPA edge — blowout risk, skip")
 
     # SP+ alignment
-    if sp_gap is not None and ppa_gap is not None:
-        sp_agrees = (sp_gap > 0 and ppa_gap > 0) or (sp_gap < 0 and ppa_gap < 0)
-        if sp_agrees and ppa_gap > 0.15:
-            edges.append(("📈 SP+ agrees with PPA signal", "Confirmation — both metrics aligned"))
-        elif not sp_agrees and abs(ppa_gap) > 0.15:
-            warnings.append("⚠️  SP+ disagrees with PPA signal — proceed with caution")
+    if sp_gap is not None and ppa_gap is not None and abs(ppa_gap) > 0.15:
+        agrees = (sp_gap > 0 and ppa_gap > 0) or (sp_gap < 0 and ppa_gap < 0)
+        if agrees:
+            edges.append(("📈 SP+ confirms PPA", "Both metrics aligned — added confidence"))
+        else:
+            warnings.append("⚠️  SP+ disagrees with PPA signal — mixed picture")
 
-    # Team-specific edges
-    if home_intel:
-        if home_intel["tier"] == "FADE":
-            warnings.append(f"⛔ {home} is a historical FADE ({home_intel['overall_roi']:+.1f}% ROI)")
-        elif home_intel["tier"] in ("ELITE", "STRONG"):
-            # Check if this is a favorable situation for this team
-            if spread is not None:
-                home_is_dog = spread > 0
-                if home_is_dog and any(s[0] == "home_dog" for s in home_intel["edges"]):
-                    edges.append((f"🌟 {home} home underdog", "Team-specific edge activated"))
-                elif not home_is_dog and any(s[0] == "home_fav" for s in home_intel["edges"]):
-                    edges.append((f"🌟 {home} home favorite", "Team-specific edge activated"))
+    # Team-specific
+    for team, profile, role, is_home in [
+        (home, home_profile, "HOME", True),
+        (away, away_profile, "AWAY", False),
+    ]:
+        if profile is None:
+            continue
+        tier = profile["tier"]
 
-    if away_intel:
-        if away_intel["tier"] == "FADE":
-            edges.append((f"⛔ Fade {away}", f"Historical fade — {away_intel['overall_roi']:+.1f}% ROI as away team"))
-        elif away_intel["tier"] in ("ELITE", "STRONG") and spread is not None:
-            away_is_dog = spread < 0  # home is favored
-            if away_is_dog and any(s[0] == "away_dog" for s in away_intel["edges"]):
-                edges.append((f"🌟 {away} away underdog", "Team-specific edge — strong cover history"))
+        if tier == "STRONG_FADE":
+            # Determine their role in this game
+            if is_home:
+                if spread and spread < 0:  # home is favored
+                    roi = profile["home_fav_roi"]
+                    warnings.append(f"⛔ {team} home favorite: {roi:+.1f}% ROI — STRONG FADE")
+                else:
+                    roi = profile["home_dog_roi"]
+                    warnings.append(f"⛔ {team} home dog: {roi:+.1f}% ROI — still a fade")
+            else:
+                if spread and spread < 0:  # away is dog
+                    roi = profile["away_dog_roi"]
+                    if roi and roi < -15:
+                        warnings.append(f"⛔ {team} away underdog: {roi:+.1f}% ROI — fade")
+                else:
+                    roi = profile["away_fav_roi"]
+                    if roi and roi < -15:
+                        warnings.append(f"⛔ {team} away favorite: {roi:+.1f}% ROI — fade")
 
-    # Rivalry warning
+        elif tier in ("ELITE", "STRONG"):
+            if is_home:
+                sit = "home_dog" if (spread and spread > 0) else "home_fav"
+                roi = profile[f"{sit}_roi"]
+                bets = profile[f"{sit}_bets"]
+                if roi and roi > 20 and bets >= 5:
+                    edges.append((f"🌟 {team} {SITUATION_LABELS[sit]}",
+                                  f"{roi:+.1f}% ROI over {int(bets)} games"))
+            else:
+                sit = "away_dog" if (spread and spread < 0) else "away_fav"
+                roi = profile[f"{sit}_roi"]
+                bets = profile[f"{sit}_bets"]
+                if roi and roi > 20 and bets >= 5:
+                    edges.append((f"🌟 {team} {SITUATION_LABELS[sit]}",
+                                  f"{roi:+.1f}% ROI over {int(bets)} games"))
+
+    # Rivalry
     if is_rivalry:
-        warnings.append("⚔️  Rivalry game — model says SKIP (inconsistent edge, 3/5 seasons)")
+        warnings.append("⚔️  Rivalry — skip per model (3/5 seasons only)")
 
     if edges:
-        print(f"\n  ✅ ACTIVE EDGES:")
+        print("\n  ACTIVE EDGES:")
         for label, detail in edges:
-            print(f"     {label}")
-            print(f"       → {detail}")
-    else:
-        print("  No strong edges identified.")
+            print(f"    {label}")
+            print(f"      → {detail}")
 
     if warnings:
-        print(f"\n  ⚠️  WARNINGS:")
+        print("\n  WARNINGS:")
         for w in warnings:
-            print(f"     {w}")
+            print(f"    {w}")
+
+    if not edges and not warnings:
+        print("  No strong signals — line appears fairly priced")
 
     # ── Bottom line ───────────────────────────────────────────────────────
-    print_header("📋 Bottom Line")
+    sep("📋 Bottom Line")
 
-    strong_edges = [e for e in edges if "🔥" in e[0] or "✅" in e[0] or "🌟" in e[0]]
-    fade_signals = [e for e in edges if "⛔" in e[0]]
+    strong_fades  = [w for w in warnings if "STRONG FADE" in w or "⛔" in w]
+    strong_edges  = [e for e in edges if any(x in e[0] for x in ["🔥","✅","🌟"])]
+    rivalry_skip  = is_rivalry
 
-    if home_intel and home_intel["tier"] == "FADE" and spread and spread < 0:
-        print(f"  ❌ DO NOT BET — {home} as home favorite is historically catastrophic")
-    elif len(strong_edges) >= 2:
-        if ppa_gap and ppa_gap > 0:
-            print(f"  🔥 STRONG BET — {home} covers ({len(strong_edges)} edges stacked)")
-        else:
-            print(f"  🔥 STRONG BET — {away} covers ({len(strong_edges)} edges stacked)")
+    if rivalry_skip:
+        print(f"  ⏭  SKIP — Rivalry game, model says pass")
+    elif strong_fades and not strong_edges:
+        team_to_fade = home if home_profile is not None and home_profile["tier"] == "STRONG_FADE" else away
+        print(f"  ⛔ FADE {team_to_fade} — historical fade, bet the other side")
+    elif len(strong_edges) >= 3:
+        direction = home if (ppa_gap and ppa_gap > 0) else away
+        print(f"  🔥 STRONG BET — {direction} covers ({len(strong_edges)} edges stacked)")
+    elif len(strong_edges) == 2:
+        direction = home if (ppa_gap and ppa_gap > 0) else away
+        print(f"  ✅ BET — {direction} covers ({len(strong_edges)} edges)")
     elif len(strong_edges) == 1:
-        print(f"  ✅ LEAN — {strong_edges[0][0]}: {strong_edges[0][1]}")
-    elif fade_signals:
-        print(f"  ⛔ FADE — {fade_signals[0][1]}")
+        print(f"  💡 LEAN — {strong_edges[0][0]}: {strong_edges[0][1]}")
+    elif warnings:
+        print(f"  ⚠️  CAUTION — {warnings[0]}")
     else:
-        print("  ➖ PASS — No strong edge, line appears fairly priced")
+        print(f"  ➖ PASS — No edge, line is fair")
 
     print()
     con.close()
