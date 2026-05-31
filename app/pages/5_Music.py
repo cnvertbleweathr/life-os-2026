@@ -11,6 +11,12 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app"))
+from ons_theme import apply_theme
+apply_theme()
+
 ROOT = Path(__file__).resolve().parents[2]
 
 STREAMS_CLEAN   = ROOT / "data" / "spotify" / "processed" / "streams_clean.csv"

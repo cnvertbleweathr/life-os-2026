@@ -8,6 +8,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from pathlib import Path
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app"))
+from ons_theme import apply_theme
+apply_theme()
+
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 SUGARWOD_CLEAN = ROOT / "data" / "sugarwod" / "processed" / "workouts_clean.csv"

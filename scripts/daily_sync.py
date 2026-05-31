@@ -37,15 +37,18 @@ class Step:
     required: bool = False
     run_if_exists: Optional[Path] = None
     tags: List[str] = field(default_factory=list)
+    run_on_days: Optional[List[int]] = None  # 0=Mon, 6=Sun. None=every day
 
 
 def run_step(step: Step, log_dir: Path) -> dict:
-    if step.run_if_exists is not None and not step.run_if_exists.exists():
-        return {
-            "name": step.name,
-            "status": "skipped",
-            "reason": f"missing {step.run_if_exists.name}",
-        }
+    # Day-of-week gate
+    if step.run_on_days is not None:
+        if datetime.now().weekday() not in step.run_on_days:
+            return {
+                "name": step.name,
+                "status": "skipped",
+                "reason": f"not scheduled today (runs on days {step.run_on_days})",
+            }
 
     start = datetime.now().isoformat(timespec="seconds")
     log_path = log_dir / f"{step.name}.log"
@@ -134,6 +137,7 @@ def build_steps(year: int) -> List[Step]:
             name="calendar_export",
             cmd=["python3", "scripts/calendar_export.py", "--year", str(year)],
             run_if_exists=ROOT / "scripts/calendar_export.py",
+            run_on_days=[0, 3],  # Monday=0, Thursday=3
             tags=["calendar"],
         ),
         Step(
@@ -222,6 +226,18 @@ def build_steps(year: int) -> List[Step]:
             name="dbt",
             cmd=dbt_cmd,
             required=True,
+            tags=["dbt"],
+        ),
+        Step(
+            name="load_goals",
+            cmd=["python3", "scripts/load_goals.py"],
+            run_if_exists=ROOT / "scripts/load_goals.py",
+            tags=["dbt"],
+        ),
+        Step(
+            name="load_goal_progress",
+            cmd=["python3", "scripts/load_goal_progress.py"],
+            run_if_exists=ROOT / "scripts/load_goal_progress.py",
             tags=["dbt"],
         ),
     ]

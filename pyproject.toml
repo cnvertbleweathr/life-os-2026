@@ -10,6 +10,7 @@ dependencies = [
     "google-api-python-client>=2.196.0",
     "google-auth>=2.53.0",
     "google-auth-oauthlib>=1.4.0",
+    "jupyter>=1.1.1",
     "pandas>=3.0.2",
     "plotly>=6.7.0",
     "pyarrow>=24.0.0",
