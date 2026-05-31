@@ -235,7 +235,7 @@ def main() -> None:
         season_df = df[df["season"] == season]
         mask = (
             season_df["is_rivalry_game"].notna() &
-            season_df["is_rivalry_game"].astype(bool) &
+            season_df["is_rivalry_game"].fillna(False).astype(bool) &
             season_df["home_is_underdog"].notna()
         )
         if mask.sum() == 0:
