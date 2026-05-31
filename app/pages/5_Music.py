@@ -113,7 +113,7 @@ if df is not None and not df.empty:
         xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
         yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
     st.divider()
 
@@ -152,7 +152,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_a, use_container_width=True)
+        st.plotly_chart(fig_a, width="stretch")
 
     with col_t:
         st.markdown("**Top 15 Tracks by Play Count**")
@@ -180,7 +180,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_t, use_container_width=True)
+        st.plotly_chart(fig_t, width="stretch")
 
     st.divider()
 
@@ -216,7 +216,7 @@ if df is not None and not df.empty:
         margin=dict(l=0, r=0, t=10, b=0),
         height=260,
     )
-    st.plotly_chart(fig_h, use_container_width=True)
+    st.plotly_chart(fig_h, width="stretch")
 
     st.divider()
 
@@ -231,7 +231,7 @@ if df is not None and not df.empty:
             .rename(columns={"date": "Date", "artist_name": "Artist", "track_name": "Track", "minutes": "Min"})
         )
         recent["Min"] = recent["Min"].round(1)
-        st.dataframe(recent, use_container_width=True, hide_index=True)
+        st.dataframe(recent, width="stretch", hide_index=True)
 
 else:
     st.info(
@@ -284,4 +284,4 @@ if DAILY10_AUDIT.exists():
     c1.metric("Playlists Generated", audit["date"].nunique() if "date" in audit.columns else 0)
     c2.metric("Total Tracks Queued", len(audit))
     with st.expander("Full audit log"):
-        st.dataframe(audit.sort_values("date", ascending=False), use_container_width=True, hide_index=True)
+        st.dataframe(audit.sort_values("date", ascending=False), width="stretch", hide_index=True)

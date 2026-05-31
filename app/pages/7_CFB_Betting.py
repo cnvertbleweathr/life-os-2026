@@ -132,7 +132,7 @@ if edges is not None and not edges.empty:
             "over_pct":             "Over %",
             "avg_margin_vs_spread": "Avg Margin Error",
         }),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "ATS Cover %": st.column_config.ProgressColumn(
@@ -188,7 +188,7 @@ if conf_data is not None and not conf_data.empty:
         xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
         yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -238,7 +238,7 @@ with col1:
             font=dict(color="#FAFAFA"),
             margin=dict(l=0, r=0, t=10, b=0),
         )
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, width="stretch")
 
 with col2:
     st.markdown("**Over % by Spread Size**")
@@ -257,7 +257,7 @@ with col2:
             font=dict(color="#FAFAFA"),
             margin=dict(l=0, r=0, t=10, b=0),
         )
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, width="stretch")
 
 st.divider()
 
@@ -293,7 +293,7 @@ recent = safe_query(f"""
 if recent is not None and not recent.empty:
     st.dataframe(
         recent,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "spread_result": st.column_config.TextColumn("ATS Result"),

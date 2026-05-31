@@ -102,7 +102,7 @@ books = safe_query(f"""
 if books is not None and not books.empty:
     st.dataframe(
         books,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "classification": st.column_config.TextColumn("Type"),

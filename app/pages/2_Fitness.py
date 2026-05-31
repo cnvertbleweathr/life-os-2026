@@ -88,7 +88,7 @@ weekly = safe_query("""
 
 if weekly is not None and not weekly.empty:
     st.markdown("**Weekly Miles**")
-    st.bar_chart(weekly.set_index("week")["miles"], use_container_width=True)
+    st.bar_chart(weekly.set_index("week")["miles"], width="stretch")
 
 recent_runs = safe_query("""
     SELECT
@@ -105,7 +105,7 @@ recent_runs = safe_query("""
 
 if recent_runs is not None and not recent_runs.empty:
     st.markdown("**Recent Runs**")
-    st.dataframe(recent_runs, use_container_width=True, hide_index=True)
+    st.dataframe(recent_runs, width="stretch", hide_index=True)
 
 # ---------------------------------------------------------------------------
 # CrossFit / SugarWOD
@@ -160,7 +160,7 @@ full_weeks = pd.DataFrame({"week": all_week_labels})
 classes_per_week = full_weeks.merge(classes_per_week, on="week", how="left").fillna(0)
 classes_per_week["classes"] = classes_per_week["classes"].astype(int)
 
-st.bar_chart(classes_per_week.set_index("week")["classes"], use_container_width=True)
+st.bar_chart(classes_per_week.set_index("week")["classes"], width="stretch")
 
 # ---------------------------------------------------------------------------
 # Lift progressions
@@ -234,7 +234,7 @@ if not lifts_df.empty:
             yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
         lift_maxes = (
             lifts_df[lifts_df["barbell_lift"].isin(selected_lifts)]
@@ -249,7 +249,7 @@ if not lifts_df.empty:
             })
             .sort_values("Best (lbs)", ascending=False)
         )
-        st.dataframe(lift_maxes, use_container_width=True, hide_index=True)
+        st.dataframe(lift_maxes, width="stretch", hide_index=True)
 
 # ---------------------------------------------------------------------------
 # PR log
@@ -268,4 +268,4 @@ prs = wods[wods["is_pr"]].sort_values("date", ascending=False)[
 })
 
 if not prs.empty:
-    st.dataframe(prs, use_container_width=True, hide_index=True)
+    st.dataframe(prs, width="stretch", hide_index=True)

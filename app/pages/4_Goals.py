@@ -82,4 +82,4 @@ for domain in (
 
 # Raw table toggle
 with st.expander("Raw data"):
-    st.dataframe(filtered, use_container_width=True, hide_index=True)
+    st.dataframe(filtered, width="stretch", hide_index=True)

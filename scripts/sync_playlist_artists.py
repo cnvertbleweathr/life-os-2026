@@ -101,13 +101,14 @@ def parse_dt(s: str):
 
 
 def normalize_artist(name: str) -> str:
-    """Lowercase + strip for fuzzy matching."""
     return name.lower().strip()
 
 
-def find_matching_shows(my_artists: set[str], show_rows: list[dict]) -> list[dict]:
-    """Find shows where the title contains any of my artist names."""
-    normalized = {normalize_artist(a): a for a in my_artists}
+def find_matching_shows(my_artists, show_rows, my_artists_lower):
+    # Filter out artists with names too short to match reliably
+    normalized = {a: o for a, o in 
+                  {normalize_artist(a): a for a in my_artists}.items() 
+                  if len(a) >= 4}  # skip single letters / very short names
     now = datetime.now(tz=DENVER_TZ)
     matches = []
     seen_keys = set()
@@ -175,7 +176,8 @@ def main() -> None:
         print("  No shows data yet — run daily_sync --only aeg_events ticketmaster first")
         my_shows = []
     else:
-        my_shows = find_matching_shows(combined, show_rows)
+        my_artists_lower = {a.lower().strip() for a in combined}
+        my_shows = find_matching_shows(combined, show_rows, my_artists_lower)
         print(f"  Found {len(my_shows)} shows featuring your artists:")
         for s in my_shows:
             print(f"    ⭐ {s['artist']} — {s['title']} @ {s['venue']} · {s['date_str']}")

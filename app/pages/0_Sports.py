@@ -168,7 +168,7 @@ else:
             with col_img:
                 img = article.get("urlToImage")
                 if img:
-                    st.image(img, use_container_width=True)
+                    st.image(img, width="stretch")
                 else:
                     st.markdown(f"### {team_cfg['emoji']}")
             with col_text:

@@ -93,7 +93,7 @@ with st.form("habit_form"):
                 key=f"habit_{key}",
             )
 
-    submitted = st.form_submit_button("💾 Save", type="primary", use_container_width=True)
+    submitted = st.form_submit_button("💾 Save", type="primary", width="stretch")
     if submitted:
         save_today(checked)
         done_count = sum(checked.values())
@@ -191,7 +191,7 @@ if performance is not None and not performance.empty:
 
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "🧘": st.column_config.CheckboxColumn(disabled=True),
