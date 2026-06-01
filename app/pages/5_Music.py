@@ -1,5 +1,5 @@
 """
-Music page — Spotify streaming stats + Daily 10 playlist.
+Music page — Spotify streaming stats + Daily 10 playlist + Music News.
 """
 
 import json
@@ -9,20 +9,21 @@ from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
+import requests as _req
 import streamlit as st
+from dotenv import load_dotenv
 
 import sys
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app"))
 from ons_theme import apply_theme
 apply_theme()
 
 ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(ROOT / ".env")
 
 STREAMS_CLEAN   = ROOT / "data" / "spotify" / "processed" / "streams_clean.csv"
 SPOTIFY_SUMMARY = ROOT / "data" / "spotify" / "metrics" / f"spotify_summary_{date.today().year}.csv"
 DAILY10_LATEST  = ROOT / "data" / "spotify" / "processed" / "daily10_latest.json"
-DAILY10_AUDIT   = ROOT / "data" / "spotify" / "processed" / "daily10_audit.csv"
 
 st.set_page_config(page_title="Music · Operating Narcisystem", page_icon="🎵", layout="wide")
 st.title("🎵 Music")
@@ -58,67 +59,158 @@ if SPOTIFY_SUMMARY.exists():
 
 
 # ---------------------------------------------------------------------------
-# Top-line metrics
+# Daily 10  (TOP of page)
 # ---------------------------------------------------------------------------
 
-if summary is not None:
-    total_min    = float(summary.get("spotify_minutes_ytd", 0))
-    goal_min     = float(summary.get("spotify_goal_minutes", 50000))
-    days_on      = int(float(summary.get("spotify_days_listened_ytd", 0)))
-    unique_art   = int(float(summary.get("spotify_unique_artists_ytd", 0)))
-    unique_trk   = int(float(summary.get("spotify_unique_tracks_ytd", 0)))
-    top_artist   = summary.get("spotify_top_artist_ytd", "")
-    pct          = float(summary.get("spotify_progress_pct", 0))
+st.subheader("🎲 Daily 10")
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Minutes Streamed", f"{int(total_min):,}", f"{int(total_min/60):,} hrs")
-    c2.metric("Days Listened", days_on)
-    c3.metric("Unique Artists", f"{unique_art:,}")
-    c4.metric("Unique Tracks", f"{unique_trk:,}")
-    c5.metric("Top Artist", top_artist)
+@st.cache_data(ttl=3600)
+def fetch_spotify_playlist_description(playlist_id: str) -> str:
+    """Fetch playlist description live from Spotify API using client credentials."""
+    client_id     = os.getenv("SPOTIFY_CLIENT_ID", "")
+    client_secret = os.getenv("SPOTIFY_CLIENT_SECRET", "")
+    if not client_id or not client_secret:
+        return ""
+    try:
+        import base64
+        token_resp = __import__("requests").post(
+            "https://accounts.spotify.com/api/token",
+            headers={"Authorization": "Basic " + base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()},
+            data={"grant_type": "client_credentials"},
+            timeout=10,
+        )
+        token_resp.raise_for_status()
+        token = token_resp.json().get("access_token", "")
+        if not token:
+            return ""
+        pl_resp = __import__("requests").get(
+            f"https://api.spotify.com/v1/playlists/{playlist_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"fields": "description"},
+            timeout=10,
+        )
+        pl_resp.raise_for_status()
+        return pl_resp.json().get("description", "") or ""
+    except Exception:
+        return ""
 
-    st.progress(min(int(pct), 100), text=f"{pct:.1f}% of {int(goal_min):,} min annual goal")
+
+if DAILY10_LATEST.exists():
+    latest = json.loads(DAILY10_LATEST.read_text())
+    playlist_id      = latest.get("playlist_id", "")
+    playlist_date    = latest.get("date", "")
+    description      = latest.get("description_full") or latest.get("description", "")
+    tewnidge_artists = latest.get("tewnidge_artists", [])
+    is_fresh = playlist_date == date.today().isoformat()
+
+    # If description wasn't persisted to JSON yet, pull it live from Spotify
+    if not description and playlist_id:
+        description = fetch_spotify_playlist_description(playlist_id)
+
+    col_embed, col_info = st.columns([2, 1])
+
+    with col_embed:
+        if playlist_id:
+            st.components.v1.iframe(
+                f"https://open.spotify.com/embed/playlist/{playlist_id}?utm_source=generator&theme=0",
+                height=400,
+            )
+            st.markdown(f"[🔗 Open in Spotify](https://open.spotify.com/playlist/{playlist_id})")
+
+    with col_info:
+        if description:
+            st.markdown(
+                f"""
+                <div style="
+                    background: rgba(255,255,255,0.05);
+                    border: 1px solid rgba(255,255,255,0.12);
+                    border-radius: 8px;
+                    padding: 16px 18px;
+                    font-size: 0.88rem;
+                    line-height: 1.55;
+                    color: #e0e0e0;
+                    box-sizing: border-box;
+                ">
+                    {description}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        elif not is_fresh:
+            st.warning(f"Last generated: {playlist_date}")
+            st.caption("Run `python scripts/spotify_daily10_playlist.py`")
+        else:
+            st.caption("No description yet — run `python scripts/spotify_daily10_decorate.py`")
+
+else:
+    st.info("No Daily 10 yet. Run `python scripts/spotify_daily10_playlist.py --no-decorate`")
 
 st.divider()
 
+
 # ---------------------------------------------------------------------------
-# Monthly listening trend
+# Row 1: YTD stats  |  Monthly listening
 # ---------------------------------------------------------------------------
 
 if df is not None and not df.empty:
-    st.subheader("📈 Monthly Listening")
+    row1_l, row1_r = st.columns([1, 2])
 
-    monthly = (
-        df.groupby("month")["minutes"]
-        .sum()
-        .reset_index()
-        .sort_values("month")
-    )
-    monthly["hours"] = (monthly["minutes"] / 60).round(1)
+    with row1_l:
+        st.markdown("**📊 Year to Date**")
+        if summary is not None:
+            total_min  = float(summary.get("spotify_minutes_ytd", 0))
+            goal_min   = float(summary.get("spotify_goal_minutes", 50000))
+            days_on    = int(float(summary.get("spotify_days_listened_ytd", 0)))
+            unique_art = int(float(summary.get("spotify_unique_artists_ytd", 0)))
+            unique_trk = int(float(summary.get("spotify_unique_tracks_ytd", 0)))
+            top_artist = summary.get("spotify_top_artist_ytd", "")
+            pct        = float(summary.get("spotify_progress_pct", 0))
 
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=monthly["month"],
-        y=monthly["hours"],
-        marker_color="#1DB954",
-        hovertemplate="%{x}<br>%{y:.1f} hrs<extra></extra>",
-    ))
-    fig.update_layout(
-        xaxis_title=None,
-        yaxis_title="Hours",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#FAFAFA"),
-        margin=dict(l=0, r=0, t=10, b=0),
-        xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
-    )
-    st.plotly_chart(fig, width="stretch")
+            ma, mb = st.columns(2)
+            ma.metric("Minutes", f"{int(total_min):,}", f"{int(total_min/60):,} hrs")
+            mb.metric("Days Active", days_on)
+            mc, md = st.columns(2)
+            mc.metric("Artists", f"{unique_art:,}")
+            md.metric("Tracks", f"{unique_trk:,}")
+            st.metric("Top Artist", top_artist)
+            st.progress(min(int(pct), 100), text=f"{pct:.1f}% of {int(goal_min/1000):.0f}k min goal")
+        else:
+            st.info("No summary data yet.")
+
+    with row1_r:
+        st.markdown("**📈 Monthly Listening**")
+        monthly = (
+            df.groupby("month")["minutes"]
+            .sum()
+            .reset_index()
+            .sort_values("month")
+        )
+        monthly["hours"] = (monthly["minutes"] / 60).round(1)
+
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=monthly["month"],
+            y=monthly["hours"],
+            marker_color="#1DB954",
+            hovertemplate="%{x}<br>%{y:.1f} hrs<extra></extra>",
+        ))
+        fig.update_layout(
+            xaxis_title=None,
+            yaxis_title="Hours",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#FAFAFA"),
+            margin=dict(l=0, r=0, t=4, b=0),
+            height=300,
+            xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     st.divider()
 
     # ---------------------------------------------------------------------------
-    # Top artists + top tracks side by side
+    # Row 2: Top artists  |  Top tracks
     # ---------------------------------------------------------------------------
 
     st.subheader("🎤 Top Artists & Tracks · 2026")
@@ -152,7 +244,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_a, width="stretch")
+        st.plotly_chart(fig_a, use_container_width=True)
 
     with col_t:
         st.markdown("**Top 15 Tracks by Play Count**")
@@ -180,58 +272,51 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_t, width="stretch")
+        st.plotly_chart(fig_t, use_container_width=True)
 
     st.divider()
 
     # ---------------------------------------------------------------------------
-    # Listening heatmap — hour of day x day of week
+    # Row 3: Heatmap  |  Recent listens
     # ---------------------------------------------------------------------------
 
-    st.subheader("🕐 When You Listen")
+    row3_l, row3_r = st.columns([3, 2])
 
-    df["dow"] = pd.to_datetime(df["date"]).dt.day_name()
-    heatmap = (
-        df.groupby(["dow", "hour"])["minutes"]
-        .sum()
-        .reset_index()
-    )
+    with row3_l:
+        st.markdown("**🕐 When You Listen**")
+        df["dow"] = pd.to_datetime(df["date"]).dt.day_name()
+        heatmap_data = df.groupby(["dow", "hour"])["minutes"].sum().reset_index()
 
-    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    pivot = heatmap.pivot(index="dow", columns="hour", values="minutes").reindex(day_order).fillna(0)
+        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        pivot = heatmap_data.pivot(index="dow", columns="hour", values="minutes").reindex(day_order).fillna(0)
 
-    fig_h = go.Figure(go.Heatmap(
-        z=pivot.values,
-        x=[f"{h:02d}:00" for h in pivot.columns],
-        y=pivot.index.tolist(),
-        colorscale=[[0, "#1a1a2e"], [0.5, "#1DB954"], [1.0, "#ffffff"]],
-        hovertemplate="%{y} %{x}<br>%{z:.0f} min<extra></extra>",
-    ))
-    fig_h.update_layout(
-        xaxis_title="Hour of Day",
-        yaxis_title=None,
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#FAFAFA"),
-        margin=dict(l=0, r=0, t=10, b=0),
-        height=260,
-    )
-    st.plotly_chart(fig_h, width="stretch")
+        fig_h = go.Figure(go.Heatmap(
+            z=pivot.values,
+            x=[f"{h:02d}:00" for h in pivot.columns],
+            y=pivot.index.tolist(),
+            colorscale=[[0, "#1a1a2e"], [0.5, "#1DB954"], [1.0, "#ffffff"]],
+            hovertemplate="%{y} %{x}<br>%{z:.0f} min<extra></extra>",
+        ))
+        fig_h.update_layout(
+            xaxis_title="Hour of Day",
+            yaxis_title=None,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#FAFAFA"),
+            margin=dict(l=0, r=0, t=4, b=0),
+            height=280,
+        )
+        st.plotly_chart(fig_h, use_container_width=True)
 
-    st.divider()
-
-    # ---------------------------------------------------------------------------
-    # Recent listens
-    # ---------------------------------------------------------------------------
-
-    with st.expander("🕓 Recent Listens"):
+    with row3_r:
+        st.markdown("**🕓 Recent Listens**")
         recent = (
             df.sort_values("date", ascending=False)
-            .head(50)[["date", "artist_name", "track_name", "minutes"]]
+            .head(20)[["date", "artist_name", "track_name", "minutes"]]
             .rename(columns={"date": "Date", "artist_name": "Artist", "track_name": "Track", "minutes": "Min"})
         )
         recent["Min"] = recent["Min"].round(1)
-        st.dataframe(recent, width="stretch", hide_index=True)
+        st.dataframe(recent, use_container_width=True, hide_index=True, height=280)
 
 else:
     st.info(
@@ -239,49 +324,70 @@ else:
         "`data/spotify/raw/streaming_history/` and run:\n"
         "```bash\npython scripts/spotify_ingest_streaming.py\npython scripts/spotify_metrics.py\n```"
     )
-
 st.divider()
 
+
 # ---------------------------------------------------------------------------
-# Daily 10
+# Music News  (NewsAPI — same pattern as Sports/Home)
 # ---------------------------------------------------------------------------
 
-st.subheader("🎲 Daily 10")
-st.caption("5 from your top 500 · 5 unheard Tewnidge artists")
+st.subheader("📰 Music News")
 
-if DAILY10_LATEST.exists():
-    latest = json.loads(DAILY10_LATEST.read_text())
-    playlist_id   = latest.get("playlist_id", "")
-    playlist_date = latest.get("date", "")
-    is_fresh = playlist_date == date.today().isoformat()
+NEWS_API_KEY = os.getenv("NEWS_API_KEY", "")
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        if playlist_id:
-            st.components.v1.iframe(
-                f"https://open.spotify.com/embed/playlist/{playlist_id}?utm_source=generator&theme=0",
-                height=380,
-            )
-    with col2:
-        st.metric("Playlist date", playlist_date)
-        if is_fresh:
-            st.success("✓ Today's playlist is ready")
-        else:
-            st.warning(f"Last generated: {playlist_date}")
-            st.caption("Run `python scripts/spotify_daily10_playlist.py --no-decorate`")
-        if playlist_id:
-            st.markdown(f"[Open in Spotify](https://open.spotify.com/playlist/{playlist_id})")
+
+def fetch_music_news_headlines(api_key: str, page_size: int = 6) -> list[dict]:
+    """Reliable baseline — entertainment top headlines."""
+    if not api_key:
+        return []
+    try:
+        r = _req.get(
+            "https://newsapi.org/v2/top-headlines",
+            params={"category": "entertainment", "country": "us",
+                    "apiKey": api_key, "pageSize": page_size},
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json().get("articles", [])
+    except Exception:
+        return []
+
+
+def render_news_articles(articles: list[dict]) -> None:
+    for article in articles:
+        col_img, col_text = st.columns([1, 3])
+        with col_img:
+            img = article.get("urlToImage")
+            if img:
+                st.image(img, use_container_width=True)
+            else:
+                st.markdown("🎵")
+        with col_text:
+            title  = article.get("title", "")
+            source = article.get("source", {}).get("name", "")
+            url    = article.get("url", "")
+            pub    = article.get("publishedAt", "")
+            desc   = article.get("description", "")
+            pub_fmt = ""
+            if pub:
+                try:
+                    pub_fmt = datetime.fromisoformat(pub.replace("Z", "+00:00")).astimezone().strftime("%b %d, %I:%M %p")
+                except Exception:
+                    pub_fmt = pub[:10]
+            st.markdown(f"**[{title}]({url})**")
+            st.caption(f"{source} · {pub_fmt}")
+            if desc:
+                st.markdown(f"_{desc[:200]}_")
+        st.divider()
+
+
+if not NEWS_API_KEY:
+    st.info("Add `NEWS_API_KEY` to your `.env` to enable music news.")
 else:
-    st.info("No Daily 10 yet. Run `python scripts/spotify_daily10_playlist.py --no-decorate`")
+    with st.spinner("Fetching music news…"):
+        articles = fetch_music_news_headlines(NEWS_API_KEY, page_size=8)
 
-# Audit log
-if DAILY10_AUDIT.exists():
-    st.divider()
-    st.subheader("📋 Playlist History")
-    audit = pd.read_csv(DAILY10_AUDIT)
-    audit.columns = [c.strip() for c in audit.columns]
-    c1, c2 = st.columns(2)
-    c1.metric("Playlists Generated", audit["date"].nunique() if "date" in audit.columns else 0)
-    c2.metric("Total Tracks Queued", len(audit))
-    with st.expander("Full audit log"):
-        st.dataframe(audit.sort_values("date", ascending=False), width="stretch", hide_index=True)
+    if articles:
+        render_news_articles(articles)
+    else:
+        st.caption("No recent music news found.")

@@ -448,6 +448,20 @@ def main() -> int:
     print("Updating playlist description…")
     _spotify_update_description(sp, args.playlist_id, desc, max_len=args.max_desc)
 
+    # Persist decorated description back to daily10_latest.json so the dashboard can display it
+    import json
+    from pathlib import Path
+    _latest_path = Path(__file__).resolve().parents[1] / "data" / "spotify" / "processed" / "daily10_latest.json"
+    if _latest_path.exists():
+        try:
+            _payload = json.loads(_latest_path.read_text(encoding="utf-8"))
+            _payload["description"] = _spotify_sanitize_description(desc, max_len=args.max_desc)
+            _payload["description_full"] = desc.strip()
+            _latest_path.write_text(json.dumps(_payload, indent=2), encoding="utf-8")
+            print(f"Updated description in {_latest_path}")
+        except Exception as _e:
+            print(f"Warning: could not update daily10_latest.json description: {_e}")
+
     print("Done.")
     return 0
 

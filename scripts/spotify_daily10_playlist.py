@@ -189,11 +189,19 @@ def create_or_replace_playlist(sp, name, description, public, uris) -> str:
 # --------------------
 # Latest Pointer + Decorate
 # --------------------
-def write_latest_pointer(date_str: str, playlist_id: str):
+def write_latest_pointer(
+    date_str: str,
+    playlist_id: str,
+    *,
+    description: str = "",
+    tewnidge_artists: list[str] | None = None,
+):
     payload = {
         "date": date_str,
         "playlist_id": playlist_id,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "description": description,
+        "tewnidge_artists": tewnidge_artists or [],
     }
     LATEST_JSON.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote latest pointer: {LATEST_JSON}")
@@ -270,6 +278,7 @@ def main() -> int:
 
     # Bucket B — unheard tracks from random Tewnidge artists
     b_count = 0
+    used_b_artists: list[str] = []
     for artist_name in bucket_b_artists:
         if b_count >= args.b_picks:
             break
@@ -290,6 +299,7 @@ def main() -> int:
             # Also skip if it's in tewnidge already (we want new discoveries)
             final_uris.append(uri)
             b_count += 1
+            used_b_artists.append(artist_name)
             print(f"  Bucket B: {artist_name} — {track['name']}")
             break
 
@@ -315,7 +325,12 @@ def main() -> int:
         sp, playlist_name, description, args.public, final_uris
     )
 
-    write_latest_pointer(args.date, playlist_id)
+    write_latest_pointer(
+        args.date,
+        playlist_id,
+        description=description,
+        tewnidge_artists=used_b_artists,
+    )
 
     print(f"Created/Replaced playlist: {playlist_name}")
     print(f"DAILY10_PLAYLIST_ID={playlist_id}")
