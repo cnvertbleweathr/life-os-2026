@@ -68,6 +68,60 @@ else:
     st.caption("No reading data. Run `python run_pipelines.py --only hardcover`.")
 
 # ---------------------------------------------------------------------------
+# Books in Progress
+# ---------------------------------------------------------------------------
+
+in_progress = safe_query("""
+    SELECT
+        title,
+        authors,
+        classification,
+        cached_tags
+    FROM hardcover.books_read
+    WHERE year = year(current_date)
+      AND status = 'reading'
+    ORDER BY marked_read_at DESC
+""")
+
+# Fallback — some Hardcover configs use different status values
+if in_progress is None or in_progress.empty:
+    in_progress = safe_query("""
+        SELECT title, authors, classification, cached_tags
+        FROM hardcover.books_read
+        WHERE year = year(current_date)
+          AND lower(status) IN ('reading', 'in progress', 'current', 'currently reading')
+        ORDER BY marked_read_at DESC
+    """)
+
+if in_progress is not None and not in_progress.empty:
+    st.subheader("📖 Currently Reading")
+    cols = st.columns(min(len(in_progress), 3))
+    for i, (_, book) in enumerate(in_progress.iterrows()):
+        with cols[i % 3]:
+            classification = str(book.get("classification", "")).lower()
+            type_badge_color = "#0B5324" if classification == "fiction" else "#D97706"
+            type_label = classification.title() if classification else "Unknown"
+            st.markdown(
+                f"<div style='background:#373D39;border:1px solid #434A45;"
+                f"border-top:3px solid {type_badge_color};"
+                f"border-radius:6px;padding:1rem 1.1rem'>"
+                f"<div style='font-size:0.6rem;font-weight:600;letter-spacing:2px;"
+                f"text-transform:uppercase;color:#A9B2AC;margin-bottom:0.4rem'>"
+                f"{type_label}</div>"
+                f"<div style='font-weight:600;font-size:0.9rem;color:#F5EFEB;"
+                f"line-height:1.4;margin-bottom:0.3rem'>{book['title']}</div>"
+                f"<div style='font-size:0.75rem;color:#A9B2AC'>{book['authors']}</div>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+    st.space("small")
+elif in_progress is not None:
+    st.subheader("📖 Currently Reading")
+    st.caption("No books currently marked as 'reading' in Hardcover.")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
 # Book list
 # ---------------------------------------------------------------------------
 
