@@ -42,6 +42,16 @@ ONS_CSS = """
   --orange-glow:   rgba(217,119,6,0.15);
 }
 
+/* ── Hide Streamlit chrome ───────────────────────────────────── */
+[data-testid="stToolbar"],
+[data-testid="stDecoration"],
+[data-testid="stStatusWidget"],
+header[data-testid="stHeader"] {
+  display: none !important;
+}
+.stApp > header { display: none !important; }
+.stAppDeployButton { display: none !important; }
+
 /* ── Global reset & font ──────────────────────────────────────── */
 @font-face {
   font-family: 'Space Grotesk';
