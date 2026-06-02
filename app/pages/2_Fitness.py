@@ -6,17 +6,22 @@ import streamlit as st
 import duckdb
 import pandas as pd
 import plotly.graph_objects as go
+import json
+import re
+from datetime import date
 from pathlib import Path
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app"))
-from ons_theme import apply_theme
+from ons_theme import apply_theme, section_header
 apply_theme()
 
 ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 SUGARWOD_CLEAN = ROOT / "data" / "sugarwod" / "processed" / "workouts_clean.csv"
+WOD_PATH  = ROOT / "data" / "fitness" / "wod_today.json"
+PH_LOGO   = ROOT / "app" / "static" / "parkhill_logo.png"
 
 st.set_page_config(page_title="Fitness · Operating Narcisystem", page_icon="💪", layout="wide")
 st.title("💪 Fitness")
@@ -44,6 +49,110 @@ def load_sugarwod() -> pd.DataFrame | None:
     return df[df["date"].dt.year == 2026].copy()
 
 
+@st.cache_data(ttl=600)
+def load_wod() -> dict:
+    if not WOD_PATH.exists():
+        return {}
+    try:
+        return json.loads(WOD_PATH.read_text())
+    except Exception:
+        return {}
+
+
+def find_similar_wods(movements: list[str], wods_df: pd.DataFrame) -> pd.DataFrame:
+    """Find past SugarWOD entries that share movements with today's WOD."""
+    if wods_df is None or wods_df.empty or not movements:
+        return pd.DataFrame()
+    pattern = "|".join(re.escape(m) for m in movements[:6])
+    mask = (
+        wods_df["title"].str.contains(pattern, case=False, na=False) |
+        wods_df["barbell_lift"].str.contains(pattern, case=False, na=False) |
+        wods_df["description"].str.contains(pattern, case=False, na=False)
+    )
+    return wods_df[mask].sort_values("date", ascending=False).head(5)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TODAY'S WOD
+# ─────────────────────────────────────────────────────────────────────────────
+
+section_header("💪 Today's WOD — CrossFit Park Hill")
+
+wod  = load_wod()
+wods = load_sugarwod()
+
+if wod.get("fetched_ok") and wod.get("text"):
+    col_logo_wod, col_wod_text, col_similar = st.columns([1, 3, 2], gap="medium")
+
+    with col_logo_wod:
+        if PH_LOGO.exists():
+            st.image(str(PH_LOGO), width=160)
+        wod_date = wod.get("date", "")
+        if wod_date != date.today().isoformat():
+            st.caption(f"⚠️ Showing {wod_date}")
+        else:
+            st.caption(f"📅 {wod_date}")
+
+    with col_wod_text:
+        wod_text = wod["text"]
+        sections = re.split(r'\b([A-Z])\.\s+', wod_text)
+        if len(sections) > 1:
+            i = 1
+            while i < len(sections) - 1:
+                letter  = sections[i]
+                content = re.sub(r'https?://\S+', '', sections[i + 1]).strip()
+                st.markdown(
+                    f"<div style='margin:0.3rem 0;font-size:0.85rem;line-height:1.5'>"
+                    f"<span style='color:#c8501a;font-weight:bold;font-size:0.9rem'>{letter}.</span> "
+                    f"{content}</div>",
+                    unsafe_allow_html=True,
+                )
+                i += 2
+        else:
+            clean = re.sub(r'https?://\S+', '', wod_text).strip()
+            st.markdown(f"<div style='font-size:0.85rem;line-height:1.5'>{clean}</div>",
+                        unsafe_allow_html=True)
+
+    with col_similar:
+        movements = wod.get("movements", [])
+        if movements:
+            st.caption(f"Movements: {', '.join(movements[:6])}")
+        similar = find_similar_wods(movements, wods)
+        if not similar.empty:
+            st.markdown("**Past results — similar movements**")
+            cards = []
+            for _, row in similar.iterrows():
+                pr_star = " ⭐" if row.get("is_pr") else ""
+                result  = row.get("best_result_display", "")
+                title   = row.get("title", "")
+                dt      = row["date"].strftime("%b %d, %Y") if pd.notna(row["date"]) else ""
+                cards.append(
+                    f"<div style='background:#0a2a36;border-left:2px solid #c8501a;"
+                    f"padding:0.3rem 0.6rem;margin:0.15rem 0;font-size:0.76rem'>"
+                    f"<b>{title}</b>{pr_star}<br>"
+                    f"<span style='color:#ffcc44'>{result}</span> "
+                    f"<span style='color:#a09880;font-size:0.68rem'>· {dt}</span>"
+                    f"</div>"
+                )
+            st.markdown(
+                "<div style='max-height:220px;overflow-y:auto'>"
+                + "".join(cards) + "</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("No past results found for today's movements.")
+else:
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if PH_LOGO.exists():
+            st.image(str(PH_LOGO), width=140)
+    with col2:
+        if wod:
+            st.caption(f"WOD fetch failed: {wod.get('error', 'unknown')}")
+        st.caption("Run `python scripts/fetch_wod.py` or `python scripts/daily_sync.py`.")
+
+
+
 # ---------------------------------------------------------------------------
 # Running summary
 # ---------------------------------------------------------------------------
@@ -55,17 +164,17 @@ running = safe_query("SELECT * FROM strava.running_summary WHERE year = 2026")
 if running is not None and not running.empty:
     r = running.iloc[0]
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Miles YTD", f"{r['miles_total']:.1f}", f"goal: {r['miles_goal']:.0f}")
-    c2.metric("Runs", int(r["runs_count"]))
-    c3.metric("Miles/Week", f"{r['miles_per_week']:.1f}", f"need: {r['required_miles_per_week']:.1f}")
+    c1.metric("Miles YTD", f"{r['miles_total']:.1f}", f"goal: {r['miles_goal']:.0f}", border=True)
+    c2.metric("Runs", int(r["runs_count"]), border=True)
+    c3.metric("Miles/Week", f"{r['miles_per_week']:.1f}", f"need: {r['required_miles_per_week']:.1f}", border=True)
     if r.get("avg_pace_min_per_mile"):
         mins = int(r["avg_pace_min_per_mile"])
         secs = int((r["avg_pace_min_per_mile"] - mins) * 60)
-        c4.metric("Avg Pace", f"{mins}:{secs:02d}/mi")
+        c4.metric("Avg Pace", f"{mins}:{secs:02d}/mi", border=True)
     pct = float(r["miles_progress_pct"])
     st.progress(min(int(pct), 100), text=f"{pct:.1f}% of annual goal")
 else:
-    st.info("No running data. Run `python run_pipelines.py --only strava`.")
+    st.caption("No running data. Run `python run_pipelines.py --only strava`.")
 
 # Weekly mileage — all weeks including zeros
 weekly = safe_query("""
@@ -111,13 +220,12 @@ if recent_runs is not None and not recent_runs.empty:
 # CrossFit / SugarWOD
 # ---------------------------------------------------------------------------
 
-st.divider()
 st.subheader("🏋️ CrossFit")
 
 wods = load_sugarwod()
 
 if wods is None:
-    st.info("No CrossFit data. Run `python scripts/import_sugarwod_csv.py --input /path/to/workouts.csv`.")
+    st.caption("No CrossFit data. Run `python scripts/import_sugarwod_csv.py --input /path/to/workouts.csv`.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -131,10 +239,10 @@ rx_rate = round(rx_count / len(wods) * 100, 1) if len(wods) else 0
 goal_classes = 160
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Classes YTD", total_classes, f"goal: {goal_classes}")
-c2.metric("Progress", f"{round(total_classes / goal_classes * 100, 1)}%")
-c3.metric("PRs Set", int(total_prs))
-c4.metric("RX Rate", f"{rx_rate}%")
+c1.metric("Classes YTD", total_classes, f"goal: {goal_classes}", border=True)
+c2.metric("Progress", f"{round(total_classes / goal_classes * 100, 1)}%", border=True)
+c3.metric("PRs Set", int(total_prs), border=True)
+c4.metric("RX Rate", f"{rx_rate}%", border=True)
 
 st.progress(min(int(total_classes / goal_classes * 100), 100))
 
@@ -142,7 +250,8 @@ st.progress(min(int(total_classes / goal_classes * 100), 100))
 # Attendance — classes per week
 # ---------------------------------------------------------------------------
 
-st.markdown("**Classes Per Week**")
+st.subheader("Classes per week")
+
 
 wods["week"] = wods["date"].dt.strftime("%Y-W%W")
 classes_per_week = (
@@ -166,7 +275,8 @@ st.bar_chart(classes_per_week.set_index("week")["classes"], width="stretch")
 # Lift progressions
 # ---------------------------------------------------------------------------
 
-st.markdown("**Lift Progressions**")
+st.subheader("Lift progressions")
+
 
 lifts_df = wods[
     (wods["score_type"] == "Load") &
@@ -255,7 +365,8 @@ if not lifts_df.empty:
 # PR log
 # ---------------------------------------------------------------------------
 
-st.markdown("**PR Log · 2026**")
+st.subheader("PR log · 2026")
+
 
 prs = wods[wods["is_pr"]].sort_values("date", ascending=False)[
     ["date", "title", "barbell_lift", "best_result_display", "rx_or_scaled"]
