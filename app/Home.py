@@ -149,15 +149,18 @@ with st.sidebar:
 # HEADER
 # ─────────────────────────────────────────────────────────────────────────────
 
-st.markdown(
-    f"<h1 style='margin-bottom:0.1rem;padding-bottom:0.2rem'>"
-    f"🧭 Operating Narcisystem"
-    f"<span style='font-family:Josefin Sans,sans-serif;font-size:0.7rem;"
-    f"letter-spacing:4px;color:#A9B2AC;text-transform:uppercase;"
-    f"margin-left:1.5rem;vertical-align:middle'>"
-    f"{today.strftime('%A, %B %d, %Y')}</span></h1>",
-    unsafe_allow_html=True,
-)
+col_logo_hdr, col_date_hdr = st.columns([1, 5])
+with col_logo_hdr:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=200)
+with col_date_hdr:
+    st.markdown(
+        f"<div style='display:flex;align-items:center;height:100%;padding-top:0.6rem'>"
+        f"<span style='font-family:Space Grotesk,sans-serif;font-size:0.75rem;"
+        f"letter-spacing:4px;color:#A9B2AC;text-transform:uppercase'>"
+        f"{today.strftime('%A, %B %d, %Y')}</span></div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
