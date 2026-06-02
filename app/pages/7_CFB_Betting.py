@@ -41,13 +41,7 @@ def safe_query(sql: str, params=None) -> pd.DataFrame | None:
 
 seasons_df = safe_query("SELECT DISTINCT season FROM cfbd.lines ORDER BY season DESC")
 if seasons_df is None or seasons_df.empty:
-    st.info(
-        "No CFB data yet. Run:\n"
-        "```bash\n"
-        "python pipelines/cfbd_pipeline.py --year 2021 --end-year 2024 --skip-advanced\n"
-        "dbt run --profiles-dir dbt/profiles --project-dir dbt --select mart_cfbd_line_accuracy mart_cfbd_edge_factors\n"
-        "```"
-    )
+    st.caption("No CFB data yet. Run the CFBD pipeline and dbt to populate.")
     st.stop()
 
 available_seasons = seasons_df["season"].tolist()
@@ -83,19 +77,18 @@ summary = safe_query(f"""
 if summary is not None and not summary.empty:
     r = summary.iloc[0]
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Games Analyzed", f"{int(r['games']):,}")
+    c1.metric("Games Analyzed", f"{int(r['games']):,}", border=True)
     c2.metric("ATS Cover Rate", f"{r['ats_pct']}%",
               delta=f"{r['ats_pct'] - 50:.1f}% vs 50%",
-              delta_color="normal")
+              delta_color="normal", border=True)
     c3.metric("Over Rate", f"{r['over_pct']}%",
               delta=f"{r['over_pct'] - 50:.1f}% vs 50%",
-              delta_color="normal")
-    c4.metric("Avg Spread Error", f"{r['avg_margin_error']} pts")
-    c5.metric("Avg O/U Error", f"{r['avg_ou_error']} pts")
+              delta_color="normal", border=True)
+    c4.metric("Avg Spread Error", f"{r['avg_margin_error']} pts", border=True)
+    c5.metric("Avg O/U Error", f"{r['avg_ou_error']} pts", border=True)
 
-st.divider()
 
-# ---------------------------------------------------------------------------
+# ------
 # Edge factors — the money section
 # ---------------------------------------------------------------------------
 
@@ -144,9 +137,8 @@ if edges is not None and not edges.empty:
         },
     )
 
-st.divider()
 
-# ---------------------------------------------------------------------------
+# ------
 # Cover rate by conference
 # ---------------------------------------------------------------------------
 
@@ -259,9 +251,8 @@ with col2:
         )
         st.plotly_chart(fig3, width="stretch")
 
-st.divider()
 
-# ---------------------------------------------------------------------------
+# ------
 # Recent games with line results
 # ---------------------------------------------------------------------------
 

@@ -126,11 +126,7 @@ if MY_SHOWS.exists():
         st.divider()
 
 if shows.empty:
-    st.info(
-        "No shows data yet. Run:\n"
-        "```bash\npython scripts/daily_sync.py --only aeg_events ticketmaster shows_metrics\n"
-        "python scripts/sync_playlist_artists.py\n```"
-    )
+    st.caption("No shows data yet. Run `python scripts/daily_sync.py --only aeg_events ticketmaster shows_metrics`.")
     st.stop()
 
 # ---------------------------------------------------------------------------
@@ -143,13 +139,12 @@ next_show = shows.iloc[0]
 venues = shows["venue_name"].nunique()
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("Upcoming Shows", total)
-c2.metric("⭐ Your Artists", int(my_artist_count))
-c3.metric("Next Show", next_show["date_str"])
-c4.metric("Venues", venues)
+c1.metric("Upcoming Shows", total, border=True)
+c2.metric("⭐ Your Artists", int(my_artist_count), border=True)
+c3.metric("Next Show", next_show["date_str"], border=True)
+c4.metric("Venues", venues, border=True)
 
 # Next show callout
-st.markdown("---")
 star = "⭐ " if is_my_artist(next_show["title"]) else ""
 st.markdown(
     f"**Next up:** {star}{next_show['title']}  \n"
@@ -157,9 +152,7 @@ st.markdown(
     + (f"[🎟 Get Tickets]({next_show['event_url']})" if next_show.get("event_url") else "")
 )
 
-st.divider()
 
-# ---------------------------------------------------------------------------
 # Filters
 # ---------------------------------------------------------------------------
 
@@ -173,7 +166,7 @@ with col_s:
     selected_source = st.selectbox("Source", ["All", "AEG", "Ticketmaster"])
 
 with col_f:
-    my_only = st.checkbox("⭐ My artists only")
+    my_only = st.toggle("⭐ My artists only")
 
 with col_search:
     search = st.text_input("Search", placeholder="Artist or event name...")

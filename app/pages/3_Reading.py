@@ -41,18 +41,20 @@ summary = safe_query("SELECT * FROM hardcover.reading_summary WHERE year = 2026"
 if summary is not None and not summary.empty:
     r = summary.iloc[0]
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Read", int(r["total_read"]))
+    c1.metric("Total Read", int(r["total_read"]), border=True)
     c2.metric(
         "Fiction",
         int(r["fiction_read"]),
         f"goal: {int(r['fiction_goal'])}",
+        border=True,
     )
     c3.metric(
         "Nonfiction",
         int(r["nonfiction_read"]),
         f"goal: {int(r['nonfiction_goal'])}",
+        border=True,
     )
-    c4.metric("Unclassified", int(r["unknown_classification"]))
+    c4.metric("Unclassified", int(r["unknown_classification"]), border=True)
 
     st.markdown("**Progress**")
     fc1, fc2 = st.columns(2)
@@ -63,18 +65,17 @@ if summary is not None and not summary.empty:
         np_ = float(r["nonfiction_progress_pct"])
         st.progress(min(int(np_), 100), text=f"Nonfiction — {np_:.1f}%")
 else:
-    st.info("No reading data. Run `python run_pipelines.py --only hardcover`.")
+    st.caption("No reading data. Run `python run_pipelines.py --only hardcover`.")
 
 # ---------------------------------------------------------------------------
 # Book list
 # ---------------------------------------------------------------------------
 
-st.divider()
-st.subheader("Books Read · 2026")
+st.subheader("Books read · 2026")
 
 col1, col2 = st.columns([1, 3])
 with col1:
-    filter_type = st.selectbox("Filter", ["All", "Fiction", "Nonfiction", "Unknown"])
+    filter_type = st.segmented_control("Filter", ["All", "Fiction", "Nonfiction", "Unknown"], default="All")
 
 type_map = {
     "Fiction": "fiction",
@@ -110,4 +111,4 @@ if books is not None and not books.empty:
         },
     )
 else:
-    st.info("No books found for that filter.")
+    st.caption("No books found for that filter.")

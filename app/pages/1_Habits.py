@@ -106,11 +106,11 @@ done_today = sum(bool(existing.get(k, False)) for k in HABITS)
 
 # Quick status pills
 if done_today == len(HABITS):
-    st.success("🔥 Perfect day — all habits done!")
+    st.success("🔥 Perfect day — all habits done!", icon=":material/check_circle:")
 elif done_today > 0:
-    st.info(f"{done_today}/{len(HABITS)} done today")
+    st.caption(f"{done_today}/{len(HABITS)} done today")
 else:
-    st.warning("Nothing logged yet today.")
+    st.caption("Nothing logged yet today.")
 
 # ---------------------------------------------------------------------------
 # Pipeline reminder
@@ -162,9 +162,9 @@ if streaks is not None and not streaks.empty:
                     value=f"{current} days",
                     delta=f"best: {longest}",
                     delta_color="off",
+                    border=True,
                 )
 
-st.divider()
 
 # Completion heatmap (last 60 days)
 performance = safe_query("""
@@ -204,10 +204,7 @@ if performance is not None and not performance.empty:
         },
     )
 else:
-    st.info(
-        "No history yet. Log a few days, run the habits pipeline, then `dbt run`. "
-        "History will appear here."
-    )
+    st.caption("No history yet. Log a few days, run the habits pipeline, then `dbt run`.")
 
 # ---------------------------------------------------------------------------
 # YTD summary
@@ -220,7 +217,6 @@ summary = safe_query("""
 """)
 
 if summary is not None and not summary.empty:
-    st.divider()
     st.subheader("📊 YTD Completion Rates")
 
     for _, row in summary.iterrows():

@@ -38,7 +38,7 @@ goal_progress = safe_query("""
 """)
 
 if goal_progress is None or goal_progress.empty:
-    st.info("No goal data. Run `dbt run` after syncing pipelines.")
+    st.caption("No goal data. Run `dbt run` after syncing pipelines.")
     st.stop()
 
 domains = sorted(goal_progress["domain"].unique().tolist())
@@ -57,8 +57,8 @@ for domain in (
         continue
 
     st.subheader(domain.title())
-
-    for _, row in subset.iterrows():
+    with st.container(border=True):
+     for _, row in subset.iterrows():
         label = row["goal_key"].replace("_", " ").title()
         pct = row.get("progress_percent")
         current = row.get("current_value")
@@ -78,7 +78,6 @@ for domain in (
             else:
                 st.markdown(f"_{status}_")
 
-    st.divider()
 
 # Raw table toggle
 with st.expander("Raw data"):

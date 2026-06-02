@@ -13,12 +13,6 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "app"))
-from ons_theme import apply_theme
-apply_theme()
-
 ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 
@@ -90,7 +84,7 @@ section_header("📺 Today's Streams")
 streams_data = load_streams()
 
 if streams_data is None:
-    st.info("No stream data. Run `python scripts/daily_sync.py`.")
+    st.caption("No stream data. Run `python scripts/daily_sync.py`.")
 else:
     fetched_at = streams_data.get("fetched_at", "")
     if fetched_at:
@@ -140,16 +134,15 @@ else:
                     f"[▶ Watch]({match.get('watch_url', '')})"
                 )
 
-st.divider()
 
-# ---------------------------------------------------------------------------
+# ------
 # Team News
 # ---------------------------------------------------------------------------
 
 section_header("📰 Team News")
 
 if not NEWS_API_KEY:
-    st.info("Add `NEWS_API_KEY` to your `.env` to enable team news.")
+    st.caption("Add `NEWS_API_KEY` to your `.env` to enable team news.")
 else:
     selected_team = st.selectbox(
         "Select team",
@@ -191,13 +184,12 @@ else:
                 st.caption(f"{source} · {pub_fmt}")
                 if desc:
                     st.markdown(f"_{desc[:200]}_")
-            st.divider()
+            st.space("small")
     else:
         st.caption(f"No recent news found for {selected_team}.")
 
-st.divider()
 
-# ---------------------------------------------------------------------------
+# ------
 # Degenerates Corner
 # ---------------------------------------------------------------------------
 
@@ -219,14 +211,14 @@ if degens_path.exists():
         for pick in picks:
             confidence = pick.get("confidence", 0)
             stars = "⭐" * min(int(confidence / 20), 5)
-            col1, col2, col3 = st.columns([3, 1, 1])
-            with col1:
-                st.markdown(f"**{pick.get('matchup', '')}**  \n{pick.get('bet', '')}")
-            with col2:
-                st.markdown(f"**{pick.get('line', '')}**  \n{pick.get('sport', '')}")
-            with col3:
-                st.markdown(f"{stars}  \n{pick.get('edge', '')}")
-            st.divider()
+            with st.container(border=True):
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    st.markdown(f"**{pick.get('matchup', '')}**  \n{pick.get('bet', '')}")
+                with col2:
+                    st.markdown(f"**{pick.get('line', '')}**  \n{pick.get('sport', '')}")
+                with col3:
+                    st.markdown(f"{stars}  \n{pick.get('edge', '')}")
     except Exception:
         st.caption("Could not load picks.")
 else:

@@ -203,6 +203,16 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # Today's WOD — Park Hill CrossFit (Playwright headless scrape)
+        # ------------------------------------------------------------------
+        Step(
+            name="fetch_wod",
+            cmd=["python3", "scripts/fetch_wod.py"],
+            run_if_exists=ROOT / "scripts/fetch_wod.py",
+            tags=["fitness", "wod"],
+        ),
+
+        # ------------------------------------------------------------------
         # Playlist artists + show cross-reference
         # ------------------------------------------------------------------
         Step(

@@ -167,12 +167,12 @@ if df is not None and not df.empty:
             pct        = float(summary.get("spotify_progress_pct", 0))
 
             ma, mb = st.columns(2)
-            ma.metric("Minutes", f"{int(total_min):,}", f"{int(total_min/60):,} hrs")
-            mb.metric("Days Active", days_on)
+            ma.metric("Minutes", f"{int(total_min):,}", f"{int(total_min/60):,} hrs", border=True)
+            mb.metric("Days Active", days_on, border=True)
             mc, md = st.columns(2)
-            mc.metric("Artists", f"{unique_art:,}")
-            md.metric("Tracks", f"{unique_trk:,}")
-            st.metric("Top Artist", top_artist)
+            mc.metric("Artists", f"{unique_art:,}", border=True)
+            md.metric("Tracks", f"{unique_trk:,}", border=True)
+            st.metric("Top Artist", top_artist, border=True)
             st.progress(min(int(pct), 100), text=f"{pct:.1f}% of {int(goal_min/1000):.0f}k min goal")
         else:
             st.info("No summary data yet.")
@@ -205,7 +205,7 @@ if df is not None and not df.empty:
             xaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
             yaxis=dict(gridcolor="rgba(255,255,255,0.08)"),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig)
 
     st.divider()
 
@@ -244,7 +244,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_a, use_container_width=True)
+        st.plotly_chart(fig_a)
 
     with col_t:
         st.markdown("**Top 15 Tracks by Play Count**")
@@ -272,7 +272,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
         )
-        st.plotly_chart(fig_t, use_container_width=True)
+        st.plotly_chart(fig_t)
 
     st.divider()
 
@@ -306,7 +306,7 @@ if df is not None and not df.empty:
             margin=dict(l=0, r=0, t=4, b=0),
             height=280,
         )
-        st.plotly_chart(fig_h, use_container_width=True)
+        st.plotly_chart(fig_h)
 
     with row3_r:
         st.markdown("**🕓 Recent Listens**")
@@ -316,14 +316,10 @@ if df is not None and not df.empty:
             .rename(columns={"date": "Date", "artist_name": "Artist", "track_name": "Track", "minutes": "Min"})
         )
         recent["Min"] = recent["Min"].round(1)
-        st.dataframe(recent, use_container_width=True, hide_index=True, height=280)
+        st.dataframe(recent, hide_index=True, height=280)
 
 else:
-    st.info(
-        "Streaming history not loaded. Copy your Spotify JSON files to "
-        "`data/spotify/raw/streaming_history/` and run:\n"
-        "```bash\npython scripts/spotify_ingest_streaming.py\npython scripts/spotify_metrics.py\n```"
-    )
+    st.caption("Streaming history not loaded. Copy Spotify JSON exports to `data/spotify/raw/streaming_history/` and run `spotify_ingest_streaming.py`.")
 st.divider()
 
 
@@ -359,7 +355,7 @@ def render_news_articles(articles: list[dict]) -> None:
         with col_img:
             img = article.get("urlToImage")
             if img:
-                st.image(img, use_container_width=True)
+                st.image(img)
             else:
                 st.markdown("🎵")
         with col_text:
