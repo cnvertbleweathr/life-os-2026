@@ -127,7 +127,7 @@ with tab_matrix:
                 st.markdown(
                     f"<span style='color:{color};font-size:1.3rem;font-weight:bold'>"
                     f"{best_ats['ATS Cover %']}% cover</span> "
-                    f"<span style='color:#a09880'>({best_ats['Games']} games)</span>",
+                    f"<span style='color:#A9B2AC'>({best_ats['Games']} games)</span>",
                     unsafe_allow_html=True,
                 )
         with c2:
@@ -138,7 +138,7 @@ with tab_matrix:
                 st.markdown(
                     f"<span style='color:{color};font-size:1.3rem;font-weight:bold'>"
                     f"{best_ou['Over %']}% overs</span> "
-                    f"<span style='color:#a09880'>({best_ou['Games']} games)</span>",
+                    f"<span style='color:#A9B2AC'>({best_ou['Games']} games)</span>",
                     unsafe_allow_html=True,
                 )
         with c3:
@@ -146,9 +146,9 @@ with tab_matrix:
                 st.caption("LARGEST SAMPLE")
                 st.markdown(f"**{biggest['Condition']}**")
                 st.markdown(
-                    f"<span style='color:#4db8d4;font-size:1.3rem;font-weight:bold'>"
+                    f"<span style='color:#1a7a38;font-size:1.3rem;font-weight:bold'>"
                     f"{biggest['Games']:,} games</span> "
-                    f"<span style='color:#a09880'>{biggest['ATS Cover %']}% cover</span>",
+                    f"<span style='color:#A9B2AC'>{biggest['ATS Cover %']}% cover</span>",
                     unsafe_allow_html=True,
                 )
 
@@ -293,24 +293,24 @@ with tab_team:
     # Tier badge colors
     tier_colors = {
         "ELITE":       "#39ff6e",
-        "STRONG":      "#4db8d4",
-        "NEUTRAL":     "#a09880",
+        "STRONG":      "#1a7a38",
+        "NEUTRAL":     "#A9B2AC",
         "FADE":        "#e67e22",
         "STRONG_FADE": "#e74c3c",
     }
     tier       = str(p.get("tier", "NEUTRAL"))
-    tier_color = tier_colors.get(tier, "#a09880")
+    tier_color = tier_colors.get(tier, "#A9B2AC")
 
     # ── Primary team card ──────────────────────────────────────────────────────
     col_card, col_situations, col_trend = st.columns([2, 2, 2], gap="medium")
 
     with col_card:
         st.markdown(
-            f"<div style='background:#0a2a36;border:1px solid rgba(77,184,212,0.2);"
+            f"<div style='background:#373D39;border:1px solid rgba(11,83,36,0.3);"
             f"border-top:3px solid {tier_color};padding:1rem 1.2rem;'>"
             f"<div style='font-family:Alfa Slab One,serif;font-size:1.4rem;"
-            f"color:#e8dcc8'>{primary_team}</div>"
-            f"<div style='color:#a09880;font-size:0.75rem;letter-spacing:2px;"
+            f"color:#F5EFEB'>{primary_team}</div>"
+            f"<div style='color:#A9B2AC;font-size:0.75rem;letter-spacing:2px;"
             f"text-transform:uppercase;margin:0.2rem 0'>{p.get('conference','')}</div>"
             f"<div style='display:inline-block;background:{tier_color}22;"
             f"border:1px solid {tier_color};color:{tier_color};"
@@ -440,7 +440,7 @@ with tab_team:
         all_rules = rules + fade_rules
         if all_rules:
             for rule in all_rules:
-                color = "#e74c3c" if "🚫" in rule else "#e8dcc8"
+                color = "#e74c3c" if "🚫" in rule else "#F5EFEB"
                 st.markdown(
                     f"<div style='font-size:0.78rem;padding:0.2rem 0;"
                     f"color:{color}'>{rule}</div>",
@@ -571,57 +571,46 @@ with tab_team:
 
             similar_opponents_data = safe_query(f"""
                 WITH opp_similar AS (
-                    -- Teams with similar SP+ and PPA profile to {opponent}
-                    SELECT
-                        sp.team,
-                        sp.season,
-                        sp.rating,
-                        adv.off_ppa,
-                        adv.def_ppa,
-                        adv.def_havoc_total,
-                        abs(sp.rating   - {opp_rating:.1f})  AS sp_diff,
-                        abs(adv.off_ppa - {opp_off_ppa:.4f}) AS off_diff,
-                        abs(adv.def_ppa - {opp_def_ppa:.4f}) AS def_diff
+                    SELECT DISTINCT sp.team
                     FROM cfbd.sp_ratings sp
-                    JOIN cfbd.advanced_stats adv
+                    LEFT JOIN cfbd.advanced_stats adv
                       ON sp.team = adv.team AND sp.season = adv.season
                     WHERE sp.team != '{opponent}'
-                      AND abs(sp.rating - {opp_rating:.1f}) < 8
-                    ORDER BY sp_diff + off_diff * 10 + def_diff * 10
-                    LIMIT 15
-                ),
-                primary_vs_similar AS (
-                    -- Games where primary_team faced one of those similar teams
-                    SELECT
-                        g.season,
-                        g.week,
-                        CASE WHEN g.home_team = '{primary_team}' THEN g.away_team ELSE g.home_team END AS sim_opponent,
-                        g.home_points,
-                        g.away_points,
-                        l.spread,
-                        l.spread_covered,
-                        l.ou_result,
-                        l.actual_margin,
-                        os.rating      AS opp_sp_rating,
-                        os.off_ppa,
-                        os.def_ppa,
-                        os.sp_diff,
-                        CASE WHEN g.home_team = '{primary_team}'
-                             THEN g.home_points - g.away_points
-                             ELSE g.away_points - g.home_points
-                        END AS primary_margin
-                    FROM cfbd.games g
-                    JOIN cfbd.lines l ON g.game_id = l.game_id
-                    JOIN opp_similar os
-                      ON os.team = CASE WHEN g.home_team = '{primary_team}' THEN g.away_team ELSE g.home_team END
-                      AND os.season = g.season
-                    WHERE (g.home_team = '{primary_team}' OR g.away_team = '{primary_team}')
-                      AND l.spread IS NOT NULL
-                      AND l.spread_covered IS NOT NULL
-                    ORDER BY os.sp_diff ASC, g.season DESC
+                      AND sp.team != '{primary_team}'
+                      AND abs(sp.rating - {opp_rating:.1f}) < 10
+                    ORDER BY abs(sp.rating - {opp_rating:.1f}) ASC
+                    LIMIT 20
                 )
-                SELECT * FROM primary_vs_similar
-                LIMIT 20
+                SELECT
+                    g.season,
+                    g.week,
+                    CASE WHEN g.home_team = '{primary_team}'
+                         THEN g.away_team ELSE g.home_team END        AS sim_opponent,
+                    g.home_points,
+                    g.away_points,
+                    l.spread,
+                    l.over_under,
+                    l.spread_covered,
+                    l.ou_result,
+                    sp_opp.rating                                      AS opp_sp_rating,
+                    CASE WHEN g.home_team = '{primary_team}'
+                         THEN g.home_points - g.away_points
+                         ELSE g.away_points - g.home_points
+                    END                                                AS primary_margin
+                FROM cfbd.games g
+                JOIN cfbd.lines l ON g.game_id = l.game_id
+                JOIN opp_similar os
+                  ON os.team = CASE WHEN g.home_team = '{primary_team}'
+                                    THEN g.away_team ELSE g.home_team END
+                LEFT JOIN cfbd.sp_ratings sp_opp
+                  ON sp_opp.team = CASE WHEN g.home_team = '{primary_team}'
+                                        THEN g.away_team ELSE g.home_team END
+                  AND sp_opp.season = g.season
+                WHERE (g.home_team = '{primary_team}' OR g.away_team = '{primary_team}')
+                  AND l.spread IS NOT NULL
+                  AND l.spread_covered IS NOT NULL
+                ORDER BY g.season DESC, g.week DESC
+                LIMIT 10
             """)
 
         # ── Four column layout ──────────────────────────────────────────────
@@ -640,9 +629,9 @@ with tab_team:
                 st.markdown(
                     f"<div style='display:flex;justify-content:space-between;"
                     f"font-size:0.78rem;padding:0.2rem 0;"
-                    f"border-bottom:1px solid rgba(77,184,212,0.1)'>"
+                    f"border-bottom:1px solid rgba(11,83,36,0.2)'>"
                     f"<span style='color:{prim_color}'>{pv:.2f}</span>"
-                    f"<span style='color:#a09880;font-size:0.68rem'>{label}</span>"
+                    f"<span style='color:#A9B2AC;font-size:0.68rem'>{label}</span>"
                     f"<span style='color:{opp_color}'>{ov:.2f}</span>"
                     f"</div>",
                     unsafe_allow_html=True,
@@ -650,7 +639,7 @@ with tab_team:
 
             st.markdown(
                 f"<div style='display:flex;justify-content:space-between;"
-                f"font-size:0.65rem;color:#a09880;letter-spacing:2px;"
+                f"font-size:0.65rem;color:#A9B2AC;letter-spacing:2px;"
                 f"margin-bottom:0.4rem'>"
                 f"<span>{primary_team[:12]}</span><span></span>"
                 f"<span>{opponent[:12]}</span></div>",
@@ -674,7 +663,7 @@ with tab_team:
                 gap_color = "#39ff6e" if sp_gap > 0 else "#e74c3c"
                 st.markdown(
                     f"<div style='margin-top:0.6rem;text-align:center;"
-                    f"font-size:0.75rem;color:#a09880'>SP+ Gap: "
+                    f"font-size:0.75rem;color:#A9B2AC'>SP+ Gap: "
                     f"<b style='color:{gap_color}'>{sp_gap:+.1f}</b></div>",
                     unsafe_allow_html=True,
                 )
@@ -702,18 +691,32 @@ with tab_team:
                 st.caption(f"Based on {n_games} games vs {opponent}-like opponents")
 
                 # Game log
-                for _, row in sdf.head(8).iterrows():
-                    covered = row.get("spread_covered")
-                    result_icon = "✅" if covered else "❌"
-                    margin = row.get("primary_margin", 0)
+                for _, row in sdf.head(10).iterrows():
+                    covered    = row.get("spread_covered")
+                    ats_icon   = "✅" if covered else "❌"
+                    margin     = float(row.get("primary_margin", 0))
+                    spread     = row.get("spread", "")
+                    ou_result  = str(row.get("ou_result", "")).upper()
+                    hp         = row.get("home_points", "")
+                    ap         = row.get("away_points", "")
+                    opp_sp     = row.get("opp_sp_rating")
+                    opp_sp_str = f"SP+{opp_sp:.0f}" if opp_sp and opp_sp == opp_sp else ""
+                    score_str  = f"{hp}–{ap}" if hp != "" and ap != "" else ""
+                    ou_color   = "#1a7a38" if ou_result == "OVER" else "#A9B2AC"
                     st.markdown(
-                        f"<div style='font-size:0.72rem;padding:0.15rem 0.5rem;"
-                        f"border-left:2px solid rgba(77,184,212,0.2);"
-                        f"margin:0.1rem 0;line-height:1.4'>"
-                        f"{result_icon} <b>{row['sim_opponent']}</b> "
-                        f"<span style='color:#a09880'>({row['season']} Wk{int(row['week'])})</span> "
-                        f"<span style='color:#ffcc44'>{margin:+.0f} pts</span>"
-                        f"</div>",
+                        f"<div style='font-size:0.72rem;padding:0.2rem 0.6rem;"
+                        f"border-left:2px solid rgba(11,83,36,0.25);"
+                        f"margin:0.15rem 0;line-height:1.5'>"
+                        f"<div style='display:flex;justify-content:space-between'>"
+                        f"<span><b style='color:var(--text-primary)'>{row['sim_opponent']}</b> "
+                        f"<span style='color:var(--text-muted);font-size:0.66rem'>"
+                        f"{row['season']} Wk{int(row['week'])} {opp_sp_str}</span></span>"
+                        f"<span style='color:var(--text-muted)'>{score_str}</span></div>"
+                        f"<div style='display:flex;gap:0.8rem;margin-top:0.1rem'>"
+                        f"<span>{ats_icon} ATS "
+                        f"<span style='color:#D97706'>{margin:+.0f} pts</span></span>"
+                        f"<span style='color:{ou_color}'>Sprd: {spread} · {ou_result}</span>"
+                        f"</div></div>",
                         unsafe_allow_html=True,
                     )
 
@@ -736,11 +739,11 @@ with tab_team:
                 f"{'%.0f' % abs_spread}"
             )
             st.markdown(
-                f"<div style='background:#0a2a36;border:1px solid rgba(200,80,26,0.4);"
+                f"<div style='background:#373D39;border:1px solid rgba(11,83,36,0.5);"
                 f"padding:0.8rem 1rem;font-size:0.9rem;text-align:center;"
                 f"margin-bottom:0.6rem'>"
-                f"<div style='color:#a09880;font-size:0.65rem;letter-spacing:3px'>LINE</div>"
-                f"<div style='font-size:1.3rem;color:#ffcc44;font-weight:bold'>"
+                f"<div style='color:#A9B2AC;font-size:0.65rem;letter-spacing:3px'>LINE</div>"
+                f"<div style='font-size:1.3rem;color:#D97706;font-weight:bold'>"
                 f"{spread_display}</div>"
                 f"</div>",
                 unsafe_allow_html=True,
@@ -762,11 +765,11 @@ with tab_team:
 
             roi_color = "#39ff6e" if sit_roi > 0 else "#e74c3c"
             st.markdown(
-                f"<div style='font-size:0.8rem;color:#a09880'>ROI as "
-                f"<b style='color:#e8dcc8'>{sit_name}</b></div>"
+                f"<div style='font-size:0.8rem;color:#A9B2AC'>ROI as "
+                f"<b style='color:#F5EFEB'>{sit_name}</b></div>"
                 f"<div style='font-size:1.5rem;color:{roi_color};font-weight:bold'>"
                 f"{sit_roi:+.1f}%</div>"
-                f"<div style='font-size:0.72rem;color:#a09880'>{sit_bets} games</div>",
+                f"<div style='font-size:0.72rem;color:#A9B2AC'>{sit_bets} games</div>",
                 unsafe_allow_html=True,
             )
 
@@ -789,11 +792,11 @@ with tab_team:
                 st.space("small")
                 opp_roi_color = "#39ff6e" if opp_sit_roi > 0 else "#e74c3c"
                 st.markdown(
-                    f"<div style='font-size:0.8rem;color:#a09880'>{opponent} ROI as "
-                    f"<b style='color:#e8dcc8'>{opp_sit_name}</b></div>"
+                    f"<div style='font-size:0.8rem;color:#A9B2AC'>{opponent} ROI as "
+                    f"<b style='color:#F5EFEB'>{opp_sit_name}</b></div>"
                     f"<div style='font-size:1.3rem;color:{opp_roi_color};font-weight:bold'>"
                     f"{opp_sit_roi:+.1f}%</div>"
-                    f"<div style='font-size:0.72rem;color:#a09880'>{opp_sit_bets} games</div>",
+                    f"<div style='font-size:0.72rem;color:#A9B2AC'>{opp_sit_bets} games</div>",
                     unsafe_allow_html=True,
                 )
 
@@ -873,8 +876,8 @@ with tab_team:
                     unsafe_allow_html=True,
                 )
             for icon, msg in signals:
-                bg     = "rgba(57,255,110,0.08)"  if icon == "✅" else                          "rgba(255,204,68,0.08)"   if icon == "🟡" else                          "rgba(160,152,128,0.06)"
-                border = "#39ff6e" if icon == "✅" else                          "#ffcc44" if icon == "🟡" else "#a09880"
+                bg     = "rgba(57,255,110,0.08)"  if icon == "✅" else                          "rgba(217,119,6,0.1)"   if icon == "🟡" else                          "rgba(160,152,128,0.06)"
+                border = "#39ff6e" if icon == "✅" else                          "#D97706" if icon == "🟡" else "#A9B2AC"
                 st.markdown(
                     f"<div style='background:{bg};border-left:3px solid {border};"
                     f"padding:0.3rem 0.6rem;margin:0.2rem 0;font-size:0.78rem'>"
@@ -893,9 +896,9 @@ with tab_team:
             elif green_count >= 4:
                 verdict_color, verdict_text, verdict_icon = "#39ff6e", "STRONG BET", "💰"
             elif green_count >= 2:
-                verdict_color, verdict_text, verdict_icon = "#ffcc44", "LEAN BET", "📊"
+                verdict_color, verdict_text, verdict_icon = "#D97706", "LEAN BET", "📊"
             else:
-                verdict_color, verdict_text, verdict_icon = "#a09880", "PASS — Insufficient edge", "⏭️"
+                verdict_color, verdict_text, verdict_icon = "#A9B2AC", "PASS — Insufficient edge", "⏭️"
 
             st.markdown(
                 f"<div style='background:{verdict_color}22;border:2px solid {verdict_color};"
@@ -903,7 +906,7 @@ with tab_team:
                 f"<div style='font-size:1.5rem'>{verdict_icon}</div>"
                 f"<div style='color:{verdict_color};font-size:1rem;font-weight:bold;"
                 f"letter-spacing:2px'>{verdict_text}</div>"
-                f"<div style='color:#a09880;font-size:0.72rem;margin-top:0.3rem'>"
+                f"<div style='color:#A9B2AC;font-size:0.72rem;margin-top:0.3rem'>"
                 f"{green_count} green · {red_count} red flags</div>"
                 f"</div>",
                 unsafe_allow_html=True,

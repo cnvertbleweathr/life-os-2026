@@ -103,7 +103,7 @@ if wod.get("fetched_ok") and wod.get("text"):
                 content = re.sub(r'https?://\S+', '', sections[i + 1]).strip()
                 st.markdown(
                     f"<div style='margin:0.3rem 0;font-size:0.85rem;line-height:1.5'>"
-                    f"<span style='color:#c8501a;font-weight:bold;font-size:0.9rem'>{letter}.</span> "
+                    f"<span style='color:#0B5324;font-weight:bold;font-size:0.9rem'>{letter}.</span> "
                     f"{content}</div>",
                     unsafe_allow_html=True,
                 )
@@ -127,11 +127,11 @@ if wod.get("fetched_ok") and wod.get("text"):
                 title   = row.get("title", "")
                 dt      = row["date"].strftime("%b %d, %Y") if pd.notna(row["date"]) else ""
                 cards.append(
-                    f"<div style='background:#0a2a36;border-left:2px solid #c8501a;"
+                    f"<div style='background:#373D39;border-left:2px solid #0B5324;"
                     f"padding:0.3rem 0.6rem;margin:0.15rem 0;font-size:0.76rem'>"
                     f"<b>{title}</b>{pr_star}<br>"
-                    f"<span style='color:#ffcc44'>{result}</span> "
-                    f"<span style='color:#a09880;font-size:0.68rem'>· {dt}</span>"
+                    f"<span style='color:#D97706'>{result}</span> "
+                    f"<span style='color:#A9B2AC;font-size:0.68rem'>· {dt}</span>"
                     f"</div>"
                 )
             st.markdown(

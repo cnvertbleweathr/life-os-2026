@@ -1,17 +1,21 @@
 """
 ons_theme.py
 
-Shared retro-futuristic theme for the Operating Narcisystem dashboard.
-Import and call apply_theme() at the top of every page.
+Operating Narcisystem — premium organic dark-mode theme.
+Derived from ONS logo: charcoal-olive backgrounds, forest green brand,
+warm cream text, amber accent.
 
-Color palette:
-  Deep navy:     #061820  (background)
-  Steel blue:    #0a2a36  (secondary bg)
-  Cyan:          #4db8d4  (accent, links)
-  Burnt orange:  #c8501a  (primary, headers)
-  Amber gold:    #ffcc44  (highlights, stars)
-  Warm cream:    #e8dcc8  (body text)
-  Muted sand:    #a09880  (secondary text)
+Palette:
+  --bg-main:       #2C312E  (charcoal-olive canvas)
+  --bg-surface:    #373D39  (card / widget surface)
+  --bg-raised:     #404740  (inputs, hover states)
+  --brand-primary: #0B5324  (forest green — brand accent)
+  --brand-light:   #1a7a38  (lighter green for hovers)
+  --text-primary:  #F5EFEB  (warm cream — headers, critical text)
+  --text-muted:    #A9B2AC  (desaturated gray-green — secondary text)
+  --accent-orange: #D97706  (amber — progress, live, alerts)
+  --border:        #434A45  (subtle surface separator)
+  --border-brand:  rgba(11,83,36,0.6)
 """
 
 import streamlit as st
@@ -19,288 +23,349 @@ import streamlit as st
 
 ONS_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;700&family=Alfa+Slab+One&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 /* ── Root variables ────────────────────────────────────────────── */
 :root {
-  --ons-bg:        #061820;
-  --ons-bg2:       #0a2a36;
-  --ons-bg3:       #0e3347;
-  --ons-cyan:      #4db8d4;
-  --ons-orange:    #c8501a;
-  --ons-gold:      #ffcc44;
-  --ons-cream:     #e8dcc8;
-  --ons-sand:      #a09880;
-  --ons-green:     #2a7a5a;
-  --ons-border:    rgba(77,184,212,0.25);
-  --ons-border2:   rgba(200,80,26,0.4);
+  --bg-main:       #2C312E;
+  --bg-surface:    #373D39;
+  --bg-raised:     #404740;
+  --brand-primary: #0B5324;
+  --brand-light:   #1a7a38;
+  --text-primary:  #F5EFEB;
+  --text-muted:    #A9B2AC;
+  --accent-orange: #D97706;
+  --accent-amber:  #F59E0B;
+  --border:        #434A45;
+  --border-brand:  rgba(11,83,36,0.5);
+  --green-glow:    rgba(11,83,36,0.15);
+  --orange-glow:   rgba(217,119,6,0.15);
 }
 
-/* ── Global app frame ─────────────────────────────────────────── */
+/* ── Global reset & font ──────────────────────────────────────── */
+@font-face {
+  font-family: 'Inter';
+  font-display: swap;
+}
+
+html, body, .stApp, p, div, span, label, a, li, td, th,
+[class*="st-"], [data-testid] {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+               'Segoe UI', system-ui, sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* ── App canvas ───────────────────────────────────────────────── */
 .stApp {
-  background-color: var(--ons-bg) !important;
+  background-color: var(--bg-main) !important;
   background-image:
-    radial-gradient(ellipse at 20% 0%, rgba(77,184,212,0.06) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 100%, rgba(200,80,26,0.04) 0%, transparent 60%);
+    radial-gradient(ellipse at 15% 0%, rgba(11,83,36,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(217,119,6,0.04) 0%, transparent 55%);
 }
 
-/* Sidebar */
+/* ── Sidebar ──────────────────────────────────────────────────── */
 section[data-testid="stSidebar"] {
-  background-color: var(--ons-bg2) !important;
-  border-right: 1px solid var(--ons-border) !important;
+  background-color: var(--bg-surface) !important;
+  border-right: 1px solid var(--border) !important;
 }
 section[data-testid="stSidebar"] * {
-  font-family: 'Josefin Sans', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
 }
 
 /* ── Typography ───────────────────────────────────────────────── */
 html, body, .stApp, p, div, span, label {
-  font-family: 'Share Tech Mono', monospace !important;
-  color: var(--ons-cream) !important;
+  color: var(--text-primary) !important;
 }
 
 h1 {
-  font-family: 'Alfa Slab One', serif !important;
-  color: var(--ons-orange) !important;
-  letter-spacing: -1px !important;
-  text-shadow: 2px 2px 0px rgba(200,80,26,0.3) !important;
-  border-bottom: 2px solid var(--ons-orange) !important;
-  padding-bottom: 0.3em !important;
-  margin-bottom: 0.5em !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.75rem !important;
+  color: var(--text-primary) !important;
+  letter-spacing: -0.5px !important;
+  border-bottom: 2px solid var(--brand-primary) !important;
+  padding-bottom: 0.4em !important;
+  margin-bottom: 0.6em !important;
+  text-shadow: none !important;
 }
 
 h2 {
-  font-family: 'Josefin Sans', sans-serif !important;
-  font-weight: 700 !important;
-  color: var(--ons-cyan) !important;
-  letter-spacing: 3px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: 0.5px !important;
   text-transform: uppercase !important;
-  font-size: 1rem !important;
-  border-left: 3px solid var(--ons-orange) !important;
+  font-size: 0.8rem !important;
+  border-left: 3px solid var(--brand-primary) !important;
   padding-left: 0.6em !important;
-  margin-top: 1.5em !important;
+  margin-top: 1.2em !important;
 }
 
 h3 {
-  font-family: 'Josefin Sans', sans-serif !important;
-  font-weight: 400 !important;
-  color: var(--ons-gold) !important;
-  letter-spacing: 2px !important;
-  font-size: 0.85rem !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 1px !important;
+  font-size: 0.8rem !important;
   text-transform: uppercase !important;
 }
 
 /* Caption / small text */
-.stMarkdown small, .stCaption, [data-testid="stCaptionContainer"] {
-  font-family: 'Josefin Sans', sans-serif !important;
-  color: var(--ons-sand) !important;
-  letter-spacing: 2px !important;
-  font-size: 0.7rem !important;
-  text-transform: uppercase !important;
+.stMarkdown small, .stCaption, [data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p {
+  font-family: 'Inter', sans-serif !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.3px !important;
+  font-size: 0.72rem !important;
+  text-transform: none !important;
 }
+
+/* Links */
+a { color: var(--brand-light) !important; text-decoration: none !important; }
+a:hover { color: var(--text-primary) !important; }
 
 /* ── Metric cards ─────────────────────────────────────────────── */
 [data-testid="stMetric"] {
-  background: var(--ons-bg2) !important;
-  border: 1px solid var(--ons-border) !important;
-  border-top: 2px solid var(--ons-orange) !important;
-  border-radius: 0 !important;
-  padding: 1rem !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-top: 2px solid var(--brand-primary) !important;
+  border-radius: 6px !important;
+  padding: 0.9rem 1rem !important;
   position: relative !important;
 }
-[data-testid="stMetric"]::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, var(--ons-orange), transparent);
-}
 [data-testid="stMetricLabel"] {
-  font-family: 'Josefin Sans', sans-serif !important;
-  color: var(--ons-sand) !important;
-  letter-spacing: 3px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.5px !important;
   text-transform: uppercase !important;
-  font-size: 0.65rem !important;
+  font-size: 0.62rem !important;
 }
 [data-testid="stMetricValue"] {
-  font-family: 'Alfa Slab One', serif !important;
-  color: var(--ons-cream) !important;
-  font-size: 2rem !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  font-size: 1.8rem !important;
+  letter-spacing: -0.5px !important;
 }
 [data-testid="stMetricDelta"] {
-  font-family: 'Share Tech Mono', monospace !important;
+  font-family: 'Inter', sans-serif !important;
   font-size: 0.75rem !important;
+  font-weight: 500 !important;
 }
 
 /* ── Progress bars ────────────────────────────────────────────── */
 [data-testid="stProgressBar"] > div {
-  background-color: var(--ons-bg3) !important;
-  border-radius: 0 !important;
-  height: 6px !important;
+  background-color: var(--bg-raised) !important;
+  border-radius: 2px !important;
+  height: 5px !important;
 }
 [data-testid="stProgressBar"] > div > div {
-  background: linear-gradient(90deg, var(--ons-orange), var(--ons-gold)) !important;
-  border-radius: 0 !important;
+  background: linear-gradient(90deg, var(--brand-primary), var(--accent-orange)) !important;
+  border-radius: 2px !important;
 }
 
 /* ── Buttons ──────────────────────────────────────────────────── */
 .stButton > button {
   background-color: transparent !important;
-  border: 1px solid var(--ons-orange) !important;
-  color: var(--ons-orange) !important;
-  font-family: 'Josefin Sans', sans-serif !important;
-  letter-spacing: 3px !important;
-  text-transform: uppercase !important;
-  font-size: 0.75rem !important;
-  border-radius: 0 !important;
-  transition: all 0.2s !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px !important;
+  font-size: 0.8rem !important;
+  border-radius: 5px !important;
+  transition: all 0.15s !important;
 }
 .stButton > button:hover {
-  background-color: var(--ons-orange) !important;
-  color: var(--ons-bg) !important;
+  background-color: var(--bg-raised) !important;
+  border-color: var(--brand-primary) !important;
 }
 .stButton > button[kind="primary"] {
-  background-color: var(--ons-orange) !important;
-  color: var(--ons-bg) !important;
+  background-color: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+  color: var(--text-primary) !important;
 }
 .stButton > button[kind="primary"]:hover {
-  background-color: var(--ons-gold) !important;
-  border-color: var(--ons-gold) !important;
+  background-color: var(--brand-light) !important;
 }
 
 /* ── Dividers ─────────────────────────────────────────────────── */
 hr {
   border: none !important;
-  border-top: 1px solid var(--ons-border) !important;
-  margin: 2rem 0 !important;
-  position: relative !important;
+  border-top: 1px solid var(--border) !important;
+  margin: 1.5rem 0 !important;
+}
+
+/* ── Containers with border ───────────────────────────────────── */
+[data-testid="stVerticalBlockBorderWrapper"] > div {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
 }
 
 /* ── Dataframes ───────────────────────────────────────────────── */
 [data-testid="stDataFrame"] {
-  border: 1px solid var(--ons-border) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
 }
 
 /* ── Expanders ────────────────────────────────────────────────── */
 [data-testid="stExpander"] {
-  border: 1px solid var(--ons-border) !important;
-  border-radius: 0 !important;
-  background: var(--ons-bg2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  background: var(--bg-surface) !important;
 }
 [data-testid="stExpander"] summary {
-  font-family: 'Josefin Sans', sans-serif !important;
-  letter-spacing: 2px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px !important;
   text-transform: uppercase !important;
-  font-size: 0.8rem !important;
-  color: var(--ons-cyan) !important;
+  font-size: 0.75rem !important;
+  color: var(--text-muted) !important;
 }
 
 /* ── Selectboxes / inputs ─────────────────────────────────────── */
-[data-testid="stSelectbox"] > div > div {
-  background-color: var(--ons-bg2) !important;
-  border: 1px solid var(--ons-border) !important;
-  border-radius: 0 !important;
-  color: var(--ons-cream) !important;
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stSelectbox"] > div > div > div {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px !important;
+  color: var(--text-primary) !important;
 }
-[data-testid="stTextInput"] input {
-  background-color: var(--ons-bg2) !important;
-  border: 1px solid var(--ons-border) !important;
-  border-radius: 0 !important;
-  color: var(--ons-cream) !important;
-}
-
-/* ── Checkboxes ───────────────────────────────────────────────── */
-[data-testid="stCheckbox"] label {
-  font-family: 'Share Tech Mono', monospace !important;
-  color: var(--ons-cream) !important;
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px !important;
+  color: var(--text-primary) !important;
 }
 
-/* ── Alerts / info boxes ──────────────────────────────────────── */
+/* ── Segmented control / pills ────────────────────────────────── */
+[data-testid="stSegmentedControl"] {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px !important;
+}
+[data-testid="stSegmentedControl"] [role="radio"][aria-checked="true"] {
+  background: var(--brand-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Checkboxes / toggles ─────────────────────────────────────── */
+[data-testid="stCheckbox"] label,
+[data-testid="stToggle"] label {
+  font-family: 'Inter', sans-serif !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Alerts ───────────────────────────────────────────────────── */
 [data-testid="stAlert"] {
-  border-radius: 0 !important;
-  border-left: 3px solid var(--ons-cyan) !important;
-  background: rgba(77,184,212,0.08) !important;
+  border-radius: 5px !important;
+  border-left: 3px solid var(--brand-primary) !important;
+  background: var(--green-glow) !important;
 }
-.stSuccess {
-  border-left-color: var(--ons-gold) !important;
-  background: rgba(255,204,68,0.08) !important;
+[data-testid="stAlert"][data-baseweb="notification"][kind="positive"] {
+  border-left-color: var(--brand-primary) !important;
+  background: var(--green-glow) !important;
 }
-.stWarning {
-  border-left-color: var(--ons-orange) !important;
+[data-testid="stAlert"][data-baseweb="notification"][kind="warning"] {
+  border-left-color: var(--accent-orange) !important;
+  background: var(--orange-glow) !important;
+}
+[data-testid="stAlert"][data-baseweb="notification"][kind="error"] {
+  border-left-color: #dc2626 !important;
+  background: rgba(220,38,38,0.08) !important;
 }
 
 /* ── Tabs ─────────────────────────────────────────────────────── */
 [data-testid="stTabs"] [role="tablist"] {
-  border-bottom: 1px solid var(--ons-border) !important;
+  border-bottom: 1px solid var(--border) !important;
   gap: 0 !important;
 }
 [data-testid="stTabs"] [role="tab"] {
-  font-family: 'Josefin Sans', sans-serif !important;
-  letter-spacing: 2px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.3px !important;
   text-transform: uppercase !important;
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   border-radius: 0 !important;
-  color: var(--ons-sand) !important;
+  color: var(--text-muted) !important;
   padding: 0.5rem 1.2rem !important;
 }
 [data-testid="stTabs"] [role="tab"][aria-selected="true"] {
-  color: var(--ons-orange) !important;
-  border-bottom: 2px solid var(--ons-orange) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 2px solid var(--brand-primary) !important;
 }
 
-/* ── Sidebar nav links ────────────────────────────────────────── */
+/* ── Sidebar nav ──────────────────────────────────────────────── */
 [data-testid="stSidebarNav"] a {
-  font-family: 'Josefin Sans', sans-serif !important;
-  letter-spacing: 2px !important;
-  text-transform: uppercase !important;
-  font-size: 0.75rem !important;
-  color: var(--ons-sand) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.3px !important;
+  font-size: 0.82rem !important;
+  color: var(--text-muted) !important;
+  border-radius: 4px !important;
+  padding: 0.3rem 0.6rem !important;
 }
 [data-testid="stSidebarNav"] a[aria-current="page"] {
-  color: var(--ons-orange) !important;
-  border-left: 2px solid var(--ons-orange) !important;
+  color: var(--text-primary) !important;
+  background: var(--green-glow) !important;
+  border-left: 2px solid var(--brand-primary) !important;
 }
 
-/* ── Section divider helper ───────────────────────────────────── */
+/* ── Number input spinners ────────────────────────────────────── */
+[data-testid="stNumberInput"] button {
+  background: var(--bg-raised) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ── Multiselect tags ─────────────────────────────────────────── */
+[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+  background: var(--brand-primary) !important;
+  color: var(--text-primary) !important;
+  border-radius: 3px !important;
+}
+
+/* ── Section header helper ────────────────────────────────────── */
 .ons-section-header {
-  font-family: 'Josefin Sans', sans-serif;
-  font-size: 0.65rem;
-  letter-spacing: 5px;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--ons-sand);
-  margin: 2rem 0 0.5rem;
+  color: var(--text-muted);
+  margin: 0.8rem 0 0.4rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.8rem;
 }
 .ons-section-header::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--ons-border);
+  background: var(--border);
 }
 
-/* ── Scanline overlay (subtle retro texture) ──────────────────── */
-.stApp::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.03) 2px,
-    rgba(0,0,0,0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
+/* ── Spinner ──────────────────────────────────────────────────── */
+[data-testid="stSpinner"] {
+  color: var(--brand-primary) !important;
+}
+
+/* ── Toast ────────────────────────────────────────────────────── */
+[data-testid="stToast"] {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
 }
 </style>
 """
 
 
 def apply_theme() -> None:
-    """Inject the ONS retro-futuristic theme. Call at top of every page."""
+    """Inject the ONS theme. Call at the top of every page."""
     st.markdown(ONS_CSS, unsafe_allow_html=True)
 
 
@@ -313,7 +378,7 @@ def section_header(label: str) -> None:
 
 
 def page_header(title: str, subtitle: str = "") -> None:
-    """Render the page title with ONS branding."""
+    """Render the page title."""
     st.markdown(f"# {title}")
     if subtitle:
         st.caption(subtitle)

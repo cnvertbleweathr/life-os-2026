@@ -153,7 +153,7 @@ st.markdown(
     f"<h1 style='margin-bottom:0.1rem;padding-bottom:0.2rem'>"
     f"🧭 Operating Narcisystem"
     f"<span style='font-family:Josefin Sans,sans-serif;font-size:0.7rem;"
-    f"letter-spacing:4px;color:#a09880;text-transform:uppercase;"
+    f"letter-spacing:4px;color:#A9B2AC;text-transform:uppercase;"
     f"margin-left:1.5rem;vertical-align:middle'>"
     f"{today.strftime('%A, %B %d, %Y')}</span></h1>",
     unsafe_allow_html=True,
@@ -184,7 +184,7 @@ with col_cal:
                 current_week = week
                 wk_label = pd.Timestamp(week).strftime("%b %d").upper()
                 lines.append(
-                    f"<div style='color:#c8501a;font-size:0.6rem;letter-spacing:2px;"
+                    f"<div style='color:#0B5324;font-size:0.6rem;letter-spacing:2px;"
                     f"font-family:Josefin Sans,sans-serif;margin-top:0.35rem'>"
                     f"WK OF {wk_label}</div>"
                 )
@@ -192,8 +192,8 @@ with col_cal:
             day   = pd.Timestamp(row["start_date"]).strftime("%a %d")
             lines.append(
                 f"<div style='font-size:0.73rem;padding:0.08rem 0 0.08rem 0.5rem;"
-                f"border-left:1px solid rgba(77,184,212,0.2);line-height:1.3'>"
-                f"<span style='color:#a09880;font-size:0.66rem'>{day}</span> "
+                f"border-left:1px solid rgba(11,83,36,0.3);line-height:1.3'>"
+                f"<span style='color:#A9B2AC;font-size:0.66rem'>{day}</span> "
                 f"{emoji} {row['summary']}</div>"
             )
         st.markdown(
@@ -230,7 +230,7 @@ with col_wod:
                 content = re.sub(r'https?://\S+', '', sections[i + 1]).strip()
                 st.markdown(
                     f"<div style='margin:0.25rem 0;font-size:0.78rem;line-height:1.4'>"
-                    f"<span style='color:#c8501a;font-weight:bold'>{letter}.</span> "
+                    f"<span style='color:#0B5324;font-weight:bold'>{letter}.</span> "
                     f"{content}</div>",
                     unsafe_allow_html=True,
                 )
@@ -265,13 +265,13 @@ with col_teams:
             live  = match.get("is_live")
             badge = "🔴 LIVE" if live else match.get("kickoff_local", "")
             st.markdown(
-                f"<div style='background:#0a2a36;border-left:2px solid #c8501a;"
+                f"<div style='background:#373D39;border-left:2px solid #0B5324;"
                 f"padding:0.25rem 0.6rem;margin:0.15rem 0;font-size:0.74rem'>"
                 f"<b>{match.get('team_label','')}</b> "
-                f"<span style='color:#a09880;font-size:0.66rem'>{match.get('title','')}</span><br>"
-                f"<span style='color:#4db8d4;font-size:0.65rem'>{badge} · "
+                f"<span style='color:#A9B2AC;font-size:0.66rem'>{match.get('title','')}</span><br>"
+                f"<span style='color:#1a7a38;font-size:0.65rem'>{badge} · "
                 f"<a href='{match.get('watch_url','')}' target='_blank' "
-                f"style='color:#4db8d4'>▶ Watch</a></span>"
+                f"style='color:#1a7a38'>▶ Watch</a></span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -287,13 +287,13 @@ with col_top5:
             live = "🔴 LIVE" if match.get("is_live") else match.get("kickoff_local", "")
             cat  = match.get("category", "").replace("-", " ").title()
             st.markdown(
-                f"<div style='background:#0a2a36;border-left:2px solid #0e3347;"
+                f"<div style='background:#373D39;border-left:2px solid #404740;"
                 f"padding:0.25rem 0.6rem;margin:0.15rem 0;font-size:0.74rem'>"
                 f"<b>{match.get('title','')}</b> "
-                f"<span style='color:#a09880;font-size:0.65rem'>{cat}</span><br>"
-                f"<span style='color:#4db8d4;font-size:0.65rem'>{live} · "
+                f"<span style='color:#A9B2AC;font-size:0.65rem'>{cat}</span><br>"
+                f"<span style='color:#1a7a38;font-size:0.65rem'>{live} · "
                 f"<a href='{match.get('watch_url','')}' target='_blank' "
-                f"style='color:#4db8d4'>▶ Watch</a></span>"
+                f"style='color:#1a7a38'>▶ Watch</a></span>"
                 f"</div>",
                 unsafe_allow_html=True,
             )
@@ -318,9 +318,9 @@ with col_goals:
         if not goal_progress.empty:
             for domain in goal_progress["domain"].unique():
                 st.markdown(
-                    f"<div style='color:#c8501a;font-family:Josefin Sans,sans-serif;"
+                    f"<div style='color:#0B5324;font-family:Josefin Sans,sans-serif;"
                     f"font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;"
-                    f"margin:0.5rem 0 0.2rem;border-bottom:1px solid rgba(200,80,26,0.3);"
+                    f"margin:0.5rem 0 0.2rem;border-bottom:1px solid rgba(11,83,36,0.4);"
                     f"padding-bottom:0.2rem'>{domain}</div>",
                     unsafe_allow_html=True,
                 )
@@ -330,14 +330,14 @@ with col_goals:
                     cur   = row.get("current_value")
                     tgt   = row.get("target_numeric")
                     nums  = f"{cur:.0f}/{tgt:.0f}" if cur == cur and tgt == tgt else ""
-                    color = "#c8501a" if pct < 50 else "#ffcc44" if pct < 80 else "#39ff6e"
+                    color = "#0B5324" if pct < 50 else "#D97706" if pct < 80 else "#39ff6e"
                     st.markdown(
                         f"<div style='margin-bottom:0.3rem'>"
                         f"<div style='display:flex;justify-content:space-between;"
-                        f"font-size:0.68rem;color:#a09880;margin-bottom:0.1rem'>"
+                        f"font-size:0.68rem;color:#A9B2AC;margin-bottom:0.1rem'>"
                         f"<span>{label}</span>"
                         f"<span style='color:{color}'>{nums} · {pct:.0f}%</span></div>"
-                        f"<div style='background:#0a2a36;height:3px'>"
+                        f"<div style='background:#373D39;height:3px'>"
                         f"<div style='width:{min(pct,100):.0f}%;height:3px;background:{color}'>"
                         f"</div></div></div>",
                         unsafe_allow_html=True,
