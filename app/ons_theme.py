@@ -23,7 +23,7 @@ import streamlit as st
 
 ONS_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
 /* ── Root variables ────────────────────────────────────────────── */
 :root {
@@ -44,13 +44,13 @@ ONS_CSS = """
 
 /* ── Global reset & font ──────────────────────────────────────── */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'Space Grotesk';
   font-display: swap;
 }
 
 html, body, .stApp, p, div, span, label, a, li, td, th,
 [class*="st-"], [data-testid] {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont,
                'Segoe UI', system-ui, sans-serif !important;
   -webkit-font-smoothing: antialiased !important;
   -moz-osx-font-smoothing: grayscale !important;
@@ -70,7 +70,7 @@ section[data-testid="stSidebar"] {
   border-right: 1px solid var(--border) !important;
 }
 section[data-testid="stSidebar"] * {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
 }
 
 /* ── Typography ───────────────────────────────────────────────── */
@@ -79,7 +79,7 @@ html, body, .stApp, p, div, span, label {
 }
 
 h1 {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 700 !important;
   font-size: 1.75rem !important;
   color: var(--text-primary) !important;
@@ -91,7 +91,7 @@ h1 {
 }
 
 h2 {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 600 !important;
   color: var(--text-primary) !important;
   letter-spacing: 0.5px !important;
@@ -103,7 +103,7 @@ h2 {
 }
 
 h3 {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 500 !important;
   color: var(--text-muted) !important;
   letter-spacing: 1px !important;
@@ -114,7 +114,7 @@ h3 {
 /* Caption / small text */
 .stMarkdown small, .stCaption, [data-testid="stCaptionContainer"],
 [data-testid="stCaptionContainer"] p {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   color: var(--text-muted) !important;
   letter-spacing: 0.3px !important;
   font-size: 0.72rem !important;
@@ -135,7 +135,7 @@ a:hover { color: var(--text-primary) !important; }
   position: relative !important;
 }
 [data-testid="stMetricLabel"] {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 500 !important;
   color: var(--text-muted) !important;
   letter-spacing: 0.5px !important;
@@ -143,14 +143,14 @@ a:hover { color: var(--text-primary) !important; }
   font-size: 0.62rem !important;
 }
 [data-testid="stMetricValue"] {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 700 !important;
   color: var(--text-primary) !important;
   font-size: 1.8rem !important;
   letter-spacing: -0.5px !important;
 }
 [data-testid="stMetricDelta"] {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-size: 0.75rem !important;
   font-weight: 500 !important;
 }
@@ -171,7 +171,7 @@ a:hover { color: var(--text-primary) !important; }
   background-color: transparent !important;
   border: 1px solid var(--border) !important;
   color: var(--text-primary) !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 500 !important;
   letter-spacing: 0.3px !important;
   font-size: 0.8rem !important;
@@ -218,7 +218,7 @@ hr {
   background: var(--bg-surface) !important;
 }
 [data-testid="stExpander"] summary {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 500 !important;
   letter-spacing: 0.3px !important;
   text-transform: uppercase !important;
@@ -256,7 +256,7 @@ hr {
 /* ── Checkboxes / toggles ─────────────────────────────────────── */
 [data-testid="stCheckbox"] label,
 [data-testid="stToggle"] label {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   color: var(--text-primary) !important;
 }
 
@@ -285,7 +285,7 @@ hr {
   gap: 0 !important;
 }
 [data-testid="stTabs"] [role="tab"] {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 500 !important;
   letter-spacing: 0.3px !important;
   text-transform: uppercase !important;
@@ -301,7 +301,7 @@ hr {
 
 /* ── Sidebar nav ──────────────────────────────────────────────── */
 [data-testid="stSidebarNav"] a {
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'Space Grotesk', sans-serif !important;
   font-weight: 400 !important;
   letter-spacing: 0.3px !important;
   font-size: 0.82rem !important;
@@ -331,7 +331,7 @@ hr {
 
 /* ── Section header helper ────────────────────────────────────── */
 .ons-section-header {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Space Grotesk', sans-serif;
   font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 2px;
