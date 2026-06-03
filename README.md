@@ -262,7 +262,6 @@ ons-2026/
 Runs automatically at 9am via launchd. You don't have to do anything. The system knows.
 
 ```bash
-# Manual override if you're impatient
 source .venv/bin/activate
 python scripts/daily_sync.py
 streamlit run app/Home.py
