@@ -349,8 +349,14 @@ def analyse_game(
 
     # Rule 5: Spread range
     # Validated: 3-7 → 51.9% | 10-14 → 51.8% | 14-17 → 46.4% (-11.5% ROI) | 17+ → 50.8%
-    # Sweet spots: 3-7 and 10-14. Tighten upper limit to 14. Penalize 14-17.
-    if 3 <= abs_spread <= 7 and ppa_gap and abs(ppa_gap) > 0.15:
+    # Hard filters: spreads >21 require stronger PPA. Spreads >28 skip entirely.
+    # Rationale: massive favorites cover margins are noisy — garbage time, backups,
+    # clock-killing. Market has priced the talent gap; efficiency edge is less incremental.
+    if abs_spread > 28:
+        return None  # never bet — too much variance in margin regardless of edge
+    elif abs_spread > 21 and (ppa_gap is None or abs(ppa_gap) < 0.25):
+        return None  # large spread requires stronger PPA signal to qualify
+    elif 3 <= abs_spread <= 7 and ppa_gap and abs(ppa_gap) > 0.15:
         edges.append(f"Spread {spread:+.1f} in prime range (3-7)")
         confidence += 10
     elif 10 <= abs_spread <= 14 and ppa_gap and abs(ppa_gap) > 0.15:
@@ -359,9 +365,11 @@ def analyse_game(
     elif 7 <= abs_spread < 10:
         pass  # neutral — 48.8% not worth adjusting
     elif 14 < abs_spread <= 17:
-        confidence -= 8   # 46.4% cover — actively bad
-    elif abs_spread > 17:
-        confidence -= 5   # 50.8% — less bad than 14-17 surprisingly
+        confidence -= 8    # 46.4% cover — actively bad
+    elif 17 < abs_spread <= 21:
+        confidence -= 12   # worse than 14-17, market has priced the gap
+    elif abs_spread > 21:
+        confidence -= 15   # still qualifies (PPA >0.25) but significant caution
 
     # Rule 6: SP+ alignment
     # Validated: PPA + SP+ agrees → 62.4% cover +19.2% ROI (1,930g)
