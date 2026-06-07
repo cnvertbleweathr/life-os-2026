@@ -209,6 +209,57 @@ def analyse_game(
         except Exception:
             pass  # mart not built yet
 
+    # ── Travel distance ───────────────────────────────────────────────────
+    travel_miles  = None
+    travel_bucket = None
+    try:
+        tdist = con.execute(
+            "SELECT travel_miles, travel_bucket, long_haul, cross_country "
+            "FROM main_marts.mart_cfbd_travel_distance WHERE game_id = ? LIMIT 1",
+            [game.get('id')]
+        ).df()
+        if not tdist.empty:
+            travel_miles  = tdist['travel_miles'].values[0]
+            travel_bucket = str(tdist['travel_bucket'].values[0] or '')
+    except Exception:
+        pass
+
+    # Inline haversine fallback when mart not yet available
+    if travel_miles is None:
+        try:
+            gv = con.execute(
+                "SELECT v.latitude, v.longitude FROM cfbd.venues v "
+                "JOIN cfbd.games g ON g.venue_id = v.venue_id "
+                "WHERE g.game_id = ? LIMIT 1", [game.get("id")]
+            ).df()
+            ah = con.execute(
+                "SELECT home_team as team, v.latitude, v.longitude "
+                "FROM cfbd.games g JOIN cfbd.venues v ON v.venue_id = g.venue_id "
+                "WHERE g.season >= 2022 AND g.home_team = ? AND v.latitude IS NOT NULL "
+                "GROUP BY home_team, v.latitude, v.longitude "
+                "ORDER BY count(*) DESC LIMIT 1", [away]
+            ).df()
+            if not gv.empty and not ah.empty:
+                import math as _math
+                glat = float(gv['latitude'].values[0])
+                glon = float(gv['longitude'].values[0])
+                alat = float(ah['latitude'].values[0])
+                alon = float(ah['longitude'].values[0])
+                dlat = _math.radians(glat - alat)
+                dlon = _math.radians(glon - alon)
+                a = (_math.sin(dlat/2)**2 +
+                     _math.cos(_math.radians(alat)) *
+                     _math.cos(_math.radians(glat)) *
+                     _math.sin(dlon/2)**2)
+                travel_miles = round(3958.8 * 2 * _math.asin(_math.sqrt(a)), 1)
+                if travel_miles < 200:    travel_bucket = 'local'
+                elif travel_miles < 500:  travel_bucket = 'regional'
+                elif travel_miles < 1000: travel_bucket = 'far'
+                elif travel_miles < 1500: travel_bucket = 'very_far'
+                else:                     travel_bucket = 'cross_country'
+        except Exception:
+            pass
+
     # ── Signal accumulation ───────────────────────────────────────────────
     edges    : list[str] = []
     warnings : list[str] = []
@@ -242,56 +293,85 @@ def analyse_game(
             edges.append(f"PPA gap {ppa_gap:+.3f} — primary signal")
             confidence += 15
 
-    # Rule 5: Spread in optimal range
-    if abs_spread <= 14 and ppa_gap and abs(ppa_gap) > 0.15:
-        edges.append(f"Spread {spread:+.1f} in optimal range (≤14)")
+    # Rule 5: Spread range
+    # Validated: 3-7 → 51.9% | 10-14 → 51.8% | 14-17 → 46.4% (-11.5% ROI) | 17+ → 50.8%
+    # Sweet spots: 3-7 and 10-14. Tighten upper limit to 14. Penalize 14-17.
+    if 3 <= abs_spread <= 7 and ppa_gap and abs(ppa_gap) > 0.15:
+        edges.append(f"Spread {spread:+.1f} in prime range (3-7)")
         confidence += 10
+    elif 10 <= abs_spread <= 14 and ppa_gap and abs(ppa_gap) > 0.15:
+        edges.append(f"Spread {spread:+.1f} in solid range (10-14)")
+        confidence += 8
+    elif 7 <= abs_spread < 10:
+        pass  # neutral — 48.8% not worth adjusting
+    elif 14 < abs_spread <= 17:
+        confidence -= 8   # 46.4% cover — actively bad
     elif abs_spread > 17:
-        confidence -= 10
+        confidence -= 5   # 50.8% — less bad than 14-17 surprisingly
 
     # Rule 6: SP+ alignment
-    if sp_agrees and ppa_gap and abs(ppa_gap) > 0.15:
-        edges.append("SP+ confirms PPA direction")
-        confidence += 8
+    # Validated: PPA + SP+ agrees → 62.4% cover +19.2% ROI (1,930g)
+    #            PPA + SP+ disagrees → 59.4% +13.4% (101g) — still profitable, not a kill
+    # SP+ agreement: modest bump. SP+ disagreement: mild damper only.
+    if sp_agrees is not None and ppa_gap and abs(ppa_gap) > 0.15:
+        if sp_agrees:
+            edges.append("SP+ confirms PPA direction")
+            confidence += 7   # was 8 — 62.4% cover justified
+        else:
+            warnings.append("SP+ disagrees with PPA — reduced confidence")
+            confidence -= 4   # was implicit 0 — 59.4% still covers, mild penalty
 
     # Rule 7: Team tier bonus
+    # Validated: ELITE 62.5% +19.3% | STRONG 60.1% +14.7% | NEUTRAL 52.4% | FADE 46.0% -12.2% | STRONG_FADE 41.5% -20.8%
+    # Cleanest monotonic signal in the dataset — push weights higher
     bet_team = home if (ppa_gap and ppa_gap > 0) else away
     bet_prof  = hp if bet_team == home else ap
     if bet_prof is not None:
         tier = bet_prof["tier"]
         if tier == "ELITE":
             edges.append(f"{bet_team} ELITE tier")
-            confidence += 10
+            confidence += 12   # 62.5% cover — strongest non-PPA signal
         elif tier == "STRONG":
             edges.append(f"{bet_team} STRONG tier")
-            confidence += 5
-        elif tier in ("STRONG_FADE", "FADE"):
-            warnings.append(f"{bet_team} is {tier}")
-            confidence -= 15
+            confidence += 7    # 60.1% cover — solid
+        elif tier == "FADE":
+            warnings.append(f"{bet_team} is FADE tier")
+            confidence -= 12   # 46.0% — real penalty
+        elif tier == "STRONG_FADE":
+            warnings.append(f"{bet_team} is STRONG_FADE tier")
+            confidence -= 18   # 41.5% — severe penalty
 
-    # Rule 8: Conference filter — Big Ten/ACC/Sun Belt home teams historically weak
+    # Rule 8: Conference filter
+    # Validated ROI — Big Ten: -7.0% | ACC: -7.0% | Mountain West: -7.4% | American Athletic: -8.1%
+    # Sun Belt: -5.5% (less bad than thought — keep mild penalty)
+    # Big 12: +5.4% | Pac-12: +3.1% — actually worth a small bonus
     home_conf = game.get("homeConference", game.get("home_conference", ""))
-    if home_conf in ("Big Ten", "ACC", "Sun Belt") and home_is_fav and ppa_gap and ppa_gap > 0:
-        warnings.append(f"{home_conf} home team — conference ATS headwind")
-        confidence -= 5
+    if home_conf in ("Big Ten", "ACC", "Mountain West", "American Athletic") and home_is_fav and ppa_gap and ppa_gap > 0:
+        warnings.append(f"{home_conf} home team — conference ATS headwind (-7% ROI)")
+        confidence -= 6   # was 5, bumped — all four are -7%+ ROI
+    elif home_conf == "Sun Belt" and home_is_fav and ppa_gap and ppa_gap > 0:
+        warnings.append(f"Sun Belt home team — mild ATS headwind")
+        confidence -= 3   # milder — only -5.5% ROI
+    elif home_conf in ("Big 12", "Pac-12") and home_is_fav and ppa_gap and ppa_gap > 0:
+        edges.append(f"{home_conf} home team — conference ATS tailwind (+5% ROI)")
+        confidence += 3   # new — Big 12 +5.4%, Pac-12 +3.1%
 
     # Rule 9a: Returning production gap
-    # Validated: PPA >0.15 + home returning edge → 64.9% cover, +23.8% ROI (259 games)
+    # Validated: PPA + home returning → 64.7% cover +23.5% ROI (1,084g)
+    # Standalone returning NOT predictive — only meaningful combined with PPA
     has_ppa_edge = ppa_gap is not None and abs(ppa_gap) > 0.15
     if ret_gap is not None and has_ppa_edge:
-        if ret_gap > 0.15:
-            edges.append(f"Home returning edge {ret_gap:+.2f} — 64.9% cover historically")
-            confidence += 8
-        elif ret_gap > 0.05:
-            edges.append(f"Home slight returning edge {ret_gap:+.2f}")
-            confidence += 3
-        elif ret_gap < -0.15:
-            if ppa_gap and ppa_gap < 0:  # already betting away team
+        if ret_gap > 0.05:
+            edges.append(f"Home returning edge {ret_gap:+.2f} — 64.7% cover w/ PPA")
+            confidence += 6
+        elif ret_gap < -0.05:
+            if ppa_gap and ppa_gap < 0:  # betting away, away returning more
                 edges.append(f"Away returning edge {ret_gap:+.2f} — confirms away bet")
-                confidence += 8
+                confidence += 6
             else:
-                warnings.append(f"Away returning edge {ret_gap:+.2f} cuts against home bet")
-                confidence -= 5
+                # Away returning more but still betting home — 59.8% still covers
+                warnings.append(f"Away returning edge {ret_gap:+.2f} — mild headwind")
+                confidence -= 2
 
     # Rule 9b: Line movement (available Wed+ when ≥2 snapshots exist)
     if movement is not None:
@@ -316,6 +396,8 @@ def analyse_game(
                 confidence -= 8
 
     # Rule 10: Coach H2H record
+    # Validated: 3-4g → 72.6% cover +38.7% ROI | 5-7g → 69.2% +32% | 8+g → 63.1% +20.4%
+    # Weakens with sample size — likely confounded by program quality + home field
     if coach_h2h is not None and has_ppa_edge and int(coach_h2h.get("total_games") or 0) >= 3:
         if home_coach and away_coach:
             h_w = int(coach_h2h["coach_a_wins"] if home_coach < away_coach else coach_h2h["coach_b_wins"])
@@ -328,20 +410,25 @@ def analyse_game(
         home_ats  = coach_h2h.get("home_ats_pct")
         bet_coach = home_coach if (ppa_gap and ppa_gap > 0) else away_coach
 
+        # Sample-size calibrated bonus
+        if total_g <= 4:   h2h_bonus, h2h_pen = 8, 5
+        elif total_g <= 7: h2h_bonus, h2h_pen = 6, 4
+        else:              h2h_bonus, h2h_pen = 4, 3
+
         record_str = f"{h_w}-{a_w} ({total_g}g)"
         if leader == bet_coach:
             edges.append(f"Coach H2H: {bet_coach} leads {record_str}")
-            confidence += 5
-        elif leader and leader not in ("even",) and leader != bet_coach:
+            confidence += h2h_bonus
+        elif leader and leader != "even" and leader != bet_coach:
             warnings.append(f"Coach H2H: opponent leads {record_str}")
-            confidence -= 4
+            confidence -= h2h_pen
 
         if trend == bet_coach and trend != "even":
             edges.append(f"Coach recent trend: {bet_coach} dominant")
-            confidence += 4
+            confidence += 3
         elif trend and trend != "even" and trend != bet_coach:
             warnings.append("Coach recent trend favors opponent")
-            confidence -= 3
+            confidence -= 2
 
         if home_ats is not None and home_is_fav:
             ha = float(home_ats)
@@ -351,6 +438,27 @@ def analyse_game(
             elif ha <= 35:
                 warnings.append(f"Home covers only {ha:.0f}% ATS vs this coach")
                 confidence -= 3
+
+    # Rule 11: Travel distance
+    # Validated: 1000-1499mi → 51.3% cover | 1500+mi → 52.9% cover +1.1% ROI
+    # Weak signal — tiebreaker only, weights reduced significantly
+    if travel_miles is not None and has_ppa_edge:
+        tm = float(travel_miles)
+        betting_away = bool(ppa_gap and ppa_gap < 0)
+        if tm >= 1500:
+            if not betting_away:
+                edges.append(f'Away travels {tm:.0f} mi (cross-country)')
+                confidence += 2
+            else:
+                warnings.append(f'Betting away team traveling {tm:.0f} mi')
+                confidence -= 2
+        elif tm >= 1000:
+            if not betting_away:
+                edges.append(f'Away travels {tm:.0f} mi (long haul)')
+                confidence += 1
+            else:
+                warnings.append(f'Away team traveling {tm:.0f} mi')
+                confidence -= 1
 
     # ── Determine if this qualifies ───────────────────────────────────────
     # has_ppa_edge already set in Rule 9a above
@@ -387,8 +495,10 @@ def analyse_game(
         bet_type="EDGE", ppa_gap=ppa_gap, sp_gap=sp_gap,
     )
     if pick:
-        pick["ret_gap"]    = round(ret_gap, 3) if ret_gap is not None else None
-        pick["home_coach"] = home_coach
+        pick["ret_gap"]       = round(ret_gap, 3)       if ret_gap     is not None else None
+        pick["travel_miles"]  = round(float(travel_miles), 1) if travel_miles is not None else None
+        pick["travel_bucket"] = travel_bucket
+        pick["home_coach"]    = home_coach
         pick["away_coach"] = away_coach
         if coach_h2h is not None and home_coach and away_coach:
             h_w = int(coach_h2h["coach_a_wins"] if home_coach < away_coach else coach_h2h["coach_b_wins"])
