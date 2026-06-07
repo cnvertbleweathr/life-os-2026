@@ -24,7 +24,7 @@ domains:
 
     data_sources:
       crossfit: sugarwod
-      running: manual
+      running: strava
 
   family:
     outcomes:
@@ -37,19 +37,19 @@ domains:
     habits:
       meditation:
         cadence: daily
-        target: 1
-        source: local  # logged via Streamlit dashboard → data/habits/habits_log.jsonl
+        target: 366        # full year daily
+        source: local
       pushups_100:
         cadence: daily
-        target: 1
+        target: 366
         source: local
       nonfiction_pages_10:
         cadence: daily
-        target: 1
+        target: 366
         source: local
       fiction_pages_10:
         cadence: daily
-        target: 1
+        target: 366
         source: local
 
   finance:
