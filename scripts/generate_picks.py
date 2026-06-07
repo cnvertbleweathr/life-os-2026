@@ -244,11 +244,20 @@ def analyse_game(
     if not has_ppa_edge or confidence < 60:
         return None
 
-    return _build_pick(
+    pick = _build_pick(
         game, line, spread, ou, bet_team, None,
         edges=edges, confidence=min(confidence, 95),
         bet_type="EDGE", ppa_gap=ppa_gap, sp_gap=sp_gap,
     )
+    if pick and movement is not None:
+        pick["line_movement"] = {
+            "open":    float(movement["spread_open"])     if movement.get("spread_open")     is not None else None,
+            "current": float(movement["spread_latest"])   if movement.get("spread_latest")   is not None else None,
+            "move":    float(movement["spread_movement"]) if movement.get("spread_movement") is not None else None,
+            "sharp":   str(movement.get("sharp_signal", "")),
+            "snaps":   int(movement.get("snapshots_taken") or 0),
+        }
+    return pick
 
 
 def _build_pick(

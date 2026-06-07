@@ -213,6 +213,29 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB line tracking — daily Sun-Sat during season
+        # Sun = opening lines, Sat = closing lines, Mon-Fri = movement
+        # ------------------------------------------------------------------
+        Step(
+            name="track_lines",
+            cmd=["python3", "scripts/track_lines.py"],
+            run_if_exists=ROOT / "scripts/track_lines.py",
+            tags=["betting", "cfb", "lines"],
+            # Runs every day during season — off-season check is inside the script
+        ),
+
+        # ------------------------------------------------------------------
+        # CFB picks — Degenerates Corner (CFB season: Aug–Jan, Tue–Wed)
+        # ------------------------------------------------------------------
+        Step(
+            name="generate_picks",
+            cmd=["python3", "scripts/generate_picks.py"],
+            run_if_exists=ROOT / "scripts/generate_picks.py",
+            tags=["betting", "cfb"],
+            run_on_days=[1, 2],  # Tuesday + Wednesday (lines posted for weekend)
+        ),
+
+        # ------------------------------------------------------------------
         # Playlist artists + show cross-reference
         # ------------------------------------------------------------------
         Step(

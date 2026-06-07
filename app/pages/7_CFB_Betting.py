@@ -57,10 +57,11 @@ available_seasons = seasons_df["season"].tolist()
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
 
-tab_matrix, tab_team, tab_accuracy = st.tabs([
+tab_matrix, tab_team, tab_accuracy, tab_movement = st.tabs([
     "📊 Edge Matrix",
     "🔍 Team Intel",
     "📐 Line Accuracy",
+    "📈 Line Movement",
 ])
 
 
@@ -1067,5 +1068,134 @@ with tab_accuracy:
             column_config={
                 "spread_result": st.column_config.TextColumn("ATS Result"),
                 "ou_bucket":     st.column_config.TextColumn("O/U Result"),
+            },
+        )
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TAB 4 — LINE MOVEMENT
+# ═════════════════════════════════════════════════════════════════════════════
+
+with tab_movement:
+    st.subheader("Line Movement Tracker")
+    st.caption(
+        "Daily line snapshots Sunday–Saturday. Sharp money signal derived from "
+        "movement direction vs PPA efficiency model. Builds throughout the week."
+    )
+
+    mov_season = st.selectbox("Season", [str(s) for s in available_seasons], key="mov_season")
+    mov_week   = st.number_input("Week", min_value=1, max_value=15, value=1, key="mov_week")
+
+    movement_data = safe_query(f"""
+        SELECT
+            home_team, away_team, home_conference,
+            spread_open, spread_latest, spread_movement, movement_magnitude,
+            ou_open, ou_latest, ou_movement,
+            sharp_signal, ou_sharp_signal, sharp_agrees_model,
+            line_freeze, significant_move, big_move,
+            ppa_gap, composite_signal,
+            snapshots_taken, last_updated, spread_history
+        FROM main_marts.mart_cfbd_line_movement
+        WHERE season = {mov_season} AND week = {mov_week}
+          AND provider IN ('consensus', 'DraftKings', 'ESPN Bet', 'Bovada')
+        ORDER BY movement_magnitude DESC NULLS LAST
+        LIMIT 30
+    """)
+
+    if movement_data is None or movement_data.empty:
+        st.info(
+            "No line movement data yet.\n\n"
+            "Once the CFB season starts, `track_lines.py` runs daily and this "
+            "table will populate throughout the week.\n\n"
+            "To backfill manually:\n"
+            "```bash\npython scripts/track_lines.py --year 2025 --week 1\n```"
+        )
+    else:
+        # Summary callouts
+        significant = movement_data[movement_data["significant_move"] == True]
+        sharp_home  = movement_data[movement_data["sharp_signal"] == "sharp_home"]
+        agrees      = movement_data[movement_data["sharp_agrees_model"] == True]
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Games Tracked", len(movement_data), border=True)
+        c2.metric("Significant Moves (≥0.5)", len(significant), border=True)
+        c3.metric("Sharp → Home", len(sharp_home), border=True)
+        c4.metric("Sharp Agrees Model", len(agrees), border=True)
+
+        st.space("small")
+
+        # STRONG_BET signals
+        strong = movement_data[movement_data["composite_signal"] == "STRONG_BET"]
+        if not strong.empty:
+            st.markdown("### 💰 Strong Signals — Sharp + Model Aligned")
+            for _, row in strong.iterrows():
+                direction = "home" if (row.get("ppa_gap") or 0) > 0 else "away"
+                bet_team  = row["home_team"] if direction == "home" else row["away_team"]
+                move      = row.get("spread_movement") or 0
+                ppa       = row.get("ppa_gap") or 0
+                st.markdown(
+                    f"<div style='background:#373D39;border-left:4px solid #0B5324;"
+                    f"border:1px solid #434A45;border-radius:4px;"
+                    f"padding:0.7rem 1rem;margin:0.3rem 0'>"
+                    f"<b>{row['away_team']} @ {row['home_team']}</b> "
+                    f"<span style='color:#A9B2AC;font-size:0.8rem'>{row['home_conference']}</span><br>"
+                    f"<span style='color:#0B5324;font-weight:600'>Bet {bet_team}</span> · "
+                    f"Line moved {move:+.1f} pts · PPA gap {ppa:+.3f} · "
+                    f"{int(row.get('snapshots_taken',0))} daily snapshots"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            st.space("small")
+
+        # FADE signals — sharp opposes model
+        fade_sig = movement_data[movement_data["composite_signal"] == "FADE_SIGNAL"]
+        if not fade_sig.empty:
+            st.markdown("### ⚠️ Fade Signals — Sharp Opposes Model")
+            for _, row in fade_sig.iterrows():
+                move = row.get("spread_movement") or 0
+                ppa  = row.get("ppa_gap") or 0
+                st.markdown(
+                    f"<div style='background:#373D39;border-left:4px solid #D97706;"
+                    f"border:1px solid #434A45;border-radius:4px;"
+                    f"padding:0.7rem 1rem;margin:0.3rem 0'>"
+                    f"<b>{row['away_team']} @ {row['home_team']}</b><br>"
+                    f"<span style='color:#D97706'>Sharp money ({row['sharp_signal']}) "
+                    f"moved {move:+.1f} pts — model says PPA {ppa:+.3f}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            st.space("small")
+
+        # Full movement table
+        st.markdown("### All Games — Line Movement")
+
+        display = movement_data[[
+            "home_team", "away_team", "spread_open", "spread_latest",
+            "spread_movement", "ou_open", "ou_latest", "ou_movement",
+            "sharp_signal", "sharp_agrees_model", "composite_signal",
+            "snapshots_taken"
+        ]].rename(columns={
+            "home_team":          "Home",
+            "away_team":          "Away",
+            "spread_open":        "Open",
+            "spread_latest":      "Current",
+            "spread_movement":    "Move",
+            "ou_open":            "O/U Open",
+            "ou_latest":          "O/U Now",
+            "ou_movement":        "O/U Move",
+            "sharp_signal":       "Sharp",
+            "sharp_agrees_model": "Agrees Model",
+            "composite_signal":   "Signal",
+            "snapshots_taken":    "Days",
+        })
+
+        st.dataframe(
+            display,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Move": st.column_config.NumberColumn(format="%.1f"),
+                "O/U Move": st.column_config.NumberColumn(format="%.1f"),
+                "Agrees Model": st.column_config.CheckboxColumn(disabled=True),
             },
         )
