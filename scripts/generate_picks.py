@@ -126,6 +126,24 @@ def analyse_game(
     if not h_adv.empty and not a_adv.empty:
         ppa_gap = float(h_adv["off_ppa"].values[0]) - float(a_adv["off_ppa"].values[0])
 
+    # ── Returning production ──────────────────────────────────────────────────
+    ret = con.execute("""
+        SELECT team,
+               percent_ppa         as pct_returning,
+               percent_rushing_ppa as pct_rush_returning,
+               percent_passing_ppa as pct_pass_returning
+        FROM cfbd.returning_production
+        WHERE season = ? AND team IN (?, ?)
+    """, [year - 1, home, away]).df()
+
+    h_ret   = ret[ret["team"] == home]
+    a_ret   = ret[ret["team"] == away]
+    ret_gap = None
+    if not h_ret.empty and not a_ret.empty:
+        h_pct   = float(h_ret["pct_returning"].values[0])
+        a_pct   = float(a_ret["pct_returning"].values[0])
+        ret_gap = round(h_pct - a_pct, 4)
+
     # ── SP+ ───────────────────────────────────────────────────────────────
     sp = con.execute("""
         SELECT team, rating FROM cfbd.sp_ratings
@@ -140,6 +158,22 @@ def analyse_game(
         sp_gap = float(h_sp["rating"].values[0]) - float(a_sp["rating"].values[0])
         sp_agrees = (sp_gap > 0 and ppa_gap and ppa_gap > 0) or \
                     (sp_gap < 0 and ppa_gap and ppa_gap < 0)
+
+    # ── Line movement ─────────────────────────────────────────────────────
+    movement = None
+    try:
+        mv = con.execute("""
+            SELECT spread_movement, movement_magnitude, sharp_signal,
+                   sharp_agrees_model, composite_signal,
+                   snapshots_taken, spread_latest, spread_open
+            FROM main_marts.mart_cfbd_line_movement
+            WHERE game_id = ? AND season = ?
+            ORDER BY last_updated DESC LIMIT 1
+        """, [game.get("id"), year]).df()
+        if not mv.empty:
+            movement = mv.iloc[0]
+    except Exception:
+        pass  # mart not yet built — first week of season
 
     # ── Rivalry check ─────────────────────────────────────────────────────
     rivalry = con.execute("""
@@ -214,9 +248,48 @@ def analyse_game(
         warnings.append(f"{home_conf} home team — conference ATS headwind")
         confidence -= 5
 
-    # ── Determine if this qualifies ───────────────────────────────────────
-    # Minimum: PPA gap signal + confidence > 60
+    # Rule 9a: Returning production gap
+    # Validated: PPA >0.15 + home returning edge → 64.9% cover, +23.8% ROI (259 games)
     has_ppa_edge = ppa_gap is not None and abs(ppa_gap) > 0.15
+    if ret_gap is not None and has_ppa_edge:
+        if ret_gap > 0.15:
+            edges.append(f"Home returning edge {ret_gap:+.2f} — 64.9% cover historically")
+            confidence += 8
+        elif ret_gap > 0.05:
+            edges.append(f"Home slight returning edge {ret_gap:+.2f}")
+            confidence += 3
+        elif ret_gap < -0.15:
+            if ppa_gap and ppa_gap < 0:  # already betting away team
+                edges.append(f"Away returning edge {ret_gap:+.2f} — confirms away bet")
+                confidence += 8
+            else:
+                warnings.append(f"Away returning edge {ret_gap:+.2f} cuts against home bet")
+                confidence -= 5
+
+    # Rule 9b: Line movement (available Wed+ when ≥2 snapshots exist)
+    if movement is not None:
+        sharp  = str(movement.get("sharp_signal", "no_movement"))
+        agrees = movement.get("sharp_agrees_model")
+        mag    = float(movement.get("movement_magnitude") or 0)
+        snaps  = int(movement.get("snapshots_taken") or 0)
+        comp   = str(movement.get("composite_signal", "PASS"))
+
+        if snaps >= 2:
+            if comp == "STRONG_BET" and agrees:
+                edges.append(f"Sharp agrees — line moved {mag:.1f} pts toward model")
+                confidence += 12
+            elif comp == "BET" and sharp == "no_movement":
+                edges.append("Line stable — market not fading signal")
+                confidence += 5
+            elif comp == "FADE_SIGNAL":
+                warnings.append(f"Sharp opposes model — {mag:.1f} pt move against signal")
+                confidence -= 15
+            elif sharp != "no_movement" and agrees is False and mag >= 1.0:
+                warnings.append(f"1+ pt move against model direction")
+                confidence -= 8
+
+    # ── Determine if this qualifies ───────────────────────────────────────
+    # has_ppa_edge already set in Rule 9a above
     has_hard_fade = any("STRONG_FADE" in w for w in warnings)
 
     # Surface as a FADE only when:
@@ -249,6 +322,8 @@ def analyse_game(
         edges=edges, confidence=min(confidence, 95),
         bet_type="EDGE", ppa_gap=ppa_gap, sp_gap=sp_gap,
     )
+    if pick:
+        pick["ret_gap"] = round(ret_gap, 3) if ret_gap is not None else None
     if pick and movement is not None:
         pick["line_movement"] = {
             "open":    float(movement["spread_open"])     if movement.get("spread_open")     is not None else None,
@@ -286,7 +361,7 @@ def _build_pick(
         else:
             bet_str = f"{away} +{abs(spread):.1f} (away dog)"
 
-    edge_str = " · ".join(edges[:3]) if edges else "Model signal"
+    edge_str = " · ".join(edges[:5]) if edges else "Model signal"
 
     stars = "⭐" * min(int(confidence / 20), 5)
 

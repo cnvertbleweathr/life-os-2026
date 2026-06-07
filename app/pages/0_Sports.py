@@ -211,19 +211,59 @@ degens_path = ROOT / "data" / "bets" / "todays_picks.json"
 if degens_path.exists():
     try:
         picks = json.loads(degens_path.read_text())
-        for pick in picks:
-            confidence = pick.get("confidence", 0)
-            stars = "⭐" * min(int(confidence / 20), 5)
-            with st.container(border=True):
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    st.markdown(f"**{pick.get('matchup', '')}**  \n{pick.get('bet', '')}")
-                with col2:
-                    st.markdown(f"**{pick.get('line', '')}**  \n{pick.get('sport', '')}")
-                with col3:
-                    st.markdown(f"{stars}  \n{pick.get('edge', '')}")
-    except Exception:
-        st.caption("Could not load picks.")
+        if picks:
+            st.caption(f"{len(picks)} qualifying picks this week · sorted by confidence")
+            for pick in picks:
+                confidence = pick.get("confidence", 0)
+                bet_type   = pick.get("bet_type", "EDGE")
+                stars      = "⭐" * min(int(confidence / 20), 5)
+                ppa_gap    = pick.get("ppa_gap")
+                sp_gap     = pick.get("sp_gap")
+                week       = pick.get("week", "")
+                ou         = pick.get("ou", "")
+
+                border_color = "#0B5324" if bet_type == "EDGE" else "#D97706"
+                badge_text   = "EDGE" if bet_type == "EDGE" else "FADE"
+                badge_color  = "#0B5324" if bet_type == "EDGE" else "#D97706"
+
+                ppa_str = f"PPA gap: {ppa_gap:+.3f}" if ppa_gap else ""
+                sp_str  = f"SP+: {sp_gap:+.1f}" if sp_gap else ""
+                stats   = " · ".join(s for s in [ppa_str, sp_str] if s)
+
+                st.markdown(
+                    f"<div style='background:#373D39;border:1px solid #434A45;"
+                    f"border-left:4px solid {border_color};"
+                    f"padding:0.8rem 1rem;margin:0.3rem 0;border-radius:4px'>"
+                    f"<div style='display:flex;justify-content:space-between;"
+                    f"align-items:flex-start;margin-bottom:0.4rem'>"
+                    f"<div>"
+                    f"<span style='font-weight:700;font-size:0.9rem;color:#F5EFEB'>"
+                    f"{pick.get('matchup','')}</span>"
+                    f"<span style='font-size:0.65rem;color:#A9B2AC;margin-left:0.5rem'>"
+                    f"Week {week} · O/U {ou}</span>"
+                    f"</div>"
+                    f"<span style='font-size:0.62rem;font-weight:700;letter-spacing:2px;"
+                    f"color:{badge_color};border:1px solid {badge_color};"
+                    f"padding:0.1rem 0.4rem'>{badge_text}</span>"
+                    f"</div>"
+                    f"<div style='font-size:0.85rem;font-weight:600;color:#F5EFEB;"
+                    f"margin-bottom:0.3rem'>🎯 {pick.get('bet','')}</div>"
+                    f"<div style='display:flex;justify-content:space-between;"
+                    f"align-items:center'>"
+                    f"<span style='font-size:0.72rem;color:#A9B2AC'>"
+                    f"{pick.get('edge','')} · {pick.get('line','')}</span>"
+                    f"<span style='font-size:0.85rem'>{stars} "
+                    f"<span style='color:#A9B2AC;font-size:0.68rem'>{confidence}%</span></span>"
+                    f"</div>"
+                    + (f"<div style='font-size:0.68rem;color:#A9B2AC;margin-top:0.2rem'>"
+                       f"{stats}</div>" if stats else "") +
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No qualifying picks this week — edges don't meet criteria or off-season.")
+    except Exception as e:
+        st.caption(f"Could not load picks: {e}")
 else:
     col1, col2, col3 = st.columns(3)
     for col, sport, icon, note in [
