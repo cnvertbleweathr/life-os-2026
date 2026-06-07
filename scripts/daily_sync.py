@@ -225,6 +225,17 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB news signals — Wed/Thu after line movement identified
+        # ------------------------------------------------------------------
+        Step(
+            name="track_news_signals",
+            cmd=["python3", "scripts/track_news_signals.py"],
+            run_if_exists=ROOT / "scripts/track_news_signals.py",
+            tags=["betting", "cfb", "news"],
+            run_on_days=[2, 3],  # Wednesday + Thursday
+        ),
+
+        # ------------------------------------------------------------------
         # CFB picks — Degenerates Corner (CFB season: Aug–Jan, Tue–Wed)
         # ------------------------------------------------------------------
         Step(

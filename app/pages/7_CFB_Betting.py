@@ -1110,7 +1110,48 @@ with tab_movement:
             "To backfill manually:\n"
             "```bash\npython scripts/track_lines.py --year 2025 --week 1\n```"
         )
+        st.stop()
+
+    # Try to load enriched signal data (available Wed+ when news has been fetched)
+    signal_data = safe_query(f"""
+        SELECT
+            home_team, away_team, home_conference,
+            spread_open, spread_latest, spread_movement, movement_magnitude,
+            sharp_signal, sharp_agrees_model,
+            master_signal, composite_signal,
+            movement_explained_by_news, likely_sharp_money, possible_overreaction,
+            qb_injury_found, suspension_found, weather_signal,
+            home_signal_type, away_signal_type,
+            max_signal_strength, meaningful_articles,
+            top_headlines, top_signal_types, top_signal_teams,
+            ppa_gap, snapshots_taken
+        FROM main_marts.mart_cfbd_game_signals
+        WHERE season = {mov_season} AND week = {mov_week}
+        ORDER BY
+            CASE master_signal
+                WHEN 'PRIME_BET'           THEN 1
+                WHEN 'STRONG_BET'          THEN 2
+                WHEN 'NEWS_CONFIRMS_BET'   THEN 3
+                WHEN 'BET'                 THEN 4
+                WHEN 'OVERREACTION_WATCH'  THEN 5
+                WHEN 'FADE_SIGNAL'         THEN 6
+                WHEN 'DOWNGRADE_QB_INJURY' THEN 7
+                ELSE 8
+            END,
+            movement_magnitude DESC NULLS LAST
+    """)
+
+    # Fall back to plain movement data if signals mart isn't built yet
+    use_signals = signal_data is not None and not signal_data.empty
+
+    if use_signals:
+        st.caption("✓ News signal data available — showing enriched view")
     else:
+        st.caption("News signals not yet available — run `track_news_signals.py` Wed/Thu")
+
+    display_data = signal_data if use_signals else movement_data
+
+    if True:
         # Summary callouts
         significant = movement_data[movement_data["significant_move"] == True]
         sharp_home  = movement_data[movement_data["sharp_signal"] == "sharp_home"]
@@ -1124,31 +1165,91 @@ with tab_movement:
 
         st.space("small")
 
-        # STRONG_BET signals
-        strong = movement_data[movement_data["composite_signal"] == "STRONG_BET"]
-        if not strong.empty:
-            st.markdown("### 💰 Strong Signals — Sharp + Model Aligned")
-            for _, row in strong.iterrows():
+        sig_col = "master_signal" if use_signals else "composite_signal"
+
+        # ── Prime / Strong bets ───────────────────────────────────────────
+        prime = display_data[display_data[sig_col].isin(["PRIME_BET", "STRONG_BET", "NEWS_CONFIRMS_BET", "BET"])]
+        if not prime.empty:
+            st.markdown("### 💰 Bet Signals")
+            for _, row in prime.iterrows():
                 direction = "home" if (row.get("ppa_gap") or 0) > 0 else "away"
                 bet_team  = row["home_team"] if direction == "home" else row["away_team"]
                 move      = row.get("spread_movement") or 0
                 ppa       = row.get("ppa_gap") or 0
+                sig       = str(row.get(sig_col, ""))
+                border    = "#0B5324" if "PRIME" in sig else "#1a7a38"
+
+                # News context line
+                news_line = ""
+                if use_signals and row.get("meaningful_articles"):
+                    h_sig  = str(row.get("home_signal_type") or "")
+                    a_sig  = str(row.get("away_signal_type") or "")
+                    n_arts = int(row.get("meaningful_articles") or 0)
+                    if row.get("likely_sharp_money"):
+                        news_line = "<br><span style='color:#A9B2AC;font-size:0.72rem'>📊 No major news — likely sharp money</span>"
+                    elif row.get("movement_explained_by_news"):
+                        news_line = f"<br><span style='color:#A9B2AC;font-size:0.72rem'>📰 {n_arts} news articles found · Home: {h_sig} · Away: {a_sig}</span>"
+
                 st.markdown(
-                    f"<div style='background:#373D39;border-left:4px solid #0B5324;"
+                    f"<div style='background:#373D39;border-left:4px solid {border};"
                     f"border:1px solid #434A45;border-radius:4px;"
                     f"padding:0.7rem 1rem;margin:0.3rem 0'>"
-                    f"<b>{row['away_team']} @ {row['home_team']}</b> "
-                    f"<span style='color:#A9B2AC;font-size:0.8rem'>{row['home_conference']}</span><br>"
+                    f"<div style='display:flex;justify-content:space-between'>"
+                    f"<b>{row['away_team']} @ {row['home_team']}</b>"
+                    f"<span style='font-size:0.65rem;color:{border};letter-spacing:2px'>{sig}</span></div>"
                     f"<span style='color:#0B5324;font-weight:600'>Bet {bet_team}</span> · "
-                    f"Line moved {move:+.1f} pts · PPA gap {ppa:+.3f} · "
-                    f"{int(row.get('snapshots_taken',0))} daily snapshots"
-                    f"</div>",
+                    f"Moved {move:+.1f} pts · PPA {ppa:+.3f}"
+                    f"{news_line}</div>",
                     unsafe_allow_html=True,
                 )
             st.space("small")
 
-        # FADE signals — sharp opposes model
-        fade_sig = movement_data[movement_data["composite_signal"] == "FADE_SIGNAL"]
+        # ── Downgrades — QB injury / suspension ──────────────────────────
+        if use_signals:
+            downgrades = display_data[display_data[sig_col].isin(
+                ["DOWNGRADE_QB_INJURY", "DOWNGRADE_SUSPENSION"]
+            )]
+            if not downgrades.empty:
+                st.markdown("### 🚨 Downgraded — Injury or Suspension News")
+                for _, row in downgrades.iterrows():
+                    sig = str(row.get(sig_col, ""))
+                    headlines = row.get("top_headlines") or []
+                    headline_str = headlines[0][:80] if headlines else ""
+                    st.markdown(
+                        f"<div style='background:#373D39;border-left:4px solid #e74c3c;"
+                        f"border:1px solid #434A45;border-radius:4px;"
+                        f"padding:0.7rem 1rem;margin:0.3rem 0'>"
+                        f"<b>{row['away_team']} @ {row['home_team']}</b> "
+                        f"<span style='color:#e74c3c;font-size:0.72rem'>{sig}</span><br>"
+                        f"<span style='color:#A9B2AC;font-size:0.75rem'>{headline_str}</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.space("small")
+
+        # ── Overreaction watch ────────────────────────────────────────────
+        if use_signals:
+            overreact = display_data[display_data[sig_col] == "OVERREACTION_WATCH"]
+            if not overreact.empty:
+                st.markdown("### 🔄 Overreaction Watch — Minor News, Large Move")
+                st.caption("Market may be overcorrecting — potential fade opportunity")
+                for _, row in overreact.iterrows():
+                    move = row.get("spread_movement") or 0
+                    sig_str = str(row.get("home_signal_type") or row.get("away_signal_type") or "")
+                    st.markdown(
+                        f"<div style='background:#373D39;border-left:4px solid #D97706;"
+                        f"border:1px solid #434A45;border-radius:4px;"
+                        f"padding:0.7rem 1rem;margin:0.3rem 0'>"
+                        f"<b>{row['away_team']} @ {row['home_team']}</b><br>"
+                        f"<span style='color:#D97706'>Line moved {move:+.1f} pts · "
+                        f"News: {sig_str} (low strength) — consider fading the move</span>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+                st.space("small")
+
+        # ── Fade signals ──────────────────────────────────────────────────
+        fade_sig = display_data[display_data[sig_col] == "FADE_SIGNAL"]
         if not fade_sig.empty:
             st.markdown("### ⚠️ Fade Signals — Sharp Opposes Model")
             for _, row in fade_sig.iterrows():
@@ -1159,43 +1260,44 @@ with tab_movement:
                     f"border:1px solid #434A45;border-radius:4px;"
                     f"padding:0.7rem 1rem;margin:0.3rem 0'>"
                     f"<b>{row['away_team']} @ {row['home_team']}</b><br>"
-                    f"<span style='color:#D97706'>Sharp money ({row['sharp_signal']}) "
+                    f"<span style='color:#D97706'>Sharp ({row.get('sharp_signal','')}): "
                     f"moved {move:+.1f} pts — model says PPA {ppa:+.3f}</span>"
                     f"</div>",
                     unsafe_allow_html=True,
                 )
             st.space("small")
 
-        # Full movement table
-        st.markdown("### All Games — Line Movement")
+        # ── Full table ────────────────────────────────────────────────────
+        st.markdown("### All Games This Week")
 
-        display = movement_data[[
-            "home_team", "away_team", "spread_open", "spread_latest",
-            "spread_movement", "ou_open", "ou_latest", "ou_movement",
-            "sharp_signal", "sharp_agrees_model", "composite_signal",
-            "snapshots_taken"
-        ]].rename(columns={
-            "home_team":          "Home",
-            "away_team":          "Away",
-            "spread_open":        "Open",
-            "spread_latest":      "Current",
-            "spread_movement":    "Move",
-            "ou_open":            "O/U Open",
-            "ou_latest":          "O/U Now",
-            "ou_movement":        "O/U Move",
-            "sharp_signal":       "Sharp",
-            "sharp_agrees_model": "Agrees Model",
-            "composite_signal":   "Signal",
-            "snapshots_taken":    "Days",
-        })
+        base_cols   = ["home_team", "away_team", "spread_open", "spread_latest",
+                       "spread_movement", "sharp_signal", sig_col, "snapshots_taken"]
+        news_cols   = ["max_signal_strength", "home_signal_type", "away_signal_type",
+                       "likely_sharp_money", "movement_explained_by_news"] if use_signals else []
+        show_cols   = [c for c in base_cols + news_cols if c in display_data.columns]
 
+        rename_map  = {
+            "home_team":                  "Home",
+            "away_team":                  "Away",
+            "spread_open":                "Open",
+            "spread_latest":              "Current",
+            "spread_movement":            "Move",
+            "sharp_signal":               "Sharp",
+            sig_col:                      "Signal",
+            "snapshots_taken":            "Days",
+            "max_signal_strength":        "News Strength",
+            "home_signal_type":           "Home News",
+            "away_signal_type":           "Away News",
+            "likely_sharp_money":         "Likely Sharp",
+            "movement_explained_by_news": "News Explains",
+        }
+
+        display = display_data[show_cols].rename(columns=rename_map)
         st.dataframe(
-            display,
-            hide_index=True,
-            use_container_width=True,
+            display, hide_index=True, use_container_width=True,
             column_config={
-                "Move": st.column_config.NumberColumn(format="%.1f"),
-                "O/U Move": st.column_config.NumberColumn(format="%.1f"),
-                "Agrees Model": st.column_config.CheckboxColumn(disabled=True),
+                "Move":          st.column_config.NumberColumn(format="%.1f"),
+                "Likely Sharp":  st.column_config.CheckboxColumn(disabled=True),
+                "News Explains": st.column_config.CheckboxColumn(disabled=True),
             },
         )
