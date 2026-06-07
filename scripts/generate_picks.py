@@ -182,6 +182,33 @@ def analyse_game(
     """, [home, away, away, home]).fetchone()
     is_rivalry = rivalry is not None
 
+    # ── Coach names & H2H ────────────────────────────────────────────────
+    coaches_df = con.execute(
+        "SELECT school, full_name FROM cfbd.coaches WHERE year = ? AND school IN (?, ?)",
+        [year - 1, home, away]
+    ).df()
+    home_coach_row = coaches_df[coaches_df["school"] == home]
+    away_coach_row = coaches_df[coaches_df["school"] == away]
+    home_coach = str(home_coach_row["full_name"].values[0]) if not home_coach_row.empty else None
+    away_coach = str(away_coach_row["full_name"].values[0]) if not away_coach_row.empty else None
+
+    coach_h2h = None
+    if home_coach and away_coach:
+        coach_a = min(home_coach, away_coach)
+        coach_b = max(home_coach, away_coach)
+        try:
+            h2h_df = con.execute(
+                "SELECT coach_a, coach_b, coach_a_wins, coach_b_wins, total_games, "
+                "all_time_leader, recent_trend_leader, home_win_pct, home_ats_pct "
+                "FROM main_marts.mart_cfbd_coach_matchups "
+                "WHERE coach_a = ? AND coach_b = ? LIMIT 1",
+                [coach_a, coach_b]
+            ).df()
+            if not h2h_df.empty:
+                coach_h2h = h2h_df.iloc[0]
+        except Exception:
+            pass  # mart not built yet
+
     # ── Signal accumulation ───────────────────────────────────────────────
     edges    : list[str] = []
     warnings : list[str] = []
@@ -288,6 +315,43 @@ def analyse_game(
                 warnings.append(f"1+ pt move against model direction")
                 confidence -= 8
 
+    # Rule 10: Coach H2H record
+    if coach_h2h is not None and has_ppa_edge and int(coach_h2h.get("total_games") or 0) >= 3:
+        if home_coach and away_coach:
+            h_w = int(coach_h2h["coach_a_wins"] if home_coach < away_coach else coach_h2h["coach_b_wins"])
+            a_w = int(coach_h2h["coach_b_wins"] if home_coach < away_coach else coach_h2h["coach_a_wins"])
+        else:
+            h_w, a_w = 0, 0
+        total_g   = int(coach_h2h.get("total_games") or 0)
+        leader    = str(coach_h2h.get("all_time_leader", ""))
+        trend     = str(coach_h2h.get("recent_trend_leader", ""))
+        home_ats  = coach_h2h.get("home_ats_pct")
+        bet_coach = home_coach if (ppa_gap and ppa_gap > 0) else away_coach
+
+        record_str = f"{h_w}-{a_w} ({total_g}g)"
+        if leader == bet_coach:
+            edges.append(f"Coach H2H: {bet_coach} leads {record_str}")
+            confidence += 5
+        elif leader and leader not in ("even",) and leader != bet_coach:
+            warnings.append(f"Coach H2H: opponent leads {record_str}")
+            confidence -= 4
+
+        if trend == bet_coach and trend != "even":
+            edges.append(f"Coach recent trend: {bet_coach} dominant")
+            confidence += 4
+        elif trend and trend != "even" and trend != bet_coach:
+            warnings.append("Coach recent trend favors opponent")
+            confidence -= 3
+
+        if home_ats is not None and home_is_fav:
+            ha = float(home_ats)
+            if ha >= 65:
+                edges.append(f"Home covers {ha:.0f}% ATS vs this coach")
+                confidence += 4
+            elif ha <= 35:
+                warnings.append(f"Home covers only {ha:.0f}% ATS vs this coach")
+                confidence -= 3
+
     # ── Determine if this qualifies ───────────────────────────────────────
     # has_ppa_edge already set in Rule 9a above
     has_hard_fade = any("STRONG_FADE" in w for w in warnings)
@@ -323,7 +387,19 @@ def analyse_game(
         bet_type="EDGE", ppa_gap=ppa_gap, sp_gap=sp_gap,
     )
     if pick:
-        pick["ret_gap"] = round(ret_gap, 3) if ret_gap is not None else None
+        pick["ret_gap"]    = round(ret_gap, 3) if ret_gap is not None else None
+        pick["home_coach"] = home_coach
+        pick["away_coach"] = away_coach
+        if coach_h2h is not None and home_coach and away_coach:
+            h_w = int(coach_h2h["coach_a_wins"] if home_coach < away_coach else coach_h2h["coach_b_wins"])
+            a_w = int(coach_h2h["coach_b_wins"] if home_coach < away_coach else coach_h2h["coach_a_wins"])
+            pick["coach_h2h"] = {
+                "home_record": h_w,
+                "away_record": a_w,
+                "total":       int(coach_h2h.get("total_games") or 0),
+                "leader":      str(coach_h2h.get("all_time_leader", "")),
+                "trend":       str(coach_h2h.get("recent_trend_leader", "")),
+            }
     if pick and movement is not None:
         pick["line_movement"] = {
             "open":    float(movement["spread_open"])     if movement.get("spread_open")     is not None else None,
