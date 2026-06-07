@@ -247,6 +247,17 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB picks report — human-readable markdown (Thursday)
+        # ------------------------------------------------------------------
+        Step(
+            name="generate_picks_report",
+            cmd=["python3", "scripts/generate_picks_report.py"],
+            run_if_exists=ROOT / "scripts/generate_picks_report.py",
+            tags=["betting", "cfb"],
+            run_on_days=[3],  # Thursday — final report before weekend games
+        ),
+
+        # ------------------------------------------------------------------
         # Playlist artists + show cross-reference
         # ------------------------------------------------------------------
         Step(
