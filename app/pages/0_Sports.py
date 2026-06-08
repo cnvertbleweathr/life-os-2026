@@ -212,23 +212,33 @@ if degens_path.exists():
     try:
         picks = json.loads(degens_path.read_text())
         if picks:
-            st.caption(f"{len(picks)} qualifying picks this week · sorted by confidence")
+            st.caption(f"{len(picks)} qualifying picks this week · sorted by model score · min 4 signals · min score 70")
             for pick in picks:
-                confidence = pick.get("confidence", 0)
-                bet_type   = pick.get("bet_type", "EDGE")
-                stars      = "⭐" * min(int(confidence / 20), 5)
-                ppa_gap    = pick.get("ppa_gap")
-                sp_gap     = pick.get("sp_gap")
-                week       = pick.get("week", "")
-                ou         = pick.get("ou", "")
+                model_score = pick.get("model_score", pick.get("confidence", 0))
+                bet_type    = pick.get("bet_type", "EDGE")
+                stars       = "⭐" * min(int(model_score / 20), 5)
+                ppa_gap     = pick.get("ppa_gap")
+                n_edges     = pick.get("n_edges", 0)
+                warnings    = pick.get("warnings", [])
+                week        = pick.get("week", "")
+                ou          = pick.get("ou", "")
 
                 border_color = "#0B5324" if bet_type == "EDGE" else "#D97706"
                 badge_text   = "EDGE" if bet_type == "EDGE" else "FADE"
                 badge_color  = "#0B5324" if bet_type == "EDGE" else "#D97706"
 
-                ppa_str = f"PPA gap: {ppa_gap:+.3f}" if ppa_gap else ""
-                sp_str  = f"SP+: {sp_gap:+.1f}" if sp_gap else ""
-                stats   = " · ".join(s for s in [ppa_str, sp_str] if s)
+                ppa_str    = f"PPA gap: {ppa_gap:+.3f}" if ppa_gap else ""
+                edges_str  = f"{n_edges} signals" if n_edges else ""
+                stats      = " · ".join(s for s in [ppa_str, edges_str] if s)
+
+                # Warning badges — coach change, low returning, etc.
+                warn_html = ""
+                if warnings:
+                    warn_items = " · ".join(warnings[:2])
+                    warn_html = (
+                        f"<div style='font-size:0.65rem;color:#D97706;"
+                        f"margin-top:0.25rem'>⚠️ {warn_items}</div>"
+                    )
 
                 st.markdown(
                     f"<div style='background:#373D39;border:1px solid #434A45;"
@@ -253,10 +263,11 @@ if degens_path.exists():
                     f"<span style='font-size:0.72rem;color:#A9B2AC'>"
                     f"{pick.get('edge','')} · {pick.get('line','')}</span>"
                     f"<span style='font-size:0.85rem'>{stars} "
-                    f"<span style='color:#A9B2AC;font-size:0.68rem'>{confidence}%</span></span>"
+                    f"<span style='color:#A9B2AC;font-size:0.68rem'>{model_score}</span></span>"
                     f"</div>"
                     + (f"<div style='font-size:0.68rem;color:#A9B2AC;margin-top:0.2rem'>"
-                       f"{stats}</div>" if stats else "") +
+                       f"{stats}</div>" if stats else "")
+                    + warn_html +
                     f"</div>",
                     unsafe_allow_html=True,
                 )

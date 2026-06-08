@@ -523,6 +523,7 @@ with tab_team:
             ac, ad = st.columns(2)
             ac.metric("Success Rate", f"{float(a['off_success_rate']):.1%}", border=True)
             ad.metric("Def Havoc", f"{float(a['def_havoc_total']):.3f}", border=True)
+            st.caption("ℹ️ Def Havoc shown for context — not used in model scoring (ablation: 0% ΔROI)")
 
     # ── Matchup analysis (opponent selected) ──────────────────────────────────
     if opponent:
@@ -657,8 +658,9 @@ with tab_team:
                 stat_row("Def PPA",         prim_adv["def_ppa"],          opp_adv["def_ppa"],          higher_is_better=False)
                 stat_row("Off Success %",   prim_adv["off_success_rate"], opp_adv["off_success_rate"])
                 stat_row("Def Success %",   prim_adv["def_success_rate"], opp_adv["def_success_rate"], higher_is_better=False)
-                stat_row("Def Havoc",       prim_adv["def_havoc_total"],  opp_adv["def_havoc_total"])
+                stat_row("Def Havoc ℹ️",    prim_adv["def_havoc_total"],  opp_adv["def_havoc_total"])
                 stat_row("Rush Off PPA",    prim_adv["off_rush_ppa"],     opp_adv["off_rush_ppa"])
+                st.caption("ℹ️ Def Havoc is display-only — ablation showed 0% ΔROI across 4 seasons")
 
             if sp_gap is not None:
                 gap_color = "#39ff6e" if sp_gap > 0 else "#e74c3c"
