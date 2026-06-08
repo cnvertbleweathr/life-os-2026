@@ -374,7 +374,34 @@ def _build_pick(
         else:
             bet_str = f"{away} +{abs(spread):.1f} (away dog)"
 
-    edge_str = " · ".join(edges[:5]) if edges else "Model signal"
+    EDGE_LABELS = {
+        "PPA_primary":           "PPA efficiency edge",
+        "PPA_extreme":           "PPA gap >0.30 (extreme)",
+        "spread_prime":          "Spread 3-7 (prime range)",
+        "spread_solid":          "Spread 10-14 (solid range)",
+        "SP+_agrees":            "SP+ confirms direction",
+        "tier_ELITE":            "ELITE tier (historical ATS)",
+        "tier_STRONG":           "STRONG tier (historical ATS)",
+        "conf_tailwind":         "Conference ATS tailwind",
+        "ret_high_home":         "Home returning production edge",
+        "ret_slight_home":       "Home slight returning edge",
+        "ret_high_away":         "Away returning production edge",
+        "ret_slight_away":       "Away slight returning edge",
+        "talent_parity":         "Talent parity + PPA (71% hist)",
+        "home_eff_beats_talent": "Home efficiency beats talent gap",
+        "away_eff_beats_talent": "Away efficiency beats talent gap",
+        "talent_confirms_home":  "Recruiting confirms home edge",
+        "talent_confirms_away":  "Recruiting confirms away edge",
+        "SR_parity":             "Success rate parity + PPA",
+        "SR_confirms_home":      "Success rate confirms home",
+        "SR_confirms_away":      "Success rate confirms away",
+        "home_eff_beats_SR":     "Home efficiency beats SR gap",
+        "away_eff_beats_SR":     "Away efficiency beats SR gap",
+        "home_havoc":            "Home defense havoc edge",
+        "away_havoc":            "Away defense havoc edge",
+    }
+    readable_edges = [EDGE_LABELS.get(e, e) for e in edges]
+    edge_str = " · ".join(readable_edges[:5]) if readable_edges else "Model signal"
 
     stars = "⭐" * min(int(confidence / 20), 5)
 
@@ -384,7 +411,7 @@ def _build_pick(
         "line":       f"{spread_display} ({line.get('provider','consensus')})",
         "sport":      "CFB",
         "edge":       edge_str,
-        "confidence": confidence,
+        "model_score": confidence,
         "stars":      stars,
         "week":       week,
         "ou":         str(ou) if ou else "N/A",
