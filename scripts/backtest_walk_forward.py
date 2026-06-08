@@ -195,8 +195,10 @@ def score_game(
         elif abs_spread > 21:
             model_score -= 15
 
-    # Rule 6: SP+ alignment — disabled key: "sp_plus"
-    if "sp_plus" not in disabled:
+    # Rule 6: SP+ alignment — DISABLED per per-season ablation
+    # Per-season: +1.0%, -0.2%, +7.9%, +2.0% = hurts 3/4 seasons
+    # Kept in disabled gate so ablation script can still test it
+    if "sp_plus" not in disabled and False:  # disabled — hurts 3/4 seasons
         home_sp_prior = prior_sp.get((home, season - 1))
         away_sp_prior = prior_sp.get((away, season - 1))
         if home_sp_prior is not None and away_sp_prior is not None:
@@ -204,10 +206,10 @@ def score_game(
             sp_agrees = (sp_gap > 0 and bet_home) or (sp_gap < 0 and not bet_home)
             if sp_agrees:
                 edges.append("SP+_agrees")
-                model_score += 3   # ablation: -0.3% ΔROI — mostly redundant after other signals
+                model_score += 3
             else:
                 warnings.append("SP+_disagrees")
-                model_score -= 2   # disagreement still a warning, mild only
+                model_score -= 2
 
     # Rule 7: Team tier — disabled key: "tier"
     if "tier" not in disabled:
@@ -238,39 +240,35 @@ def score_game(
                 model_score += 3
 
     # Rule 9a: Returning production — disabled key: "returning"
+    # Returning production: ablation shows +0.5% ΔROI (neutral/slightly harmful)
+    # Reduced further per audit — boosts trimmed, penalties kept as risk filter
     if "returning" not in disabled and ret_gap is not None:
         if ret_gap > 0.15 and bet_home:
             edges.append("ret_high_home")
-            model_score += 9
+            model_score += 3   # +9 → +6 → +3 — mild confirmation
         elif ret_gap > 0.05 and bet_home:
             edges.append("ret_slight_home")
-            model_score += 5
+            model_score += 2   # +5 → +3 → +2
         elif ret_gap < -0.15 and bet_home:
             warnings.append("ret_low_home")
-            model_score -= 7
-        elif ret_gap < -0.05 and bet_home:
-            warnings.append("ret_away_edge")
-            model_score -= 3
+            model_score -= 3   # keep penalty — risk filter
         elif ret_gap < -0.15 and not bet_home:
             edges.append("ret_high_away")
-            model_score += 9
+            model_score += 3
         elif ret_gap < -0.05 and not bet_home:
             edges.append("ret_slight_away")
-            model_score += 5
+            model_score += 2
         elif ret_gap > 0.15 and not bet_home:
             warnings.append("ret_low_away")
-            model_score -= 7
-        elif ret_gap > 0.05 and not bet_home:
-            warnings.append("ret_home_edge")
             model_score -= 3
 
     # Rule 11: Travel — disabled key: "travel"
     if "travel" not in disabled:
+        # Travel: ablation shows 0.0% ΔROI — no score adjustment
+        # Keep edge label for display/reporting only, no model_score impact
         travel = safe_float(row.get("travel_miles"))
-        if travel is not None:
-            if travel >= 1500:
-                model_score += 1 if not (ppa_gap < 0) else -1   # ablation: -0.2% ΔROI — tiebreaker only
-            # 1000-1499 miles: not worth adjusting — below noise threshold
+        if travel is not None and travel >= 1500:
+            edges.append(f"travel_{int(travel)}mi")  # display only, no score change
 
     # Rule 12: Recruiting — disabled key: "recruiting"
     if "recruiting" not in disabled:
@@ -321,8 +319,10 @@ def score_game(
                 edges.append("away_eff_beats_SR")
                 model_score += 7
 
-    # Rule 14: Havoc — disabled key: "havoc"
-    if "havoc" not in disabled:
+    # Rule 14: Havoc — DISABLED per per-season ablation
+    # Per-season: +4.3%, +2.0%, +3.9%, -0.3% = hurts 3/4 seasons
+    # Kept in gate so ablation can still test it
+    if "havoc" not in disabled and False:  # disabled — hurts 3/4 seasons
         home_hv = safe_float(row.get("home_def_havoc"))
         away_hv = safe_float(row.get("away_def_havoc"))
         if home_hv is not None and away_hv is not None:
@@ -330,14 +330,14 @@ def score_game(
             if hd > 0.02:
                 if bet_home:
                     edges.append("home_havoc")
-                    model_score += 4   # ablation: -1.4% ΔROI — mild but real
+                    model_score += 4
                 else:
                     warnings.append("home_havoc_vs_bet")
                     model_score -= 3
             elif hd < -0.02:
                 if not bet_home:
                     edges.append("away_havoc")
-                    model_score += 4   # ablation: -1.4% ΔROI
+                    model_score += 4
                 else:
                     warnings.append("away_havoc_vs_bet")
                 model_score -= 3

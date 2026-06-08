@@ -202,6 +202,94 @@ def main():
     print("  Positive ΔROI → signal was redundant or harmful (removing it helps)")
     print("=" * 75)
 
+    # ── Per-season ablation breakdown ────────────────────────────────────────
+    print()
+    print("=" * 90)
+    print("PER-SEASON ABLATION — a signal consistent across seasons is more trustworthy")
+    print("Format: ΔROI per season when signal is disabled")
+    print("=" * 90)
+
+    # Compute per-season baselines
+    season_baselines = {}
+    for season in sorted(df["season"].unique()):
+        season_df = df[df["season"] == season]
+        try:
+            con2 = duckdb.connect(DB_PATH, read_only=True)
+            tiers = build_tiers(con2, season)
+            con2.close()
+        except Exception:
+            tiers = {}
+        curr = coaches_df[coaches_df["season"] == season]
+        prev = coaches_df[coaches_df["season"] == season - 1]
+        merged = curr.merge(prev, on="team", suffixes=("_c","_p"))
+        coach_changes = set(merged[merged["coach_c"] != merged["coach_p"]]["team"])
+        results = []
+        for _, row in season_df.iterrows():
+            ms, edges, _ = score_game(row, tiers, coach_changes, sp_lookup)
+            if ms < args.min_score or len(edges) < 4: continue
+            ppa_gap = safe_float(row.get("off_ppa_gap"), 0)
+            bet_home = ppa_gap > 0
+            result = str(row.get("spread_result", ""))
+            if result == "push":   pnl = 0.0
+            elif bet_home:         pnl = 0.909 if result == "covered" else -1.0
+            else:                  pnl = 0.909 if result == "missed"  else -1.0
+            results.append(pnl)
+        n = len(results)
+        season_baselines[season] = sum(results) / n * 100 if n else 0.0
+
+    seasons = sorted(df["season"].unique())
+    header = f"  {'Signal':<25}" + "".join(f"  {s}" + "    " for s in seasons) + "  Consistent?"
+    print(header)
+    print("  " + "-" * (25 + len(seasons) * 12))
+
+    for name, disabled in SIGNALS:
+        season_deltas = {}
+        for season in seasons:
+            season_df = df[df["season"] == season]
+            try:
+                con2 = duckdb.connect(DB_PATH, read_only=True)
+                tiers = build_tiers(con2, season)
+                con2.close()
+            except Exception:
+                tiers = {}
+            curr = coaches_df[coaches_df["season"] == season]
+            prev = coaches_df[coaches_df["season"] == season - 1]
+            merged = curr.merge(prev, on="team", suffixes=("_c","_p"))
+            coach_changes = set(merged[merged["coach_c"] != merged["coach_p"]]["team"])
+            results = []
+            for _, row in season_df.iterrows():
+                ms, edges, _ = score_game(row, tiers, coach_changes, sp_lookup,
+                                          disabled=disabled)
+                if ms < args.min_score or len(edges) < 4: continue
+                pga = safe_float(row.get("off_ppa_gap"), 0)
+                bh = pga > 0
+                res = str(row.get("spread_result", ""))
+                if res == "push":   pnl = 0.0
+                elif bh:           pnl = 0.909 if res == "covered" else -1.0
+                else:              pnl = 0.909 if res == "missed"  else -1.0
+                results.append(pnl)
+            n = len(results)
+            ablated_roi = sum(results) / n * 100 if n else 0.0
+            season_deltas[season] = ablated_roi - season_baselines[season]
+
+        # Consistent = signal helped (negative delta) in 3+ of 4 seasons
+        n_helpful = sum(1 for d in season_deltas.values() if d < 0)
+        if n_helpful >= 3:    consistent = "✅ 3-4 seasons"
+        elif n_helpful == 2:  consistent = "⚠️  2 seasons"
+        else:                 consistent = "❌ 0-1 seasons"
+
+        row_str = f"  {name:<25}"
+        for s in seasons:
+            d = season_deltas[s]
+            row_str += f"  {d:>+6.1f}%  "
+        row_str += f"  {consistent}"
+        print(row_str)
+
+    print()
+    print("Read: negative ΔROI per season = signal helped that year")
+    print("      positive ΔROI per season = signal hurt or was neutral that year")
+    print("=" * 90)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
