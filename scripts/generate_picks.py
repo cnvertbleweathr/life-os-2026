@@ -528,7 +528,7 @@ def main() -> int:
     con.close()
 
     # Sort: EDGE picks first (higher conviction), then FADE, then by confidence
-    picks.sort(key=lambda x: (0 if x["bet_type"] == "EDGE" else 1, -x["confidence"]))
+    picks.sort(key=lambda x: (0 if x["bet_type"] == "EDGE" else 1, -x["model_score"]))
     # Cap at 8 picks — more than that is noise
     picks = picks[:8]
 
