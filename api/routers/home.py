@@ -65,7 +65,7 @@ async def home_summary(request: Request):
         SELECT round(sum(distance_miles), 1) as miles, count(*) as runs
         FROM strava.activities
         WHERE is_run = true
-          AND start_date >= (current_date - interval 7 day)::varchar
+          AND start_date >= current_date - interval 7 day
     """) or {}
 
     # Habits today

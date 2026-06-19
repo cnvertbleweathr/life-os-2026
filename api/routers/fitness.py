@@ -11,7 +11,7 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, Request
 
-from api.deps import get_db, query, query_one
+from api.deps import _clean, get_db, query, query_one
 
 router       = APIRouter()
 ROOT         = Path(__file__).resolve().parents[2]
@@ -40,7 +40,7 @@ async def fitness_summary(request: Request):
             round((moving_time_s / 60.0) / distance_miles, 2) AS pace
         FROM strava.activities
         WHERE is_run = true
-          AND start_date >= (current_date - interval 30 day)::varchar
+          AND start_date >= current_date - interval 30 day
         ORDER BY start_date DESC
         LIMIT 10
     """)
@@ -55,7 +55,7 @@ async def fitness_summary(request: Request):
             SELECT strftime(start_date::date, '%Y-W%W') AS week,
                    round(sum(distance_miles), 1) AS miles
             FROM strava.activities
-            WHERE is_run = true AND start_date >= '{year}-01-01'
+            WHERE is_run = true AND start_date >= DATE '{year}-01-01'
             GROUP BY 1
         )
         SELECT a.week, coalesce(r.miles, 0) AS miles
@@ -96,7 +96,8 @@ async def crossfit_log(limit: int = 50):
     df["is_pr"] = df["pr"].astype(str).str.strip().str.upper() == "PR"
     cols = ["date", "title", "barbell_lift", "best_result_raw", "best_result_unit", "is_pr"]
     available = [c for c in cols if c in df.columns]
-    return df[available].where(pd.notna(df[available]), None).to_dict(orient="records")
+    raw_rows = df[available].to_dict(orient="records")
+    return [{k: _clean(v) for k, v in row.items()} for row in raw_rows]
 
 
 @router.get("/prs")
@@ -111,4 +112,5 @@ async def personal_records():
     prs["date"] = prs["date"].dt.strftime("%Y-%m-%d")
     cols = ["date", "title", "barbell_lift", "best_result_raw", "best_result_unit"]
     available = [c for c in cols if c in prs.columns]
-    return prs[available].where(pd.notna(prs[available]), None).to_dict(orient="records")
+    raw_rows = prs[available].to_dict(orient="records")
+    return [{k: _clean(v) for k, v in row.items()} for row in raw_rows]
