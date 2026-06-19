@@ -43,8 +43,20 @@ def _load_shows() -> pd.DataFrame:
     if not dfs:
         return pd.DataFrame()
     combined = pd.concat(dfs, ignore_index=True)
-    combined["date"] = pd.to_datetime(combined.get("date", combined.get("event_date")), errors="coerce")
-    combined = combined[combined["date"].dt.date >= date.today()]
+    # Real column is start_datetime, not date/event_date - combined.get()
+    # falling through to None previously produced a single NaT broadcast
+    # to every row instead of a real per-row datetime column.
+    # start_datetime also mixes naive ("2026-01-01T20:00:00") and
+    # offset-aware ("2026-06-20T19:00:00-06:00") strings - same issue as
+    # the home.py calendar fix, vectorized to_datetime(utc=True) silently
+    # NaTs the offset-aware rows when formats are mixed in one column.
+    combined["date"] = combined["start_datetime"].apply(
+        lambda x: pd.to_datetime(x, errors="coerce", utc=True)
+    )
+    if "event_url" in combined.columns and "ticket_url" not in combined.columns:
+        combined["ticket_url"] = combined["event_url"]
+    today_ts = pd.Timestamp(date.today(), tz="UTC")
+    combined = combined[combined["date"] >= today_ts]
     combined = combined.sort_values("date").drop_duplicates(
         subset=["title", "date"], keep="first"
     )
@@ -76,7 +88,9 @@ async def shows(
 
     cols = ["date_str", "title", "venue_name", "ticket_url", "source", "is_my_artist"]
     available = [c for c in cols if c in df.columns]
-    result = df[available].head(limit).where(pd.notna(df[available]), None).to_dict(orient="records")
+    from api.deps import _clean
+    raw_rows = df[available].head(limit).to_dict(orient="records")
+    result = [{k: _clean(v) for k, v in row.items()} for row in raw_rows]
 
     # Rename date_str → date
     for row in result:
@@ -113,13 +127,14 @@ async def shows_summary():
     df["is_my_artist"] = df["title"].apply(is_match)
     next_row = df.iloc[0] if not df.empty else None
 
+    from api.deps import _clean
     return {
         "total":           len(df),
         "my_artist_count": int(df["is_my_artist"].sum()),
         "venues":          int(df["venue_name"].nunique()) if "venue_name" in df.columns else 0,
         "next_show":       {
-            "title":  next_row["title"] if next_row is not None else None,
-            "date":   next_row["date"].strftime("%Y-%m-%d") if next_row is not None else None,
-            "venue":  next_row.get("venue_name") if next_row is not None else None,
+            "title":  _clean(next_row["title"]) if next_row is not None else None,
+            "date":   next_row["date"].strftime("%Y-%m-%d") if next_row is not None and pd.notna(next_row["date"]) else None,
+            "venue":  _clean(next_row.get("venue_name")) if next_row is not None else None,
         },
     }
