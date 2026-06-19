@@ -96,14 +96,16 @@ async def home_summary(request: Request):
     events: list[dict] = []
     if EVENTS_CSV.exists():
         import pandas as pd
+        from api.deps import _clean
         df = pd.read_csv(EVENTS_CSV)
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         mask = (df["date"].dt.date >= date.today()) & \
                (df["date"].dt.date <= date.today().replace(month=min(date.today().month + 1, 12)))
         upcoming = df[mask].sort_values("date").head(20)
-        events = upcoming[["date", "title", "emoji"]].assign(
+        raw_events = upcoming[["date", "title", "emoji"]].assign(
             date=upcoming["date"].dt.strftime("%b %-d")
-        ).where(pd.notna(upcoming), None).to_dict(orient="records")
+        ).to_dict(orient="records")
+        events = [{k: _clean(v) for k, v in row.items()} for row in raw_events]
 
     # ── WOD ───────────────────────────────────────────────────────────────────
     wod = _load_json(WOD_PATH) or {}
@@ -157,13 +159,15 @@ async def get_calendar():
     if not EVENTS_CSV.exists():
         return []
     import pandas as pd
+    from api.deps import _clean
     df = pd.read_csv(EVENTS_CSV)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     mask = df["date"].dt.date >= date.today()
     upcoming = df[mask].sort_values("date").head(30)
-    return upcoming[["date", "title", "emoji"]].assign(
+    raw_events = upcoming[["date", "title", "emoji"]].assign(
         date=upcoming["date"].dt.strftime("%Y-%m-%d")
-    ).where(pd.notna(upcoming), None).to_dict(orient="records")
+    ).to_dict(orient="records")
+    return [{k: _clean(v) for k, v in row.items()} for row in raw_events]
 
 
 @router.get("/streams")
