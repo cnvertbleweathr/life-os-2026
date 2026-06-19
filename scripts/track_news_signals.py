@@ -206,14 +206,18 @@ def main() -> int:
                    help="Query news for ALL games this week, not just movers")
     p.add_argument("--dry-run",   action="store_true")
     args = p.parse_args()
-
     if not NEWS_API_KEY:
         print("⚠️  NEWS_API_KEY not set — cannot fetch news signals", file=sys.stderr)
         return 1
 
+    # Always ensure the table exists, even off-season, so downstream
+    # dbt models can compile against an empty table rather than failing.
+    _con = duckdb.connect(DB_PATH)
+    ensure_table(_con)
+    _con.close()
+
     year = args.year
     week = args.week or current_cfb_week(year)
-
     if week is None:
         print(f"Off-season ({date.today()}) — no games to track news for")
         return 0

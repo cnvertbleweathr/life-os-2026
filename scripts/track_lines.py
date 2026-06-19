@@ -268,16 +268,17 @@ def main() -> int:
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
 
+    # Always ensure the table exists, even off-season, so downstream
+    # dbt models can compile against an empty table rather than failing.
+    _con = duckdb.connect(DB_PATH)
+    ensure_table(_con)
+    _con.close()
+
     year = args.year
     week = args.week or current_cfb_week(year)
-
     if week is None:
         print(f"Off-season ({date.today()}) — no lines to track")
         return 0
-
-    print(f"📊 Tracking lines — {year} Week {week} ({line_type_for_today()} snapshot)")
-    fetch_and_store(year, week, dry_run=args.dry_run)
-    return 0
 
 
 if __name__ == "__main__":
