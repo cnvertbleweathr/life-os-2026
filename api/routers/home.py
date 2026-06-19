@@ -98,11 +98,17 @@ async def home_summary(request: Request):
         import pandas as pd
         from api.deps import _clean
         df = pd.read_csv(EVENTS_CSV)
-        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        # start mixes all-day dates ("2026-01-04") with offset-aware
+        # timestamps ("2026-01-06T08:00:00-06:00"). Vectorized
+        # pd.to_datetime(..., utc=True) silently returns NaT for every row
+        # when a column mixes those formats (pandas 3.0 behavior) - parsing
+        # element-wise avoids that.
+        df["date"] = df["start"].apply(lambda x: pd.to_datetime(x, errors="coerce", utc=True))
+        df["title"] = df["summary"]
         mask = (df["date"].dt.date >= date.today()) & \
                (df["date"].dt.date <= date.today().replace(month=min(date.today().month + 1, 12)))
         upcoming = df[mask].sort_values("date").head(20)
-        raw_events = upcoming[["date", "title", "emoji"]].assign(
+        raw_events = upcoming[["date", "title"]].assign(
             date=upcoming["date"].dt.strftime("%b %-d")
         ).to_dict(orient="records")
         events = [{k: _clean(v) for k, v in row.items()} for row in raw_events]
@@ -161,10 +167,12 @@ async def get_calendar():
     import pandas as pd
     from api.deps import _clean
     df = pd.read_csv(EVENTS_CSV)
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    # See home_summary for why this is parsed element-wise.
+    df["date"] = df["start"].apply(lambda x: pd.to_datetime(x, errors="coerce", utc=True))
+    df["title"] = df["summary"]
     mask = df["date"].dt.date >= date.today()
     upcoming = df[mask].sort_values("date").head(30)
-    raw_events = upcoming[["date", "title", "emoji"]].assign(
+    raw_events = upcoming[["date", "title"]].assign(
         date=upcoming["date"].dt.strftime("%Y-%m-%d")
     ).to_dict(orient="records")
     return [{k: _clean(v) for k, v in row.items()} for row in raw_events]
