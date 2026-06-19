@@ -54,7 +54,7 @@ async def home_summary(request: Request):
 
     # ── Stat cards ────────────────────────────────────────────────────────────
     running = query_one(db, """
-        SELECT total_miles, total_runs, ytd_miles
+        SELECT miles_total AS total_miles, runs_count AS total_runs, miles_total AS ytd_miles
         FROM strava.running_summary
         WHERE year = ?
         LIMIT 1
@@ -64,7 +64,8 @@ async def home_summary(request: Request):
     weekly_miles = query_one(db, """
         SELECT round(sum(distance_miles), 1) as miles, count(*) as runs
         FROM strava.activities
-        WHERE start_date >= (current_date - interval 7 day)::varchar
+        WHERE is_run = true
+          AND start_date >= (current_date - interval 7 day)::varchar
     """) or {}
 
     # Habits today
@@ -88,8 +89,7 @@ async def home_summary(request: Request):
     books = query_one(db, """
         SELECT count(*) as books_read
         FROM hardcover.books_read
-        WHERE year(marked_read_at::date) = ?
-          AND status = 'read'
+        WHERE year = ?
     """, [year]) or {}
 
     # ── Calendar — next 30 days ───────────────────────────────────────────────

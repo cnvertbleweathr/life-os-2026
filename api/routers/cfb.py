@@ -64,9 +64,10 @@ async def cfb_teams(request: Request):
     """All team ATS profiles (walk-forward tiers, current season)."""
     db = get_db(request)
     return query(db, """
-        SELECT team, tier, win_rate, roi_pct, seasons_profitable, total_bets
+        SELECT team, tier, total_win_pct AS win_rate, total_roi AS roi_pct,
+               profitable_seasons AS seasons_profitable, total_games AS total_bets
         FROM cfbd.team_profiles
-        ORDER BY roi_pct DESC NULLS LAST
+        ORDER BY total_roi DESC NULLS LAST
     """)
 
 

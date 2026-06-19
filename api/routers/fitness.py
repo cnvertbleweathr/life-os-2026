@@ -27,7 +27,8 @@ async def fitness_summary(request: Request):
     year = date.today().year
 
     running = query_one(db, """
-        SELECT total_miles, total_runs, avg_pace_min_mile, ytd_miles
+        SELECT miles_total AS total_miles, runs_count AS total_runs,
+               avg_pace_min_per_mile AS avg_pace_min_mile, miles_total AS ytd_miles
         FROM strava.running_summary WHERE year = ? LIMIT 1
     """, [year]) or {}
 
@@ -35,10 +36,10 @@ async def fitness_summary(request: Request):
         SELECT
             start_date::date AS run_date,
             round(distance_miles, 2) AS miles,
-            moving_time_min AS minutes,
-            average_pace AS pace
+            round(moving_time_s / 60.0, 1) AS minutes,
+            round((moving_time_s / 60.0) / distance_miles, 2) AS pace
         FROM strava.activities
-        WHERE type = 'Run'
+        WHERE is_run = true
           AND start_date >= (current_date - interval 30 day)::varchar
         ORDER BY start_date DESC
         LIMIT 10
@@ -54,7 +55,7 @@ async def fitness_summary(request: Request):
             SELECT strftime(start_date::date, '%Y-W%W') AS week,
                    round(sum(distance_miles), 1) AS miles
             FROM strava.activities
-            WHERE type = 'Run' AND start_date >= '{year}-01-01'
+            WHERE is_run = true AND start_date >= '{year}-01-01'
             GROUP BY 1
         )
         SELECT a.week, coalesce(r.miles, 0) AS miles

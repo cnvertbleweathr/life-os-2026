@@ -39,7 +39,7 @@ async def goals_progress(request: Request):
     db   = get_db(request)
     rows = query(db, """
         SELECT domain, goal_key, goal_value_type, target_numeric,
-               current_value, progress_percent, unit, description
+               current_value, progress_percent, notes AS description
         FROM main_marts.mart_goal_progress
         ORDER BY domain, goal_key
     """)
@@ -65,7 +65,7 @@ async def goals_by_domain(request: Request):
     db   = get_db(request)
     rows = query(db, """
         SELECT domain, goal_key, goal_value_type, target_numeric,
-               current_value, progress_percent, unit
+               current_value, progress_percent
         FROM main_marts.mart_goal_progress
         ORDER BY domain, goal_key
     """)

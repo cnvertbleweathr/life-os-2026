@@ -72,7 +72,7 @@ async def habits_streaks(request: Request):
     """Current and longest streaks per habit."""
     db = get_db(request)
     return query(db, """
-        SELECT habit, current_streak, longest_streak, last_done_date
+        SELECT habit, current_streak, longest_streak
         FROM main_marts.mart_habit_streaks
         ORDER BY habit
     """)

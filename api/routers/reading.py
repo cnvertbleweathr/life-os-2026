@@ -19,8 +19,8 @@ async def reading_summary(request: Request):
     db   = get_db(request)
     year = date.today().year
     return query_one(db, """
-        SELECT books_read, fiction_books, nonfiction_books,
-               pages_read, avg_days_to_finish
+        SELECT total_read AS books_read, fiction_read AS fiction_books,
+               nonfiction_read AS nonfiction_books
         FROM hardcover.reading_summary
         WHERE year = ?
         LIMIT 1
@@ -29,26 +29,16 @@ async def reading_summary(request: Request):
 
 @router.get("/in-progress")
 async def books_in_progress(request: Request):
-    """Books currently being read."""
-    db = get_db(request)
-    rows = query(db, """
-        SELECT title, authors, classification, cover_url, started_at,
-               cached_tags, pages, current_page
-        FROM hardcover.books_read
-        WHERE status IN ('reading', 'in_progress', 'currently-reading')
-        ORDER BY started_at DESC NULLS LAST
-        LIMIT 10
-    """)
-    # Fallback — some schemas use different status values
-    if not rows:
-        rows = query(db, """
-            SELECT title, authors, classification, cover_url, cached_tags
-            FROM hardcover.books_read
-            WHERE status NOT IN ('read', 'finished', 'completed')
-              AND marked_read_at IS NULL
-            LIMIT 10
-        """)
-    return rows
+    """
+    Books currently being read.
+
+    NOTE: hardcover.books_read has no status/started_at columns — it only
+    tracks finished books (every row has marked_read_at + year). There's
+    currently no data source for "in progress" until the Hardcover pipeline
+    is extended to capture that status. Returns [] until then rather than
+    erroring on columns that don't exist.
+    """
+    return []
 
 
 @router.get("/read")
@@ -57,12 +47,11 @@ async def books_read(request: Request, year: int | None = None, limit: int = 50)
     db   = get_db(request)
     yr   = year or date.today().year
     return query(db, """
-        SELECT title, authors, classification, cover_url,
+        SELECT title, authors, classification,
                marked_read_at::date AS finished_date,
-               cached_tags, pages
+               cached_tags
         FROM hardcover.books_read
-        WHERE year(marked_read_at::date) = ?
-          AND status IN ('read', 'finished', 'completed')
+        WHERE year = ?
         ORDER BY marked_read_at DESC
         LIMIT ?
     """, [yr, limit])
@@ -76,8 +65,7 @@ async def books_by_classification(request: Request, year: int | None = None):
     return query(db, """
         SELECT classification, count(*) AS books
         FROM hardcover.books_read
-        WHERE year(marked_read_at::date) = ?
-          AND status IN ('read', 'finished', 'completed')
+        WHERE year = ?
         GROUP BY classification
         ORDER BY books DESC
     """, [yr])
