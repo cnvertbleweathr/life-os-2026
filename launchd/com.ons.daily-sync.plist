@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.ons.daily-sync.plist
+  ONS daily sync — runs at 9:00am every day.
+
+  Install:
+    cp launchd/com.ons.daily-sync.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.ons.daily-sync.plist
+
+  Check status:
+    launchctl list | grep ons.daily
+
+  Run manually:
+    launchctl start com.ons.daily-sync
+
+  View logs:
+    cat ~/Library/Logs/ons/daily_sync.log
+    cat data/daily/$(date +%Y-%m-%d)/health.txt
+
+  IMPORTANT: Update WorkingDirectory to your actual project path.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ons.daily-sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/uv</string>
+        <string>run</string>
+        <string>python</string>
+        <string>scripts/daily_sync.py</string>
+    </array>
+
+    <!-- Update to your actual project path -->
+    <key>WorkingDirectory</key>
+    <string>/Users/kg/life-os-2026</string>
+
+    <!-- 9:00am daily -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/kg/Library/Logs/ons/daily_sync.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/kg/Library/Logs/ons/daily_sync_error.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/Users/kg/.local/bin</string>
+    </dict>
+</dict>
+</plist>

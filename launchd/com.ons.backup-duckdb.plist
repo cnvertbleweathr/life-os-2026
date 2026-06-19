@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.ons.backup-duckdb.plist
+  Nightly DuckDB backup — runs at 2:00am, independent of daily_sync.
+
+  Install:
+    cp launchd/com.ons.backup-duckdb.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.ons.backup-duckdb.plist
+
+  Check status:
+    launchctl list | grep ons.backup
+
+  Run manually:
+    launchctl start com.ons.backup-duckdb
+
+  View logs:
+    cat ~/Library/Logs/ons/backup_duckdb.log
+
+  IMPORTANT: Update WorkingDirectory to your actual project path.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ons.backup-duckdb</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Update this path to match your uv/python location -->
+        <string>/usr/local/bin/uv</string>
+        <string>run</string>
+        <string>python</string>
+        <string>scripts/backup_duckdb.py</string>
+        <string>--retention</string>
+        <string>7</string>
+    </array>
+
+    <!-- Update this to your actual project path -->
+    <key>WorkingDirectory</key>
+    <string>/Users/kg/life-os-2026</string>
+
+    <!-- 2:00am nightly — well after the 9am daily sync writes -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/kg/Library/Logs/ons/backup_duckdb.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/kg/Library/Logs/ons/backup_duckdb_error.log</string>
+
+    <!-- Run even if the scheduled time was missed (e.g. Mac was asleep) -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/Users/kg/.local/bin</string>
+    </dict>
+</dict>
+</plist>
