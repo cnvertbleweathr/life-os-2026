@@ -24,7 +24,12 @@ def _load_my_artists() -> set[str]:
     if not MY_ARTISTS.exists():
         return set()
     try:
-        artists = json.loads(MY_ARTISTS.read_text())
+        data = json.loads(MY_ARTISTS.read_text())
+        # File is {"fetched_at": ..., "artists": [...], ...}, not a bare
+        # list. Iterating the dict directly walked its top-level keys
+        # ("fetched_at", "artists", etc.) instead of the artist names
+        # inside it, so every match silently failed.
+        artists = data.get("artists", []) if isinstance(data, dict) else data
         return {a.lower() for a in artists if isinstance(a, str) and len(a) >= 4}
     except Exception:
         return set()
