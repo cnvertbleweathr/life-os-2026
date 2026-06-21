@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Colors are registered in tailwind.config.js as real theme tokens, not
+  CSS custom properties — this lets Tailwind generate opacity-modifier
+  classes (bg-green/70, text-green/60, border-amber/20, etc.) natively.
+
+  Do NOT hand-write flat .bg-green / .text-green classes here again —
+  if you do, opacity-suffixed usages elsewhere in the app will silently
+  compile to nothing, since Tailwind only generates /NN variants for
+  colors it knows about via theme.colors, not arbitrary custom CSS.
+*/
+
+body {
+  background-color: theme('colors.canvas');
+}
+
+.rounded-card { border-radius: 10px; }
+.text-2xs { font-size: 0.6875rem; line-height: 1rem; }
