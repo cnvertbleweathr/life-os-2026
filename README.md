@@ -11,175 +11,15 @@ Built on the same principles as modern data infrastructure, because your 9am run
 ## Architecture
 
 ```
-Your Life → DLT Pipelines → DuckDB → dbt → Streamlit Dashboard
+Your Life → DLT Pipelines → DuckDB → dbt → FastAPI → Next.js
                                 ↑
                          Local Inputs
                     (habits, SugarWOD CSV, goals YAML)
 ```
 
-### Full Data Flow
+The dashboard moved from Streamlit to a proper FastAPI + Next.js split in June 2026. FastAPI is a thin read-only query layer over DuckDB/dbt marts; Next.js is the actual UI. Streamlit is retired.
 
-```mermaid
-flowchart TD
-    subgraph Sources["📡 Data Sources (your whole life)"]
-        STRAVA[Strava API]
-        HARDCOVER[Hardcover API]
-        SPOTIFY[Spotify API]
-        GCAL[Google Calendar API]
-        SUGARWOD[SugarWOD CSV]
-        HABITS[Habit Checkboxes\nStreamlit UI]
-        AEG[AEG / Ticketmaster API]
-        STREAMED[streamed.pk API]
-        CFBD[College Football\nData API]
-    end
-
-    subgraph Pipelines["⚙️ Ingestion"]
-        P1[strava_pipeline.py]
-        P2[hardcover_pipeline.py]
-        P3[habits_pipeline.py]
-        P4[calendar_export.py]
-        P5[import_sugarwod_csv.py]
-        P6[spotify_ingest_streaming.py]
-        P7[aeg_events_fetch.py\nticketmaster_fetch_denver.py]
-        P8[fetch_streams.py]
-        P9[sync_playlist_artists.py]
-        P10[cfbd_pipeline.py\ncfbd_extended_pipeline.py]
-    end
-
-    subgraph DuckDB["🦆 DuckDB Warehouse"]
-        S1[(strava.*)]
-        S2[(hardcover.*)]
-        S3[(habits.*)]
-        S4[(calendar.*)]
-        S5[(raw.*)]
-        S6[(cfbd.*)]
-    end
-
-    subgraph DBT["🔧 dbt Transformations"]
-        STG[Staging Models\nstg_*]
-        MART[Mart Models\nmart_*]
-    end
-
-    subgraph Dashboard["📊 Streamlit Dashboard"]
-        HOME[🧭 Home\nDigest + Streams + Alerts]
-        SPORTS[🏈 Sports\nStreams + Team News + Degenerates Corner]
-        HABITS_PAGE[✅ Habits\nCheckboxes + Streaks]
-        FITNESS[💪 Fitness\nRunning + CrossFit]
-        READING[📚 Reading\nFiction + Nonfiction]
-        GOALS[🎯 Goals\nProgress by Domain]
-        MUSIC[🎵 Music\nSpotify Stats + Daily 10 + News]
-        SHOWS[🎸 Shows\nDenver Concerts + Artist Alerts]
-        CFB[🎰 CFB Betting\nEdge Factors + Line Accuracy]
-    end
-
-    STRAVA --> P1 --> S1
-    HARDCOVER --> P2 --> S2
-    HABITS --> P3 --> S3
-    GCAL --> P4 --> S4
-    SUGARWOD --> P5 --> S5
-    SPOTIFY --> P6 --> S5
-    AEG --> P7 --> S5
-    STREAMED --> P8
-    SPOTIFY --> P9
-    CFBD --> P10 --> S6
-
-    S1 & S2 & S3 & S4 & S5 & S6 --> STG --> MART
-
-    MART --> HOME & SPORTS & HABITS_PAGE & FITNESS & READING & GOALS & MUSIC & SHOWS & CFB
-```
-
----
-
-### DLT Pipeline Detail
-
-```mermaid
-flowchart LR
-    subgraph strava["Strava Pipeline"]
-        direction TB
-        SA[Strava API\nOAuth Token] --> SR[strava_activities\nresource]
-        SR -->|merge on strava_id| SD[(strava.activities)]
-        SD --> SS[running_summary\nresource]
-        SS -->|replace| SRS[(strava.running_summary)]
-    end
-
-    subgraph hardcover["Hardcover Pipeline"]
-        direction TB
-        HA[Hardcover\nGraphQL API] --> HR[books_read\nresource]
-        HR -->|merge on book_id| HD[(hardcover.books_read)]
-        HD --> HS[reading_summary\nresource]
-        HS -->|replace| HRS[(hardcover.reading_summary)]
-    end
-
-    subgraph habits["Habits Pipeline"]
-        direction TB
-        HF[data/habits/\nhabits_log.jsonl] --> HLR[habit_log\nresource]
-        HLR -->|merge on date+habit| HLD[(habits.habit_log)]
-        HLD --> HSR[habit_summary\nresource]
-        HSR -->|replace| HSRD[(habits.habit_summary)]
-    end
-```
-
----
-
-### dbt Transformation Layer
-
-```mermaid
-flowchart TD
-    subgraph raw["Raw Layer"]
-        RG[(raw.raw_goals)]
-        RGP[(raw.raw_goal_progress)]
-    end
-
-    subgraph staging["Staging Layer"]
-        SGA[stg_goals__annual_goals\nunnest JSON → one row per goal]
-        SGP[stg_goals__progress]
-        SHL[stg_habits__log]
-        SHS[stg_habits__summary]
-    end
-
-    subgraph marts["Mart Layer"]
-        MHP[mart_habit_performance\ndaily pivot + completion %]
-        MHS[mart_habit_streaks\ncurrent + longest streak]
-        MGD[mart_goal_detail]
-        MGP[mart_goal_progress\ntargets + actuals]
-        MHC[mart_ons_healthcheck]
-        MLA[mart_cfbd_line_accuracy]
-        MEF[mart_cfbd_edge_factors]
-        MGC[mart_cfbd_game_context]
-        MEE[mart_cfbd_extended_edges]
-    end
-
-    RG --> SGA --> MGD --> MGP
-    RGP --> SGP --> MGP
-    SHL --> MHP & MHS
-    SHS --> MGP
-```
-
----
-
-### Daily Sync Orchestration
-
-```mermaid
-sequenceDiagram
-    participant L as launchd (9am)
-    participant DS as daily_sync.py
-    participant DLT as DLT Pipelines
-    participant DB as DuckDB
-    participant DBT as dbt
-    participant STR as Streamlit
-
-    L->>DS: triggers daily at 9am
-    DS->>DLT: strava + hardcover + habits
-    DLT->>DB: upsert all sources
-    DS->>DS: calendar + shows + spotify
-    DS->>DS: fetch_streams + sync_playlist_artists
-    DS->>DS: sync_goal_progress
-    DS->>DBT: dbt run
-    DBT->>DB: build staging + mart models
-    Note over STR: open any time — data is fresh
-    STR->>DB: query mart_*
-    STR->>STR: AI digest + streams + alerts
-```
+Full architecture diagrams, dbt lineage, and the daily sync sequence live in [`ARCHITECTURE.md`](./ARCHITECTURE.md) — kept separate from this README so each stays focused.
 
 ---
 
@@ -195,10 +35,17 @@ ons-2026/
 │   ├── hardcover_pipeline.py          # Hardcover API → DuckDB
 │   ├── habits_pipeline.py             # Local JSONL → DuckDB
 │   ├── cfbd_pipeline.py               # CFB games, lines, SP+ ratings → DuckDB
-│   └── cfbd_extended_pipeline.py      # Weather, coaches, PPA, returning production → DuckDB
+│   ├── cfbd_extended_pipeline.py      # Weather, coaches, PPA, returning production → DuckDB
+│   ├── letterboxd_pipeline.py         # Letterboxd RSS → DuckDB (no auth)
+│   └── kglw_pipeline.py               # King Gizzard live show catalog → DuckDB (no auth)
 │
 ├── scripts/                           # Orchestration + auxiliary scripts
 │   ├── daily_sync.py                  # ← The one command to rule them all
+│   ├── backup_duckdb.py               # Timestamped backups, 7-day retention
+│   ├── notify.py                      # ntfy.sh push notifications (sync-ok/sync-fail/picks)
+│   ├── tz_utils.py                    # Denver-timezone-correct date helpers
+│   ├── generate_morning_brief.py      # OpenClaw — Claude API daily brief
+│   ├── generate_weekly_review.py      # OpenClaw — Claude API Sunday review
 │   ├── sync_goal_progress.py          # Pull actuals from DuckDB → goal_progress.csv
 │   ├── sync_playlist_artists.py       # Tewnidge + Deeds artists → show cross-reference
 │   ├── fetch_streams.py               # Today's sports streams via streamed.pk
@@ -211,41 +58,94 @@ ons-2026/
 │   ├── spotify_daily10_decorate.py    # AI cover art (gpt-image-1 + retry logic)
 │   ├── aeg_events_fetch.py            # AEG concert data → Denver shows
 │   ├── ticketmaster_fetch_denver.py   # Ticketmaster → Denver shows
+│   ├── download_cfb_logos.py          # CFBD team logos → web/public/logos/
+│   ├── track_lines.py                 # CFB line movement snapshots (in-season)
+│   ├── track_news_signals.py          # CFB news-driven line-mover signals (in-season)
+│   ├── generate_picks.py              # Weekly CFB picks (unified scorer)
+│   ├── generate_picks_report.py       # Human-readable Thursday picks briefing
+│   ├── generate_postmortem.py         # Sat/Sun results vs picks, season log
 │   ├── pregame_lookup.py              # CFB pre-game edge report (queries DuckDB)
 │   ├── cfb_backtest.py                # Simulate $1 bets on historical games
+│   ├── backtest_walk_forward.py       # Canonical walk-forward scorer — score_game()
 │   ├── cfb_edge_validation.py         # Cross-season edge validation (2021-2025)
 │   ├── cfb_team_analysis.py           # Per-team ATS profiles
-│   └── cfb_build_team_profiles.py     # Build cfbd.team_profiles (run annually)
+│   ├── cfb_build_team_profiles.py     # Build cfbd.team_profiles (run annually)
+│   └── setup_runner.py                # Mac mini GitHub Actions self-hosted runner guide
 │
-├── dbt/                               # Transformation layer
+├── api/                               # FastAPI backend — read-only query layer
+│   ├── main.py                        # App entry, lifespan-managed DuckDB connection, CORS
+│   ├── deps.py                        # Shared get_db / query / query_one helpers (NaN-safe)
+│   └── routers/
+│       ├── home.py                    # /api/home — digest, calendar, WOD, daily10, goals
+│       ├── habits.py                  # /api/habits — today + streaks
+│       ├── fitness.py                 # /api/fitness — running summary, recent runs
+│       ├── reading.py                 # /api/reading — books read, in-progress (always [])
+│       ├── goals.py                   # /api/goals — progress, by-domain (array of groups)
+│       ├── music.py                   # /api/music — top artists, news
+│       ├── shows.py                   # /api/shows — Denver concerts, artist matching
+│       ├── sports.py                  # /api/sports — news
+│       ├── cfb.py                     # /api/cfb — teams, picks, line accuracy, model info
+│       └── kglw.py                    # /api/kglw — KGLW show/song/venue/jamchart catalog
+│
+├── web/                                # Next.js frontend — the actual UI
+│   ├── app/
+│   │   ├── page.tsx                   # Home
+│   │   ├── habits/page.tsx
+│   │   ├── fitness/page.tsx
+│   │   ├── reading/page.tsx
+│   │   ├── goals/page.tsx
+│   │   ├── music/page.tsx
+│   │   ├── shows/page.tsx
+│   │   ├── sports/page.tsx
+│   │   ├── cfb/page.tsx
+│   │   ├── kglw/page.tsx              # King Gizzard show/song explorer
+│   │   └── checkin/page.tsx           # Daily subjective check-in
+│   ├── components/
+│   │   ├── nav/Sidebar.tsx
+│   │   └── ui/{primitives,TeamLogo}.tsx
+│   ├── lib/
+│   │   ├── api.ts                     # Typed client — every type matches CONFIRMED API shapes
+│   │   └── cfb_team_ids.json          # 263-team name → CFBD numeric ID map
+│   └── public/logos/                  # 260/263 CFB team logo PNGs (download_cfb_logos.py)
+│
+├── dbt/                                # Transformation layer
 │   ├── models/
+│   │   ├── core/
+│   │   │   └── core__life_events.sql  # Universal event timeline (incremental)
 │   │   ├── staging/                   # stg_* — clean + type raw sources
-│   │   └── marts/                     # mart_* — business logic, CFB betting, goal progress
+│   │   └── marts/                     # mart_* — business logic, CFB betting, goal pacing
 │   └── profiles/
 │
-├── app/                               # Streamlit dashboard
-│   ├── Home.py                        # Entry point — digest, streams, artist alerts
-│   ├── ons_theme.py                   # Retro-futuristic CSS theme (apply on every page)
-│   └── pages/
-│       ├── 0_Sports.py                # Live streams + team news + Degenerates Corner
-│       ├── 1_Habits.py                # Did you meditate? Do pushups? Read? The data knows.
-│       ├── 2_Fitness.py               # Running (Strava) + CrossFit lift progressions
-│       ├── 3_Reading.py               # Books: fiction escapism + nonfiction guilt
-│       ├── 4_Goals.py                 # What you said you'd do vs what you actually did
-│       ├── 5_Music.py                 # Spotify stats + Daily 10 embed + Music News
-│       ├── 6_Shows.py                 # Denver concerts + ⭐ artist matching + ticket links
-│       └── 7_CFB_Betting.py           # Validated edges, line accuracy, team profiles
-│
-├── data/                              # Your entire life, locally stored
+├── data/                               # Your entire life, locally stored
 │   ├── warehouse/ons.duckdb           # DuckDB warehouse (gitignored, obviously)
+│   ├── backups/duckdb/                # Nightly backups, 7-day retention
+│   ├── daily/                         # Per-day sync logs + health.txt + summary.json
 │   ├── habits/habits_log.jsonl        # Habit log (gitignored)
 │   ├── calendar/
 │   ├── spotify/
-│   │   └── processed/daily10_latest.json  # Daily 10 pointer + description + Tewnidge artists
+│   │   └── processed/daily10_latest.json
 │   ├── sugarwod/
 │   ├── shows/
 │   ├── streams/today.json             # Live sports streams
+│   ├── bets/todays_picks.json         # Current week's CFB picks
 │   └── manual/goal_progress.csv
+│
+├── reports/
+│   ├── daily/                         # OpenClaw morning briefs (YYYY-MM-DD.md)
+│   └── weekly/                        # OpenClaw weekly reviews (YYYY-Www.md)
+│
+├── tests/
+│   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups
+│   └── fixtures/load_fixtures.py      # Ephemeral fixture DuckDB for CI
+│
+├── .github/
+│   ├── workflows/                     # ci.yml, ci-analytics.yml, picks-validation.yml,
+│   │                                   # motherduck-sync.yml, mac-mini-refresh.yml
+│   └── dependabot.yml
+│
+├── launchd/
+│   ├── com.ons.daily-sync.plist       # 9am daily
+│   └── com.ons.backup-duckdb.plist    # 2am nightly
 │
 ├── notebooks/
 │   ├── 01_line_accuracy_overview.ipynb
@@ -259,23 +159,31 @@ ons-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd. You don't have to do anything. The system knows.
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`). Backup runs at 2am (`com.ons.backup-duckdb.plist`). You don't have to do anything. The system knows.
 
 ```bash
 source .venv/bin/activate
 python scripts/daily_sync.py
-streamlit run app/Home.py
 ```
+
+**Run the actual app:**
+```bash
+# Terminal 1 — API
+uvicorn api.main:app --reload --port 8000
+
+# Terminal 2 — UI
+cd web && npm run dev
+```
+
+Open `http://localhost:3000`. FastAPI docs at `http://localhost:8000/docs`.
 
 **Surgical strikes:**
 ```bash
-python scripts/daily_sync.py --only pipelines    # DLT only
-python scripts/daily_sync.py --only dbt          # sync + dbt only
-python scripts/daily_sync.py --skip spotify      # skip a step
-python scripts/daily_sync.py --only aeg_events ticketmaster shows_metrics
+python scripts/daily_sync.py --only strava hardcover habits
+python scripts/daily_sync.py --skip spotify
 ```
 
-**Important:** DuckDB only allows one writer at a time. Stop Streamlit before running the sync, or you'll hit a lock conflict.
+**Important:** DuckDB only allows one read-write connection at a time. FastAPI opens its connection **read-only**, so it does *not* block pipeline writes — but two pipeline processes (or a pipeline and a manual `duckdb` CLI session) still will. If you hit a lock conflict, check `ps aux` for a stray process holding the file open.
 
 ---
 
@@ -284,14 +192,19 @@ python scripts/daily_sync.py --only aeg_events ticketmaster shows_metrics
 ### Prerequisites
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv)
+- Node.js 18+ / npm
 - A concerning amount of self-interest
 
 ### Install
 ```bash
-git clone https://github.com/cnvertbleweathr/ons-2026.git
-cd ons-2026
+git clone https://github.com/cnvertbleweathr/life-os-2026.git
+cd life-os-2026
 uv sync
 source .venv/bin/activate
+
+cd web
+npm install
+cd ..
 ```
 
 ### Configure
@@ -305,11 +218,14 @@ cp .env.example .env
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | [Strava API](https://www.strava.com/settings/api) |
 | `HARDCOVER_TOKEN` | [Hardcover Settings](https://hardcover.app/account/api) |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | [Spotify Developer](https://developer.spotify.com/dashboard) |
-| `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) — daily digest + Daily 10 cover art |
-| `ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com/) — reserved for future AI features |
-| `NEWS_API_KEY` | [NewsAPI](https://newsapi.org) — Home, Sports, and Music news feeds |
+| `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) — Daily 10 cover art |
+| `ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com/) — morning brief, weekly review (OpenClaw) |
+| `NEWS_API_KEY` | [NewsAPI](https://newsapi.org) — Music and Sports news feeds (optional; pages degrade gracefully without it) |
 | `TICKETMASTER_API_KEY` | [Ticketmaster Developer](https://developer.ticketmaster.com) |
 | `CFBD_API_TOKEN` | [CFBD](https://collegefootballdata.com) — Patreon tier for weather endpoint |
+| `NTFY_TOPIC` | [ntfy.sh](https://ntfy.sh) — push notifications, no signup |
+| `LETTERBOXD_USERNAME` | Your Letterboxd handle — public RSS, no auth |
+| `KGLW_ATTENDED_SHOW_IDS` | Comma-separated show IDs from kglw.net — optional, personal attended-show log |
 
 ### First Run
 ```bash
@@ -318,13 +234,17 @@ python scripts/strava_auth.py
 python scripts/calendar_export.py  # opens browser
 
 # Create directories
-mkdir -p data/warehouse data/habits
+mkdir -p data/warehouse data/habits data/backups/duckdb
 
 # Boot the system
 python scripts/daily_sync.py
 
-# Open the dashboard and contemplate your life choices
-streamlit run app/Home.py
+# Logos for the CFB page
+python scripts/download_cfb_logos.py
+
+# Run the app
+uvicorn api.main:app --reload --port 8000 &
+cd web && npm run dev
 ```
 
 ### SugarWOD (manual — they don't have an API, barbarians)
@@ -352,6 +272,12 @@ python scripts/cfb_build_team_profiles.py --min-games 15
 python scripts/pregame_lookup.py --home "Ohio State" --away "Michigan" --spread -7 --ou 45.5
 ```
 
+### KGLW Show Catalog
+```bash
+python pipelines/kglw_pipeline.py --shows-only
+```
+No auth required. Confirmed live data shape as of 2026-06-20: 1104 shows, 1001 songs, 671 venues, 247 jam chart entries. **No lat/lng anywhere in the API** — the show/song explorer is a list/search UI, not a literal globe, until a separate geocoding pass exists.
+
 ---
 
 ## Data Sources
@@ -360,44 +286,57 @@ python scripts/pregame_lookup.py --home "Ohio State" --away "Michigan" --spread 
 |---|---|---|---|
 | Strava | DLT + OAuth | Daily | Running miles, pace, weekly volume |
 | Hardcover | DLT + GraphQL | Daily | Books read, fiction vs nonfiction |
-| Habits | Streamlit UI | Daily | Meditation, pushups, reading pages |
+| Habits | Local JSONL | Daily | Meditation, pushups, reading pages |
 | Google Calendar | OAuth API | Mon/Thu | Date nights, events, birthdays you shouldn't forget |
 | SugarWOD | CSV export | Manual | CrossFit classes, PRs, lift progressions |
 | Spotify | JSON export + API | Daily | Streaming stats, Daily 10 playlist + AI cover art |
 | AEG / Ticketmaster | Public API | Daily | Upcoming Denver concerts |
+| Letterboxd | Public RSS, no auth | Daily | Diary entries, ratings |
+| KGLW.net | Public API v2, no auth | On demand | King Gizzard shows, songs, venues, jam chart |
 | streamed.pk | Public API | Daily | Live sports streams, AI-ranked top 5 |
-| CFBD | DLT + Bearer token | Annual | CFB games, lines, SP+, PPA, weather, coaches (2021–2025) |
+| CFBD | DLT + Bearer token | Annual + in-season | CFB games, lines, SP+, PPA, weather, coaches |
 
 ---
 
-## Dashboard Pages
+## App Pages
 
 | Page | What it shows |
 |---|---|
-| 🧭 **Home** | AI daily digest, sports streams, ⭐ artist show alerts, calendar, goals scoreboard, news ticker |
-| 🏈 **Sports** | Live streams, team news, Degenerates Corner (CFB/NFL picks) |
-| ✅ **Habits** | Did you meditate? Do pushups? Read? The data knows. |
-| 💪 **Fitness** | Strava running metrics + weekly chart, CrossFit lift progressions + PR log |
-| 📚 **Reading** | Hardcover fiction/nonfiction progress, book list with classification |
-| 🎯 **Goals** | What you said you'd do vs what you actually did |
-| 🎵 **Music** | Daily 10 embed + AI cover art description, Spotify YTD stats, listening heatmap, Music News |
-| 🎸 **Shows** | Upcoming Denver concerts, ⭐ Tewnidge/Deeds artist matching, ticket links |
-| 🎰 **CFB Betting** | Validated edge factors, line accuracy (2021–2025), team ATS profiles, pre-game signals |
+| **Home** | Stat row, this week's calendar, today's WOD, Daily 10, goal pacing |
+| **Habits** | Today's checklist, current + longest streaks |
+| **Fitness** | YTD/total running miles, avg pace, weekly miles bar chart, recent runs |
+| **Reading** | Books read, fiction/nonfiction split (in-progress tracking not yet available — Hardcover only syncs finished books) |
+| **Goals** | All domains, pace status badges, progress bars (str-type goals like Roth IRA show "not numerically tracked" rather than a meaningless 0%) |
+| **Music** | Top artists, music news (both degrade to an honest empty state without `NEWS_API_KEY` / a populated streams pipeline) |
+| **Shows** | Upcoming Denver concerts, ⭐ artist matching (substring search — approximate, not exact) |
+| **Sports** | Sports news (same `NEWS_API_KEY` dependency as Music) |
+| **CFB Betting** | Validated model summary, sortable team performance table with real logos, consistently-profitable team list |
+| **King Gizzard** | Upcoming shows, "on this day," searchable song catalog, jam chart notable versions |
+| **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log |
 
 ---
 
 ## CFB Betting System
 
-Cross-season validated edges (2021–2025, 4,793 games):
+Cross-season validated edges (2021–2025, walk-forward, no lookahead):
 
-| Strategy | Win% | ROI | Seasons profitable |
+```
+318 bets · 224-94 · 70.4% win rate · +34.5% ROI · 4/4 seasons profitable
+```
+
+| Signal | ΔROI removed | Seasons consistent | Status |
 |---|---|---|---|
-| PPA gap >0.30 | 74.4% | +41.9% | — |
-| PPA gap >0.15 + spread ≤14 | 69.0% | +31.8% | Best combo |
-| PPA gap >0.15 + SP+ agrees + spread ≤17 | 67.2% | +28.3% | — |
-| PPA gap >0.15 (baseline) | 62.3% | +19.0% | **5/5 seasons** |
+| Success rate parity | -16.0% | 4/4 | ✅ Active |
+| Team tier | -7.2% | 4/4 | ✅ Active |
+| Spread range (3–17) | -5.1% | 3/4 | ✅ Active |
+| Coach change | -3.5% | 4/4 | ✅ Active |
+| Conference | -1.7% | 3/4 | ✅ Active |
+| Returning production | -1.4% | 4/4 | ✅ Active |
+| Recruiting / talent | -14.4% (aggregate) | 4/4 | ✅ Active |
+| SP+ alignment | 0.0% | 0/4 | ❌ Disabled |
+| Defensive havoc | 0.0% | 0/4 | ❌ Disabled |
 
-Full team profiles for all 263 FBS teams stored in `cfbd.team_profiles`. Pre-game lookup available via `pregame_lookup.py`.
+Full team profiles for all 263 FBS teams stored in `cfbd.team_profiles`. Pre-game lookup available via `pregame_lookup.py`. One canonical scorer (`score_game()` in `backtest_walk_forward.py`) is imported directly by `generate_picks.py` — never a second, drifting copy of the scoring logic.
 
 ---
 
@@ -407,8 +346,10 @@ Full team profiles for all 263 FBS teams stored in `cfbd.team_profiles`. Pre-gam
 
 **Automation over willpower** — runs at 9am daily via launchd. Willpower is finite. Cron jobs are not.
 
-**DuckDB as the hub** — all sources land in DuckDB. dbt builds clean marts on top. The dashboard queries marts only. No spaghetti.
+**DuckDB as the hub** — all sources land in DuckDB. dbt builds clean marts on top. FastAPI queries marts read-only. No spaghetti.
 
 **DLT for extraction** — schema inference, merge semantics, and load state handled by DLT. No bespoke fetch scripts held together with prayers.
 
-**AI as co-processor** — used for bounded, testable tasks: daily digest, sports stream ranking, playlist cover art, news feeds. Never for core data logic. The AI assists. The data tells the truth.
+**Verify, don't assume** — every API integration in this repo has, at some point, had a wrong field-name assumption caught by actually hitting the live endpoint and reading the real response. This isn't an embarrassment; it's the discipline that keeps the platform honest. When a router or pipeline doc comment says "confirmed real shape as of [date]," that means someone checked, not guessed.
+
+**AI as co-processor** — used for bounded, testable tasks: morning brief, weekly review, playlist cover art, news feeds. Never for core data logic. The AI assists. The data tells the truth.

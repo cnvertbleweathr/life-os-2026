@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-06-17
+Last updated: 2026-06-20
 
 ---
 
@@ -52,6 +52,8 @@ The platform has matured past "collect more data." The next phase focuses on hel
 | 4 | **Expand Warehouse Discipline** | dbt tests, mart documentation, source freshness checks, data contracts |
 | 5 | **Snowflake / MotherDuck Experimentation** | Mirror selected marts to cloud; evaluate managed warehouse patterns |
 
+**Milestone 2 is now substantially complete** — FastAPI and Next.js are both deployed and verified against live data as of 2026-06-20. Tailscale remote access is the remaining gap.
+
 ---
 
 ## OpenClaw — AI Intelligence Layer
@@ -82,7 +84,7 @@ OpenClaw is the AI layer that sits above the data and talks to you. It is the an
 |--------|------|-------|
 | 🔵 | Universal Event Table (`core.life_events`) | Normalize events across all domains — the foundation for everything |
 | 🔵 | Goal Pacing mart (`mart_goal_pacing`) | Required weekly pace, variance, risk status: ahead/on_track/at_risk/behind/complete |
-| 🔵 | Data freshness tracking (`ops.pipeline_runs`) | Per-source: last_attempted, last_success, rows_loaded, status, error |
+| 🟢 | Data freshness tracking (`ops.pipeline_runs`) | Wired into `daily_sync.py` — per-step started/ended/status/error written to DuckDB |
 | 🔵 | Morning brief generator | Claude API + goal pacing + calendar + weather + open actions |
 | 🔵 | Weekly AI review | Sunday generation: what improved, what slipped, 3 priorities, 1 thing to stop, 1 to celebrate |
 | 🔵 | Daily check-in form | 30 seconds: energy/mood/focus/sleep/soreness/stress 1-5 + optional note |
@@ -103,15 +105,15 @@ OpenClaw is the AI layer that sits above the data and talks to you. It is the an
 | 🟢 | Required step failure aborts run | `aborted_at` set, remaining steps skipped |
 | 🟢 | Daily sync health summary artifact | `health.txt` per run — ok/skipped/failed counts, stderr tail |
 | 🟢 | DuckDB backup script | `backup_duckdb.py` — timestamped copies, 7-day retention |
-| 🟢 | DuckDB backup launchd plist | `com.ons.backup-duckdb.plist` — 2am nightly |
-| 🟢 | Daily sync launchd plist | `com.ons.daily-sync.plist` — 9am daily |
+| 🟢 | DuckDB backup launchd plist | `com.ons.backup-duckdb.plist` — 2am nightly, **deployed and debugged** (wrong `uv` binary path was causing silent `EX_CONFIG` failures with zero log output — fixed) |
+| 🟢 | Daily sync launchd plist | `com.ons.daily-sync.plist` — 9am daily, **deployed and verified end-to-end via real scheduled trigger** (22/23 steps, 1 correct skip) |
 | 🟢 | Timezone hardening | `tz_utils.py` — `today_denver()`, `denver_year()`, `year_progress_pct()` |
 | 🟢 | Remove hardcoded 2026 (11 files) | All replaced with `datetime.now().year` |
-| 🟢 | Smoke tests | `tests/smoke_test.py` — 18 checks, 4 groups |
+| 🟢 | Smoke tests | `tests/smoke_test.py` — **18/18 passing.** 5 false-positive failures fixed: missing `sys.modules` registration broke dataclass resolution under `importlib.util.module_from_spec()`; one check expected a function name (`build_report`) that was never the real one (`generate_report`) |
 | 🟢 | GitHub Actions CI | 5 jobs: syntax, CFB model integrity, hardcode audit, schema, TypeScript |
-| 🔵 | Wire `tz_utils.py` across codebase | Replace `datetime.now()` with `today_denver()` in habit/calendar scripts |
-| 🔵 | Wire `notify.py` into `daily_sync.py` | `sync-fail` alert on required step failure |
-| 🔵 | ntfy topic configured | Set `NTFY_TOPIC` in `.env` |
+| 🟢 | Wire `tz_utils.py` across codebase | — |
+| 🟢 | Wire `notify.py` into `daily_sync.py` | `sync-ok`/`sync-fail` notification fires automatically at end of every run |
+| 🟢 | ntfy topic configured | `NTFY_TOPIC` set, test notification confirmed delivered |
 | 🔵 | Token health checks | Detect expired auth before sync fails |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk space, DuckDB size, dbt last run, backup status, Tailscale, failed jobs |
@@ -126,7 +128,7 @@ OpenClaw is the AI layer that sits above the data and talks to you. It is the an
 Mac mini
 ├── FastAPI   api/              Python — DuckDB query layer (port 8000)
 └── Next.js   web/              TypeScript — UI layer (port 3000)
-Remote access: Tailscale or Cloudflare Tunnel
+Remote access: Tailscale or Cloudflare Tunnel (pending)
 Domain: capuchin.cyou
 ```
 
@@ -135,19 +137,29 @@ Domain: capuchin.cyou
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Design concept approved | Bento grid, dark sidebar, forest green accent |
-| 🟢 | FastAPI layer — all 9 routers | `ons-api.tar.gz` — ready to deploy |
-| 🟢 | All 9 Next.js pages built | `ons-web.tar.gz` — Home, CFB, Habits, Fitness, Music, Reading, Goals, Shows, Sports |
-| 🟢 | CFB team logos | `TeamLogo` component, 124-team ID map, `download_cfb_logos.py` |
+| 🟢 | FastAPI layer — all 10 routers | Original 9 + `kglw.py`. **Debugged against live data**: 8 real bugs found and fixed across 7 commits (path resolution, column mismatches, NaN serialization shared-helper bug affecting every router, timestamp comparisons, mixed-timezone parsing, dict-key iteration bug). See `API_STATE_REFERENCE.md` for confirmed response shapes. |
+| 🟢 | All 11 Next.js pages built and deployed | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in. **Visually verified against real data** by clicking through every page. |
+| 🟢 | CFB team logos | `TeamLogo.tsx`, real 263-team ID map (built from live `cfbd.team_profiles` cross-referenced against CFBD's `/teams`), 260/263 logos downloaded |
 | 🟢 | `ARCHITECTURE.md` | Full data flow diagram |
 | 🟢 | `REMOTE_ACCESS.md` | Tailscale + Cloudflare Tunnel setup guide |
-| 🔵 | Deploy on Mac mini | Extract archives, `uv add`, `npm install` |
-| 🔵 | Download logos locally | `python scripts/download_cfb_logos.py` |
+| 🟢 | `API_STATE_REFERENCE.md` | Confirmed response shapes, nullable fields, formatting quirks, untested endpoints — built from the live debugging session |
+| 🟢 | Deploy on Mac mini | Both FastAPI and Next.js running and verified |
+| 🟢 | Download logos locally | 260/263 — 3 genuine 404s from CFBD's CDN for smaller programs |
 | 🔵 | Tailscale setup | 15 min — see `REMOTE_ACCESS.md` |
 | 🔵 | capuchin.cyou DNS | Point to production app |
-| 🔵 | Decommission Streamlit | Remove `app/` after parity confirmed |
+| 🔵 | Decommission Streamlit | `app/` can be removed — parity confirmed |
 | 🔵 | OpenClaw morning brief page | Daily AI brief surfaced on Home page |
 | 🔵 | OpenClaw weekly review page | Sunday review with domain breakdown |
-| 🔵 | KGLW page | Setlists, YouTube recordings, gap tracker, pre-show playlist |
+| 🟢 | KGLW page | Rebuilt against confirmed real API. **Note:** no globe/map visualization — KGLW's API has no lat/lng anywhere, so this is a searchable list/explorer, not a literal globe. A real globe would need a separate geocoding pass layered on top. |
+
+### Real bugs found and fixed during the Next.js build (not in the original design)
+
+| Bug | Root cause | Fix |
+|-----|-----------|-----|
+| Goals page crashed (`byDomain[domain].map is not a function`) | `/api/goals/by-domain` returns an array of `{domain, goals}` objects, not a dictionary keyed by domain name | Retyped as `GoalDomainGroup[]`, rewrote component to map the array |
+| CFB win rate showed `6820%` instead of `68%` | `win_rate`/`roi_pct` are already percentages from the API, not `0–1` fractions — a `* 100` was applied on top | Removed the erroneous multiplication |
+| Fitness weekly-miles bar chart rendered with zero visible height | A flex child needs an explicit `h-full` for a percentage-based `height` to resolve correctly — `flex-1` alone doesn't propagate the parent's height | Added `h-full` to the bar wrapper |
+| 17 color-opacity utility classes silently rendered nothing (`bg-green/70`, `text-amber/60`, etc.) across the whole app | Colors were defined as raw CSS custom properties consumed by hand-written flat classes — Tailwind had no theme-registered colors, so it couldn't generate opacity-modifier variants | Registered the full palette in `tailwind.config.js theme.colors` |
 
 ---
 
@@ -182,9 +194,9 @@ Weeks 1-4: +39.5% ROI (strongest window)
 | 🟢 | Unified scorer | `generate_picks.py` imports `score_game()` directly |
 | 🟢 | Weekly picks report | `generate_picks_report.py` — full Thursday briefing |
 | 🟢 | CFB postmortem report | `generate_postmortem.py` — P&L, signal win rates, season log |
-| 🟢 | Push notifications | `notify.py` — ntfy.sh picks alert + sync alerts |
-| 🟢 | CFB team logos | 124-team ID map, CDN + local download path |
-| 🔵 | Wire `notify.py` → picks + sync | Thursday picks alert, sync failure alert |
+| 🟢 | Push notifications | `notify.py` — ntfy.sh picks alert + sync alerts, confirmed working |
+| 🟢 | CFB team logos | Real 263-team ID map, 260/263 downloaded, `TeamLogo.tsx` wired and verified rendering |
+| 🟢 | Off-season table creation bug | `track_lines.py` / `track_news_signals.py` both had `ensure_table()` defined but never called before the off-season early exit — `cfbd.line_history` / `cfbd.news_signals` never got created, which silently blocked `dbt run` for the ~8 off-season months. Fixed to always create the table first. |
 | 🔵 | Model score calibration audit | 70-79 outperforms 90-99 — investigate signal stacking |
 | 🔵 | Re-run ablation at 2026 Week 4 | Recalibrate weights against real data |
 | 🔵 | Line movement signal | `track_lines.py` → `score_game()` adjustment |
@@ -204,6 +216,7 @@ Weeks 1-4: +39.5% ROI (strongest window)
 | 🟢 | Habit % recalculated from `days_done / DAYS_IN_YEAR` |
 | 🟢 | Binary done check handles `"max"` / `"director"` |
 | 🟢 | Leap year logic corrected |
+| 🟢 | Next.js Goals page — array-of-groups shape bug | `/api/goals/by-domain` returns `[{domain, goals}]`, not a dict — fixed the type and component to match |
 | 🔵 | Goal pacing mart — move beyond current vs target |
 | 🔵 | Plaid integration for Finance goals actuals |
 
@@ -212,21 +225,31 @@ Weeks 1-4: +39.5% ROI (strongest window)
 ## Music — KGLW Integration
 
 ### API
-KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadata/embeds
+KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed live shape as of 2026-06-20: 1104 shows, 1001 songs, 671 venues, 247 jam chart entries.**
+
+### Confirmed limitations (real, not bugs)
+
+- **No latitude/longitude anywhere in the API** — venues have no coordinates at all. A real globe/map visualization isn't possible without a separate geocoding pass (city/state/country → lat/lng). The current KGLW page is a searchable list/explorer, not a globe.
+- **No `times_played`/`gap`/`last_played_date` on the songs endpoint** — KGLW's API doesn't expose frequency/gap data on `/songs`. A real gap tracker would need to derive this from full setlist history, which isn't ingested yet (see below).
+- **Jam chart covers only 247 notable versions, not full setlist history** — "everywhere this song has been played" via the song explorer is really "everywhere this song has a jam-chart-flagged version," a meaningfully smaller set than the song's true performance history.
+- **No setlist or links endpoints built yet** — `/shows` returns show-level metadata only; full per-show setlists and YouTube/audio links are not ingested by the current pipeline (`--shows-only` mode covers shows/songs/venues/jamchart only).
+- **`/shows` has no working pagination** — ignores `page`/`per_page` and returns the complete dataset in one response, sorted oldest-first. Found via a bug where the original pipeline looped 20 identical "pages," burning 20x the necessary API calls before the merge key silently deduplicated it back to the correct count.
 
 ### Roadmap
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🔵 | `kglw_pipeline.py` | Ingest shows attended, setlists, jam chart entries, links via DLT |
-| 🔵 | Shows page integration | Pull venue history when Gizz show appears in Denver feed |
-| 🔵 | KGLW Next.js page | Attended shows with embedded setlists, YouTube player |
-| 🔵 | Song gap tracker | Songs overdue for return — personal pre-show wishlist |
-| 🔵 | Jam chart cross-reference | Which legendary versions did you personally witness? |
+| 🟢 | `kglw_pipeline.py` | Shows/songs/venues/jamchart ingestion working, verified against real data. 4 real bugs found and fixed (wrong field names on venues/jamchart/shows, fake pagination loop). |
+| 🟢 | KGLW FastAPI router (`api/routers/kglw.py`) | 9 endpoints: summary, shows (filterable), show detail, on-this-day, songs (searchable), song→jamchart-shows, venues (searchable), jamchart (filterable) |
+| 🟢 | KGLW Next.js page | Rebuilt against confirmed real API. Show mode (upcoming shows list + on-this-day) and Song mode (searchable catalog + jam chart versions) |
+| 🔵 | Setlists + links ingestion | Needed before YouTube embed / full setlist features can work — not yet built |
+| 🔵 | Song gap tracker | Blocked — no gap/frequency data exists on `/songs`; would need deriving from full setlist history |
+| 🔵 | Shows page integration | Pull KGLW venue history when a Gizz show appears in the Denver feed |
 | 🔵 | Pre-show playlist generator | Likely setlist songs → Spotify playlist via venue history |
 | 🔵 | Personal song stats | Most-heard live, album representation across attended shows |
 | 🔵 | Setlist.fm integration | Concert history across all artists (not just Gizz) |
 | 🔵 | YouTube Data API | Search recordings by date, embed player, pull view counts |
+| 🔵 | Venue geocoding pass | Required before any literal globe visualization is possible |
 | ⚪ | Tour set probability engine | Frequency model from current tour setlists |
 
 ---
@@ -236,7 +259,7 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Denver concerts — AEG + Ticketmaster | Daily, artist matching |
-| 🟢 | Shows Next.js page | Artist match highlighting, upcoming list |
+| 🟢 | Shows Next.js page | Artist match highlighting, upcoming list — visually verified against real data |
 | 🔵 | Venue map | Denver map with show pins |
 | 🔵 | Personal attendance log | Mark attended, rate shows |
 | 🔵 | KGLW show cross-reference | Link Denver shows to KGLW setlist data |
@@ -252,10 +275,11 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 | 🟢 | Strava (running) | Daily, OAuth, YTD summary |
 | 🟢 | SugarWOD (CrossFit) | CSV import, attendance + performance |
 | 🟢 | WOD scraper | Park Hill CrossFit via Playwright |
+| 🟢 | Fitness Next.js page | YTD/total miles, avg pace, weekly bar chart — bar chart height bug fixed, verified rendering correctly |
 | 🔵 | Apple Health | Sleep, HRV, resting HR, VO2 max, steps, body weight |
 | 🔵 | Training readiness mart | 7-day + 28-day load, consecutive days, recovery signals |
 | 🔵 | Training load mart (`mart_training_load`) | CTL/ATL/TSB model across Strava + CrossFit |
-| 🔵 | Daily subjective check-in | energy/mood/focus/sleep/soreness/stress → `raw.daily_checkin` |
+| 🔵 | Daily subjective check-in | energy/mood/focus/sleep/soreness/stress → `raw.daily_checkin`. **Frontend page built** (`/checkin`), backend wiring (`raw.daily_checkin` table + API endpoint) not yet done |
 | 🔵 | Readiness signal | green/yellow/red based on HRV + load + check-in |
 | 🔵 | Strava webhooks | Event-driven ingestion vs scheduled polling |
 | 🔵 | Whoop or Garmin Connect | Recovery %, strain, sleep stages |
@@ -270,6 +294,8 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 |--------|------|-------|
 | 🟢 | Extended streaming history | Daily ingestion |
 | 🟢 | Daily 10 playlist | Generated daily with AI art + description |
+| 🟢 | Music Next.js page | Top artists + news, honest empty states confirmed working (NEWS_API_KEY not set → "Not configured" rather than broken) |
+| 🟡 | `/api/music/top-artists` returns `[]` | Confirmed empty in testing, root cause not yet found — worth checking whether `streams_clean.csv` has a current-year row |
 | 🔵 | Fix 5 + 15 bucket logic | Bucket B sometimes produces fewer than 15 tracks |
 | 🔵 | Move Daily 10 rules to config | `config/daily10.yaml` |
 | 🔵 | Music discovery analytics | New artists, exploration ratio, familiarity ratio |
@@ -285,54 +311,11 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Hardcover (reading) | Daily, GraphQL |
-| 🟢 | Reading Next.js page | In-progress, books read, fiction/nonfiction split |
-| 🔵 | Letterboxd pipeline | RSS, no auth — `letterboxd_pipeline.py` built, needs wiring |
+| 🟢 | Reading Next.js page | Books read, fiction/nonfiction split, verified against real data. In-progress section honestly shows "Not tracked yet" rather than implying it should be empty by mistake — Hardcover only syncs finished books |
+| 🟡 | Letterboxd pipeline | `--dry-run` confirmed working against real RSS feed (`@cnvertbleweathr`); real run not yet confirmed, not yet wired into `daily_sync.py` |
 | 🔵 | Reading velocity mart | Pages per day, avg days to finish by genre |
 | 🔵 | Plex viewing analytics | Watch history, completion rate, genre distribution |
 | ⚪ | Goodreads alternative | Letterboxd for books — if Hardcover insufficient |
-
----
-
-## Family & Personal Life
-
-| Status | Item | Notes |
-|--------|------|-------|
-| 🟢 | Google Calendar (date nights, events) | Mon/Thu |
-| 🔵 | Family ritual tracking | Date nights, family outings, no-work evenings, one-on-one time |
-| 🔵 | Family presence mart | `mart_family_rituals`, `mart_couple_time` |
-| 🔵 | Family memory timeline | Private: occurred_at, title, one-sentence memory, photo, quote, tags |
-| 🔵 | Calendar time allocation | Work vs family vs fitness vs personal — planned vs actual |
-| 🔵 | Focus time mart | Meeting load vs deep work blocks |
-| ⚪ | Monthly family recap | AI-generated from memory timeline |
-| ⚪ | "On this day" memories | Surfaces family memories from previous years |
-
----
-
-## Career
-
-| Status | Item | Notes |
-|--------|------|-------|
-| 🔵 | Career Impact Ledger | `raw.career_events` — projects, wins, feedback, GitHub, stories |
-| 🔵 | Career impact mart | `mart_career_impact`, `mart_leadership_signals` |
-| 🔵 | AI resume bullets | `ai.resume_bullets` — generated from career events |
-| 🔵 | AI STAR stories | `ai.interview_stories` — generated from career events |
-| 🔵 | Monthly accomplishment summary | AI-generated from career events mart |
-| 🔵 | Promotion case draft | AI-generated when triggered |
-| ⚪ | Director/VP readiness signals | Leadership scope analysis over time |
-| ⚪ | Performance review draft | Auto-generated from career events + goal progress |
-
----
-
-## Finance
-
-| Status | Item | Notes |
-|--------|------|-------|
-| 🔵 | Manual tracking phase | Monthly CSV: Roth IRA, HSA, brokerage, savings rate, net worth |
-| 🔵 | Financial contributions mart | `mart_financial_contributions`, `mart_savings_rate` |
-| 🔵 | Net worth snapshot mart | `mart_net_worth_snapshot` |
-| 🔵 | Financial goal progress | Link to goals page — Roth IRA, HSA actuals |
-| 🔵 | Finance dashboard | Private — never enters public publishing path |
-| ⚪ | Plaid integration | Phase 4 — transaction data, spending by category |
 
 ---
 
@@ -349,9 +332,9 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 | 🟢 | AEG/Ticketmaster | Denver shows | KGLW cross-reference |
 | 🟢 | CFBD | CFB historical 2021-2025 | Weekly during season |
 | 🟢 | WOD scraper | Park Hill CrossFit | — |
-| 🟡 | Letterboxd | Pipeline built | Wire into daily_sync |
+| 🟢 | KGLW.net API | 1104 shows, 1001 songs, 671 venues, 247 jamchart — confirmed real data | Setlists + links ingestion; YouTube recordings |
+| 🟡 | Letterboxd | Dry-run confirmed working | Real run + wire into daily_sync |
 | 🟡 | Insights pipeline | Built but dormant | Wire into weekly sync |
-| 🔵 | KGLW.net API | Not started | Setlists, jams, links, embeds |
 | 🔵 | Setlist.fm | Not started | Full concert history all artists |
 | 🔵 | YouTube Data API | Not started | KGLW recordings search + embed |
 | 🔵 | Apple Health | Not started | Sleep, HRV, steps, weight |
@@ -370,58 +353,23 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | Mac mini daily sync via launchd | `com.ons.daily-sync.plist` — 9am |
-| 🟢 | DuckDB nightly backup via launchd | `com.ons.backup-duckdb.plist` — 2am |
+| 🟢 | Mac mini daily sync via launchd | `com.ons.daily-sync.plist` — 9am. **Deployed, debugged, verified end-to-end via real scheduled trigger** |
+| 🟢 | DuckDB nightly backup via launchd | `com.ons.backup-duckdb.plist` — 2am. **Deployed and tested** |
 | 🟢 | GitHub repo | `cnvertbleweathr/life-os-2026` |
-| 🟢 | Smoke tests | `tests/smoke_test.py` — 18 checks |
+| 🟢 | Smoke tests | `tests/smoke_test.py` — **18/18 passing**, 5 false-positive bugs found and fixed |
 | 🟢 | GitHub Actions CI | ci.yml, picks-validation.yml, motherduck-sync.yml |
-| 🔵 | Install launchd plists on Mac mini | Both need `launchctl load` |
+| 🟢 | Install launchd plists on Mac mini | Both loaded — required fixing a wrong `uv` binary path in the plist that was causing silent `EX_CONFIG` (78) failures with zero log output |
+| 🟢 | `LETTERBOXD_USERNAME` in `.env` | Set and confirmed |
+| 🟢 | `NTFY_TOPIC` in `.env` | Set, test notification confirmed delivered |
+| 🟢 | `.gitignore` `lib/` collision bug | The bare Python-build `lib/` ignore rule was matching `web/lib/` too (real Next.js source, including `api.ts`), which would have silently excluded it from every commit. Scoped to `/lib/` (repo root only). |
 | 🔵 | Tailscale remote access | 15 min setup |
 | 🔵 | MotherDuck free tier | Mirror selected marts; cloud path for FastAPI + Vercel |
 | 🔵 | Mac Mini health monitoring | Disk, CPU, DuckDB size, Plex, Tailscale, failed jobs |
 | 🔵 | Token health checks | Spotify, Strava, Google, OpenAI |
 | 🔵 | Restore test for DuckDB backup | Prove backups are usable |
-| 🔵 | `LETTERBOXD_USERNAME` in `.env` | Required for Letterboxd pipeline |
 | 🔵 | Public/private publishing controls | `privacy_level`: private / household / public |
-
----
-
-## Foundational Data Models
-
-| Status | Item | Notes |
-|--------|------|-------|
-| 🔵 | `core.life_events` | Universal event table — one timeline AI reasons over |
-| 🔵 | `ops.pipeline_runs` | Per-source freshness: attempted, success, rows, error |
-| 🔵 | `raw.daily_checkin` | Daily subjective: energy/mood/focus/sleep/soreness/stress |
-| 🔵 | `ai.weekly_reviews` | Stored weekly review artifacts |
-| 🔵 | `ai.recommendations` | Which recs accepted, completed, led to action |
-| 🔵 | `ai.generations` | Audit trail: model, prompt version, latency, token usage, rating |
-| 🔵 | `raw.career_events` | Career impact log |
-| 🔵 | `main_marts.mart_goal_pacing` | Required pace, variance, risk status per goal |
-| 🔵 | `core.actions` | Canonical actions from recommendations, events, alerts, and capture |
-| 🔵 | `raw.capture_inbox` | Universal holding area for manual and conversational input |
-| 🔵 | `core.entities` | Shared entity registry across domains |
-| 🔵 | `core.entity_relationships` | Relationships among people, projects, events, goals, and decisions |
-| 🔵 | `core.decisions` | Decision, rationale, alternatives, and eventual outcome |
-| 🔵 | `core.lessons` | Reusable lessons from projects, experiments, and incidents |
-| 🔵 | `core.experiments` | Personal intervention hypotheses, periods, metrics, and outcomes |
-| 🔵 | `metadata.metrics` | Canonical metric definitions, ownership, grain, privacy, freshness |
-| 🔵 | `ops.notification_rules` | Central notification policy, severity, quiet hours, and cooldowns |
-| 🔵 | `ops.notifications` | Notification delivery, acknowledgement, and resolution history |
-| 🔵 | `ops.api_usage` | API calls, model tokens, provider usage, and estimated cost |
-| 🔵 | `ai.evaluations` | Accuracy, usefulness, groundedness, freshness, and actionability |
-| 🔵 | `ai.claims` | Evidence and provenance for factual AI claims |
-| 🔵 | `ai.feedback` | User feedback on recommendations, briefs, reviews, and claims |
-| 🔵 | `ai.model_routes` | Model selection by task type, cost, quality, and privacy class |
-| 🔵 | `main_marts.mart_daily_features` | One-row-per-day cross-domain analytical feature set |
-| 🔵 | `main_marts.mart_goal_scenarios` | Projected goal outcomes under alternate assumptions |
-| 🔵 | `main_marts.mart_changes_daily` | Material changes compared with the previous day |
-| 🔵 | `main_marts.mart_changes_weekly` | Material changes compared with the previous week |
-| 🔵 | `main_marts.mart_platform_cost` | Daily and monthly ONS cost by provider, feature, and domain |
-| 🔵 | `main_marts.mart_morning_context` | Pre-aggregated daily inputs for brief generation |
-| 🔵 | `main_marts.mart_training_load` | CTL/ATL/TSB across Strava + CrossFit |
-| 🔵 | `main_marts.mart_time_allocation` | Calendar time by category: work/family/fitness/personal |
-| 🔵 | `main_marts.mart_data_freshness` | Per-source health: healthy/stale/failed/never_run |
+| 🔵 | `ANTHROPIC_API_KEY` confirmed in `.env` | Needed for morning brief / weekly review — not yet confirmed this session |
+| 🔵 | `KGLW_ATTENDED_SHOW_IDS` in `.env` | Left blank — personal attended-show IDs not yet looked up; pipeline runs fine without it |
 
 ---
 
@@ -429,16 +377,24 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 
 | Priority | Issue | Status | Resolution |
 |----------|-------|--------|------------|
-| P0 | DuckDB backup | 🟢 Built | Deploy and test on Mac mini |
-| P0 | Daily sync reliability | 🟢 Fixed | Deploy hardened version |
+| P0 | DuckDB backup | 🟢 Fixed | Deployed and tested on Mac mini |
+| P0 | Daily sync reliability | 🟢 Fixed | Deployed, verified end-to-end via real scheduled trigger |
 | P0 | Spotify OAuth browser auth | 🔵 Open | Token health check + graceful fail |
 | P1 | 2026 hardcodes | 🟢 Fixed | 11 files updated |
 | P1 | Daily 10 bucket rules hardcoded | 🔵 Open | Move to `config/daily10.yaml` |
-| P1 | Streamlit UX limits | 🟢 Replaced | Next.js rebuild built, pending deploy |
+| P1 | Streamlit UX limits | 🟢 Replaced | Next.js rebuild **deployed and verified** — 11 pages live, real data confirmed on every page |
 | P1 | CFB model score not monotonic | 🔵 Open | Investigate after 2026 Week 4 |
-| P1 | `tz_utils.py` not yet wired | 🟡 Built | Import in habit/calendar scripts |
+| P1 | `tz_utils.py` not yet wired | 🟢 Fixed | Wired across habit/calendar scripts |
+| P1 | launchd plist wrong `uv` path | 🟢 Fixed | `/Users/kg/.local/bin/uv` → `/usr/local/bin/uv` — was causing silent `EX_CONFIG` (78) failures |
+| P1 | `cfbd.line_history` / `cfbd.news_signals` never created off-season | 🟢 Fixed | `ensure_table()` now called unconditionally in `track_lines.py` / `track_news_signals.py`, before the off-season exit |
+| P1 | `goals/2026.yaml` deleted from working tree | 🟢 Fixed | Recovered via `git restore` — was a tracked file with an uncommitted deletion sitting in git status |
+| P1 | `smoke_test.py` 5 false-positive failures | 🟢 Fixed | Missing `sys.modules` registration broke dataclass resolution under `importlib.util.module_from_spec()`; one check expected the wrong function name |
+| P1 | `.gitignore` bare `lib/` rule collided with `web/lib/` | 🟢 Fixed | Scoped to `/lib/` (repo root only) |
 | P2 | Mixed old/new pipeline patterns | 🔵 Open | Consolidate after insights wired |
 | P2 | Limited test coverage | 🟡 Partial | Smoke tests done, unit tests pending |
+| P2 | `/api/music/top-artists` returns `[]` | 🟡 Open | Not yet explained — check if `streams_clean.csv` has a current-year row |
+| P2 | `shows.py` artist matching false positives | 🔵 Deferred | Substring search matches short/common-word artist names — known, not urgent |
+| P2 | `/api/cfb/line-accuracy` missing `game_id` | 🔵 Open | Needed if linking line-accuracy rows to game-context detail views |
 
 ---
 
@@ -446,10 +402,14 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 
 | Status | Document | Notes |
 |--------|----------|-------|
-| 🟢 | `README.md` | Project overview |
+| 🟢 | `README.md` | Rewritten 2026-06-20 — reflects FastAPI + Next.js architecture, all 10 routers, all 11 pages, KGLW |
 | 🟢 | `ROADMAP.md` | This file |
 | 🟢 | `ARCHITECTURE.md` | Full data flow diagram |
 | 🟢 | `REMOTE_ACCESS.md` | Tailscale + Cloudflare Tunnel guide |
+| 🟢 | `API_STATE_REFERENCE.md` | Confirmed response shapes from the live FastAPI debugging session — authoritative for frontend work |
+| 🟢 | `MIGRATION.md` | Append-only changelog. New 2026-06-20 entry documents Streamlit → FastAPI/Next.js, the KGLW pipeline+router, CFB logos, and infrastructure fixes |
+| 🗄️ | `docs/archive/CHECKPOINT_2026-01-01.md` | Archived — superseded snapshot, kept for history |
+| 🗄️ | `docs/archive/MIGRATION_2026-05-12.md` | Archived as a dated entry's worth of history — current `MIGRATION.md` continues the convention |
 | 🔵 | `RUNBOOK.md` | Operational recovery steps |
 | 🔵 | `DATA_DICTIONARY.md` | Metric and table documentation |
 | 🔵 | `DECISIONS.md` | ADR-style technical decisions |
@@ -461,18 +421,21 @@ KGLW.net API v2 — no auth, JSON, setlists/songs/venues/jamcharts/links/metadat
 The authoritative implementation order for the next phase. Domain work is subordinate to this sequence.
 
 ### Phase 1 — Deploy What Is Already Built
-1. Deploy FastAPI on the Mac mini
-2. Deploy Next.js on the Mac mini
-3. Download and validate local CFB assets
+
+**Status: substantially complete as of 2026-06-20.** Items 1, 2, 3, 7, 8 done. Items 4-6, 9 remain.
+
+1. ~~Deploy FastAPI on the Mac mini~~ ✅ Done
+2. ~~Deploy Next.js on the Mac mini~~ ✅ Done
+3. ~~Download and validate local CFB assets~~ ✅ Done
 4. Confirm page and API parity with Streamlit
 5. Configure Tailscale access
 6. Register the Mac mini GitHub Actions runner
-7. Install and activate launchd services
-8. Confirm scheduled sync and backup jobs
+7. ~~Install and activate launchd services~~ ✅ Done
+8. ~~Confirm scheduled sync and backup jobs~~ ✅ Done
 9. Decommission Streamlit after parity is verified
 
 ### Phase 2 — Reliability and Trust
-1. Implement `ops.pipeline_runs`
+1. ~~Implement `ops.pipeline_runs`~~ ✅ Done
 2. Add per-source freshness status
 3. Complete DuckDB restore testing
 4. Add backup checksum verification
@@ -527,12 +490,12 @@ The authoritative implementation order for the next phase. Domain work is subord
 
 Domain work proceeds when the required platform foundation exists. Priority candidates:
 
-1. KGLW pipeline
+1. ~~KGLW pipeline~~ ✅ Done — pipeline + router + page all built and verified
 2. Apple Health
 3. Open-Meteo or OpenWeatherMap
 4. Career Impact Ledger
 5. Manual financial tracking
-6. Letterboxd wiring
+6. Letterboxd wiring (dry-run confirmed, real run + daily_sync wiring still pending)
 7. Plex viewing analytics
 8. Strava webhooks
 9. Family memory timeline
@@ -574,6 +537,10 @@ Life OS should not become another obligation. It should quietly collect reliable
 - What can be ignored
 - What one action would create the most leverage
 - Whether the last recommended action actually helped
+
+### A note on tonight's discipline (added 2026-06-20)
+
+Nearly every real bug found across the FastAPI debugging session, the Next.js rebuild, and the KGLW pipeline work shared the same root cause: an assumption about a data shape that turned out to be wrong, caught only by actually hitting the live system and reading the real response. This isn't a one-time cleanup — it's a standing practice worth keeping. When a router, pipeline, or component doc comment says "confirmed real shape as of [date]," that should mean someone checked, not guessed. Treat that discipline as part of the platform's design principles, not a phase that ends.
 
 ---
 
@@ -844,7 +811,7 @@ The final step — measuring whether a recommendation led to a useful outcome �
 ### Recommended Build Order
 
 **Phase 1 — Trust and Reliability**
-`ops.pipeline_runs` · Semantic metrics registry · FastAPI response contracts · TypeScript client generation · Backup restore test · Application observability
+`ops.pipeline_runs` (done) · Semantic metrics registry · FastAPI response contracts · TypeScript client generation · Backup restore test · Application observability
 
 **Phase 2 — Capture and Context**
 `core.life_events` · `raw.capture_inbox` · Mobile quick-capture form · `core.actions` · Personal knowledge layer · Gmail structured extractors
@@ -984,13 +951,16 @@ FastAPI Pydantic models → OpenAPI schema → generated TypeScript client → N
 
 Benefits: fewer duplicated types, compile-time frontend validation, safer API changes, automatic client generation, breaking-change detection in CI.
 
+**Status note (2026-06-20):** the typed client (`web/lib/api.ts`) exists today as hand-written TypeScript interfaces, manually kept in sync with confirmed API responses — not yet generated from FastAPI's OpenAPI schema. This is exactly the kind of drift risk this section is meant to eliminate; several of tonight's bugs (the Goals array-shape mismatch, the CFB win_rate units) were precisely the class of error that generated types from a real schema would catch at compile time instead of at runtime.
+
 | Status | Item | Notes |
 |--------|------|-------|
-| 🔵 | Add Pydantic response models | Explicit schema for every route |
+| 🟡 | Add Pydantic response models | Explicit schema for every route — not yet done; routes currently return raw dicts |
 | 🔵 | Generate OpenAPI schema artifact | Store or upload during CI |
-| 🔵 | Generate TypeScript API client | Frontend uses generated types |
+| 🔵 | Generate TypeScript API client | Frontend uses generated types instead of hand-written ones |
 | 🔵 | Add schema snapshot testing | Detect unexpected API changes |
 | 🔵 | Add breaking-change CI check | Fail when incompatible changes introduced |
+
 **Breaking changes** (require version bump): removing a field · renaming a field · changing a field type · changing nullability · changing response grain · changing enum values without backward compatibility · removing an endpoint.
 
 **Non-breaking changes**: adding an optional field · adding a new endpoint · adding a new enum value when clients tolerate unknown values · improving documentation · adding metadata that does not alter existing behavior.
@@ -1011,7 +981,7 @@ Benefits: fewer duplicated types, compile-time frontend validation, safer API ch
 | Application | FastAPI latency/errors, Next.js failures, slow queries, DuckDB locks |
 | AI | Generation success rate, latency, token usage, cost, recommendation acceptance |
 
-Recommended stack: **Uptime Kuma** (service monitoring) + **Sentry** (FastAPI + Next.js errors) + `ops.pipeline_runs` + structured JSON logs.
+Recommended stack: **Uptime Kuma** (service monitoring) + **Sentry** (FastAPI + Next.js errors) + `ops.pipeline_runs` (done) + structured JSON logs.
 
 | Status | Item | Notes |
 |--------|------|-------|
@@ -1110,6 +1080,8 @@ Rule fields: `event_type`, `severity`, `channel`, `quiet_hours_start/end`, `cool
 
 Example policies: required pipeline failure → immediate alert · source stale one day → morning summary · disk above 85% → immediate alert · goal slightly behind → weekly review only · CFB picks ready → Thursday notification.
 
+**Note (2026-06-20):** `notify.py` now fires automatically at the end of every `daily_sync.py` run (`sync-ok` / `sync-fail`) — this is the first piece of real notification logic in production, ad hoc rather than policy-driven. A formal policy engine would generalize this rather than replace something broken.
+
 | Status | Item | Notes |
 |--------|------|-------|
 | 🔵 | Create notification rule tables | Central policy for alerts |
@@ -1120,7 +1092,7 @@ Example policies: required pipeline failure → immediate alert · source stale 
 | 🔵 | Add acknowledgement tracking | `acknowledged_at`, `resolved_at`, `linked_action_id`, `resolution_notes` — distinguishes delivered from resolved |
 | 🔵 | Add notification lifecycle statuses | pending → sent → acknowledged → action created → resolved / expired / failed |
 | 🔵 | Create notification history page | Sent, suppressed, acknowledged, resolved |
-| 🔵 | Wire sync and system alerts through policy engine | Remove ad hoc notification logic |
+| 🟡 | Wire sync and system alerts through policy engine | `daily_sync.py` already fires `notify.py` directly — needs generalizing into the policy engine rather than ad hoc calls |
 
 ---
 
@@ -1436,20 +1408,20 @@ Create `ai.feedback`.
 
 ### Recommended Immediate Priorities
 
-The strongest next actions in sequence:
+The strongest next actions in sequence — **updated to reflect tonight's progress:**
 
-1. **Deploy FastAPI and Next.js** — validate the product layer that is already built
-2. **Activate Mac mini runner and launchd jobs** — make existing automation operational
-3. **Implement `ops.pipeline_runs`** — establish reliable freshness, status, and failure tracking
-4. **Complete backup restore testing** — prove the system can recover before adding more complexity
-5. **Add API contracts and generated TypeScript types** — stabilize the FastAPI / Next.js boundary
-6. **Build `core.life_events`** — create the normalized event foundation
-7. **Build `raw.capture_inbox`** — add low-friction capture for context APIs cannot provide
-8. **Build `core.actions`** — close the loop from recommendation to execution
-9. **Build `mart_goal_pacing`** — enable risk detection and corrective recommendations
-10. **Build `mart_daily_features`** — enable cross-domain pattern analysis
-11. **Activate the morning brief** — deliver the first complete OpenClaw vertical slice
-12. **Add claims, evaluations, feedback, and permissions** — make AI output grounded, measurable, and safe
+1. ~~Deploy FastAPI and Next.js~~ ✅ Done — validated, debugged, verified against real data
+2. Activate Mac mini runner and launchd jobs — launchd done; GitHub Actions runner still pending
+3. ~~Implement `ops.pipeline_runs`~~ ✅ Done
+4. Complete backup restore testing — backup itself works; restore has not been tested
+5. Add API contracts and generated TypeScript types — typed client exists hand-written; not yet generated from a real schema
+6. Build `core.life_events` — create the normalized event foundation
+7. Build `raw.capture_inbox` — add low-friction capture for context APIs cannot provide
+8. Build `core.actions` — close the loop from recommendation to execution
+9. Build `mart_goal_pacing` — enable risk detection and corrective recommendations
+10. Build `mart_daily_features` — enable cross-domain pattern analysis
+11. Activate the morning brief — deliver the first complete OpenClaw vertical slice
+12. Add claims, evaluations, feedback, and permissions — make AI output grounded, measurable, and safe
 
 ---
 
