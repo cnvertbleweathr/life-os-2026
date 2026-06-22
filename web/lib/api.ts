@@ -471,6 +471,20 @@ export interface KglwSummary {
   } | null;
 }
 
+export interface KglwYoutubeMatch {
+  video_id: string;
+  title: string;
+  published_at: string;
+  show_id: number;
+  show_date: string;
+  venue_name: string;
+  city: string;
+  country: string;
+  tour_year: number;
+  night_number: number | null;
+  match_confidence: "high" | "medium" | "low";
+}
+
 export const kglwApi = {
   summary: () => get<KglwSummary>("/kglw/summary"),
   shows: async (
@@ -482,19 +496,47 @@ export const kglwApi = {
     if (opts?.limit != null) params.set("limit", String(opts.limit));
     const qs = params.toString();
     const shows = await get<KglwShow[]>(`/kglw/shows${qs ? `?${qs}` : ""}`);
-    // Map aliases for the Almanac explorer
-    return shows.map((s) => ({
+    const mapped = shows.map((s) => ({
       ...s,
       id: s.show_id,
       date: s.show_date,
       venue: s.venue_name,
       tour: s.tour_name,
       upcoming: false, // no reliable upcoming flag from API
-      videoId: null,    // no video data from API
+      videoId: null as string | null,
     }));
+
+    // Populate real videoId from mart_kglw_youtube_matches — built by
+    // matching the official YouTube channel's uploads against kglw.shows
+    // directly, since kglw.net's own links/show/{id} endpoint is broken
+    // server-side (confirmed 2026-06-22 — returns a raw PHP exception as
+    // the response body for every show). This mart has no dependency on
+    // that endpoint at all.
+    //
+    // Degrades silently to videoId: null on any failure — a missing
+    // endpoint or empty mart isn't an error, it's the same honest "no
+    // recording" state the page has always shown.
+    try {
+      const ids = mapped.map((s) => s.show_id).filter(Boolean);
+      if (ids.length > 0) {
+        const matches = await get<KglwYoutubeMatch[]>(`/kglw/youtube-matches?show_ids=${ids.join(",")}`);
+        const byShowId = new Map(matches.map((m) => [m.show_id, m.video_id]));
+        for (const s of mapped) {
+          s.videoId = byShowId.get(s.show_id) ?? null;
+        }
+      }
+    } catch {
+      // Endpoint not deployed yet, or mart hasn't been built — leave videoId null.
+    }
+
+    return mapped;
   },
   show: (showId: number) => get<KglwShow | null>(`/kglw/shows/${showId}`),
   onThisDay: () => get<KglwShow[]>("/kglw/shows/on-this-day"),
+  // Per-show YouTube match — used by the show detail panel as a
+  // fallback/refresh if the bulk fetch in shows() didn't have this show.
+  youtubeMatch: (showId: number) =>
+    get<KglwYoutubeMatch[]>(`/kglw/youtube-matches?show_ids=${showId}`).catch(() => []),
   songs: async (search?: string): Promise<KglwSong[]> => {
     const songs = await get<KglwSong[]>(
       `/kglw/songs${search ? `?search=${encodeURIComponent(search)}` : ""}`

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { sportsApi, type StreamsToday, type StreamMatch } from "@/lib/api";
+import { sportsApi, type StreamsToday, type StreamMatch, type NewsArticle } from "@/lib/api";
 import { Card, PageHead, K, Empty, Loading, ErrorState } from "@/components/ui/primitives";
 import { ProTeamLogo } from "@/components/ui/ProTeamLogo";
 
@@ -14,6 +14,24 @@ const LOGO_MAPS: Record<string, Record<string, string>> = {
   nba: nbaLogos,
   nfl: nflLogos,
 };
+
+// Your real 8 configured teams (scripts/fetch_streams.py MY_TEAMS), used to
+// build per-team news queries the same way the old Streamlit Sports page
+// did (fetch_team_news(query) called once per team). That per-team logic
+// never made it into the FastAPI router — /sports/news today only takes a
+// single generic q param. This queries it once per team and merges client-
+// side as an honest interim, not a fake "it's done" state. Real fix is a
+// dedicated /sports/team-news endpoint — tracked in the roadmap.
+const MY_TEAM_QUERIES = [
+  "Orlando Magic NBA",
+  "Tampa Bay Buccaneers NFL",
+  "Orlando City Soccer MLS",
+  "Miami Marlins MLB",
+  "Florida Panthers NHL",
+  "Colorado Avalanche NHL",
+  "Denver Nuggets NBA",
+  "Colorado Rockies MLB",
+];
 
 // Maps streamed.pk's category strings to our logo-map league keys.
 // Confirmed against live data 2026-06-21: "baseball" appears for MLB games.
@@ -101,10 +119,32 @@ function MatchCard({ m, accent }: { m: StreamMatch; accent?: boolean }) {
 
 export default function SportsPage() {
   const [streams, setStreams] = useState<StreamsToday | null>(null);
+  const [news, setNews] = useState<NewsArticle[] | null>(null);
+  const [newsError, setNewsError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     sportsApi.streams().then(setStreams).catch((e) => setError(e.message));
+
+    // Fire one query per team, merge results. If NEWS_API_KEY isn't set
+    // server-side, every call returns [] — that's the existing, correct
+    // "Not configured" behavior elsewhere (Music page), not an error.
+    Promise.all(MY_TEAM_QUERIES.map((q) => sportsApi.news(q).catch(() => [] as NewsArticle[])))
+      .then((results) => {
+        const seen = new Set<string>();
+        const merged: NewsArticle[] = [];
+        for (const batch of results) {
+          for (const a of batch) {
+            if (!seen.has(a.url)) {
+              seen.add(a.url);
+              merged.push(a);
+            }
+          }
+        }
+        merged.sort((a, b) => (b.published ?? "").localeCompare(a.published ?? ""));
+        setNews(merged);
+      })
+      .catch((e) => setNewsError(e.message));
   }, []);
 
   if (error) return <ErrorState message={error} />;
@@ -185,6 +225,47 @@ export default function SportsPage() {
             </div>
           </Card>
         </div>
+      </div>
+
+      {/* News — your teams only */}
+      <div className="mt-[22px]">
+        <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #3a5f7a", paddingTop: 12 }}>
+          <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>News · Your Teams</K>
+          <span className="font-mono text-faint" style={{ fontSize: 9 }}>NewsAPI · per-team query</span>
+        </div>
+        <Card pad={0}>
+          <div style={{ padding: "4px 18px 12px" }}>
+            {newsError ? (
+              <Empty message="Couldn't load news." detail={newsError} />
+            ) : news === null ? (
+              <Empty message="Loading…" />
+            ) : news.length === 0 ? (
+              <Empty
+                message="Not configured."
+                detail="NEWS_API_KEY isn't set in .env — same dependency as Music. Once set, this section queries all 8 of your teams and merges results, but each team gets its own query rather than one generic sports search — a real /sports/team-news endpoint that does this server-side is on the roadmap to replace this client-side merge."
+              />
+            ) : (
+              news.slice(0, 12).map((a, i) => (
+                <a
+                  key={i}
+                  href={a.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ons-row flex items-start gap-3 no-underline text-inherit cursor-pointer border-t border-border-2"
+                  style={{ padding: "11px 6px", margin: "0 -6px" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-ink" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.title}</div>
+                    <div className="font-mono text-faint mt-1" style={{ fontSize: 9.5 }}>
+                      {a.source}
+                      {a.published && ` · ${new Date(a.published).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                    </div>
+                  </div>
+                </a>
+              ))
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );

@@ -288,3 +288,20 @@ async def kglw_jamchart(
         """, [limit])
 
     return rows
+# YouTube matches
+@router.get("/youtube-matches")
+async def kglw_youtube_matches(request: Request, show_ids: str = Query(...)):
+    db = get_db(request)
+    ids = [int(x) for x in show_ids.split(",") if x.strip().isdigit()]
+    if not ids:
+        return []
+    ph = ",".join("?" * len(ids))
+    cols = "video_id, title, published_at, show_id, "
+    cols += "show_date, venue_name, city, country, "
+    cols += "tour_year, night_number, match_confidence"
+    sql = "SELECT " + cols + " "
+    sql += "FROM main_marts.mart_kglw_youtube_matches "
+    sql += "WHERE show_id IN (" + ph + ") "
+    sql += "ORDER BY show_id"
+    return query(db, sql, ids)
+

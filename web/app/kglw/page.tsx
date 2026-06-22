@@ -258,7 +258,7 @@ export default function KglwPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([kglwApi.shows(), kglwApi.songs()])
+    Promise.all([kglwApi.shows({ limit: 1200 }), kglwApi.songs()])
       .then(([sh, so]) => { setShows(sh); setSongs(so); })
       .catch((e) => setError(e.message));
   }, []);

@@ -1,35 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { showsApi, type ShowsSummary, type Show } from "@/lib/api";
+import { showsApi, type Show } from "@/lib/api";
 import {
-  Card, PageHead, Stat, StatBand, K, Pill, Empty, Loading, ErrorState,
+  Card, PageHead, K, Pill, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
 
 export default function ShowsPage() {
-  const [summary, setSummary] = useState<Awaited<ReturnType<typeof showsApi.summary>> | null>(null);
-  const [allShows, setAllShows] = useState<Show[]>([]);
+  const [allShows, setAllShows] = useState<Show[] | null>(null);
   const [myShows, setMyShows] = useState<Show[]>([]);
   const [mine, setMine] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      showsApi.summary(),
-      showsApi.list(false),
-      showsApi.list(true),
-    ])
-      .then(([s, all, my]) => { setSummary(s); setAllShows(all); setMyShows(my); })
+    Promise.all([showsApi.list(false), showsApi.list(true)])
+      .then(([all, my]) => { setAllShows(all); setMyShows(my); })
       .catch((e) => setError(e.message));
   }, []);
 
   if (error) return <ErrorState message={error} />;
-  if (!summary) return <Loading />;
+  if (!allShows) return <Loading />;
 
   const list = mine ? myShows : allShows;
-  const myCount = summary.my_artist_count ?? myShows.length;
-  const totalCount = summary.total_shows ?? allShows.length;
-  const venues = summary.venue_count ?? 0;
   const nextMine = myShows[0];
 
   return (
@@ -44,17 +36,6 @@ export default function ShowsPage() {
           </div>
         ) : undefined}
       />
-
-      <StatBand>
-        <Stat label="Total Shows" value={totalCount.toLocaleString()} />
-        <Stat label="Matching My Artists" value={myCount} accent />
-        <Stat label="Venues" value={venues} />
-        <Stat
-          label="Next For You"
-          value={nextMine ? nextMine.title?.split(" ").slice(0, 2).join(" ") ?? "—" : "—"}
-          last
-        />
-      </StatBand>
 
       <p className="font-mono text-faint mb-[26px]" style={{ fontSize: 9.5, margin: "0 0 26px" }}>
         ARTIST MATCHING IS APPROXIMATE (SUBSTRING SEARCH) — TREAT THE COUNT AS A ROUGH SIGNAL, NOT EXACT.
