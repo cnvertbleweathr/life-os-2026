@@ -1,62 +1,278 @@
 import clsx from "clsx";
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
+import { GlobeMark } from "./icons";
 
-// ── Card ─────────────────────────────────────────────────────────────────────
+// ── K — mono kicker label ─────────────────────────────────────────────────
 
-export function Card({
+export function K({
   children,
+  color,
   className,
+  style,
 }: {
   children: ReactNode;
+  color?: string;
   className?: string;
+  style?: CSSProperties;
 }) {
   return (
     <div
-      className={clsx(
-        "bg-surface border border-border rounded-card p-5",
-        className
-      )}
+      className={clsx("font-mono uppercase", className)}
+      style={{
+        fontSize: 9.5,
+        letterSpacing: "1.7px",
+        color: color ?? "#736e5f",
+        ...style,
+      }}
     >
       {children}
     </div>
   );
 }
 
-// ── PageHeader ───────────────────────────────────────────────────────────────
+// ── Card ─────────────────────────────────────────────────────────────────────
 
-export function PageHeader({
+export function Card({
+  children,
+  className,
+  accent,
+  accentColor,
+  pad = 18,
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  accent?: boolean;
+  accentColor?: string;
+  pad?: number | string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      className={clsx("bg-surface border border-border rounded-card", className)}
+      style={{
+        padding: pad,
+        borderTop: accent
+          ? `2.5px solid ${accentColor ?? "#1d5536"}`
+          : undefined,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── PageHead ─────────────────────────────────────────────────────────────────
+
+export function PageHead({
   title,
+  kicker,
   sub,
   right,
 }: {
   title: string;
+  kicker?: string;
   sub?: string;
   right?: ReactNode;
 }) {
   return (
-    <div className="px-6 py-4 border-b border-border bg-surface flex items-center justify-between">
+    <div className="flex justify-between items-end mb-[26px]">
       <div>
-        <h1 className="text-xl font-semibold text-ink">{title}</h1>
-        {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
+        {kicker && (
+          <K color="#1d5536" style={{ marginBottom: 10 }}>
+            {kicker}
+          </K>
+        )}
+        <h1
+          className="font-serif font-bold text-ink leading-none m-0"
+          style={{ fontSize: 40, letterSpacing: "-0.8px" }}
+        >
+          {title}
+        </h1>
+        {sub && (
+          <p className="text-[13.5px] text-muted mt-[9px]">{sub}</p>
+        )}
       </div>
       {right}
     </div>
   );
 }
 
-// ── SectionLabel ─────────────────────────────────────────────────────────────
+// ── Stat — editorial stat-band cell ──────────────────────────────────────────
 
-export function SectionLabel({ children }: { children: ReactNode }) {
+export function Stat({
+  label,
+  value,
+  unit,
+  accent,
+  spark,
+  last,
+}: {
+  label: string;
+  value: string | number;
+  unit?: string;
+  accent?: boolean;
+  spark?: ReactNode;
+  last?: boolean;
+}) {
   return (
-    <p className="text-[10px] font-semibold tracking-[1.5px] uppercase text-faint mb-2">
+    <div
+      style={{
+        padding: "16px 18px",
+        borderRight: last ? "none" : "1px solid #ebe5d8",
+      }}
+    >
+      <K>{label}</K>
+      <div
+        className="font-serif font-semibold leading-none mt-2"
+        style={{ fontSize: 30, color: accent ? "#1d5536" : "#232a22" }}
+      >
+        {value}
+        {unit && (
+          <span
+            className="font-mono font-normal ml-1"
+            style={{ fontSize: 11, color: "#a39d8c" }}
+          >
+            {unit}
+          </span>
+        )}
+      </div>
+      {spark ? (
+        <div className="mt-[10px] text-green-bright">{spark}</div>
+      ) : (
+        <div className="h-8" />
+      )}
+    </div>
+  );
+}
+
+// ── StatBand — wraps N Stat cells in the editorial band ──────────────────────
+
+export function StatBand({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="grid mb-7"
+      style={{
+        gridTemplateColumns: `repeat(${
+          Array.isArray(children) ? children.length : 1
+        }, 1fr)`,
+        borderTop: "1.5px solid #232a22",
+        borderBottom: "1px solid #e6e3dc",
+      }}
+    >
       {children}
-    </p>
+    </div>
+  );
+}
+
+// ── Pace badge ───────────────────────────────────────────────────────────────
+
+const PACE_MAP: Record<string, [string, string]> = {
+  on_track: ["#1d5536", "On track"],
+  ahead:    ["#1d5536", "Ahead"],
+  behind:   ["#a8473a", "Behind"],
+  at_risk:  ["#9a6a1e", "At risk"],
+  unknown:  ["#a39d8c", "Untracked"],
+  binary:   ["#a39d8c", "Logged"],
+  complete: ["#1d5536", "Complete"],
+};
+
+export function Pace({ status }: { status?: string | null }) {
+  const [col, txt] = PACE_MAP[status ?? ""] ?? ["#736e5f", status ?? "—"];
+  return (
+    <span
+      className="font-mono whitespace-nowrap"
+      style={{ fontSize: 9, letterSpacing: "0.5px", color: col }}
+    >
+      {txt}
+    </span>
+  );
+}
+
+// ── Pill — rounded filter toggle ─────────────────────────────────────────────
+
+export function Pill({
+  children,
+  active,
+  color = "#1d5536",
+  onClick,
+  style,
+}: {
+  children: ReactNode;
+  active?: boolean;
+  color?: string;
+  onClick?: () => void;
+  style?: CSSProperties;
+}) {
+  return (
+    <button
+      className="ons-tap cursor-pointer"
+      onClick={onClick}
+      style={{
+        fontFamily: "var(--font-mono, 'Spline Sans Mono', monospace)",
+        fontSize: 10,
+        letterSpacing: "0.5px",
+        textTransform: "uppercase",
+        border: `1px solid ${active ? color : "#e6e3dc"}`,
+        background: active ? color : "#f6f5f2",
+        color: active ? "#fff" : "#736e5f",
+        borderRadius: 999,
+        padding: "6px 13px",
+        ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Watermark — faint globe in accent cards ──────────────────────────────────
+
+export function Watermark({
+  size = 290,
+  opacity = 0.05,
+  spin,
+}: {
+  size?: number;
+  opacity?: number;
+  spin?: boolean;
+}) {
+  return (
+    <div
+      className="absolute pointer-events-none text-green"
+      style={{
+        right: -50,
+        top: -70,
+        opacity,
+        animation: spin ? "ons-rot 120s linear infinite" : "none",
+      }}
+    >
+      <GlobeMark size={size} stroke="#1d5536" sw={1} />
+    </div>
+  );
+}
+
+// ── Stub — honest empty state ────────────────────────────────────────────────
+
+export function Stub({
+  title,
+  body,
+}: {
+  title: string;
+  body?: string;
+}) {
+  return (
+    <div className="grid place-items-center py-[90px] px-5 text-center">
+      <div className="font-serif text-[22px] text-ink">{title}</div>
+      {body && (
+        <p className="text-[13px] text-muted max-w-[380px] mt-2">{body}</p>
+      )}
+    </div>
   );
 }
 
 // ── Empty ────────────────────────────────────────────────────────────────────
-// "An empty screen is an invitation to act" — explain what's missing plainly,
-// never imply broken when the real state is "no data exists yet."
 
 export function Empty({
   message,
@@ -75,7 +291,7 @@ export function Empty({
 
 // ── Loading ──────────────────────────────────────────────────────────────────
 
-export function Loading({ label = "Loading..." }: { label?: string }) {
+export function Loading({ label = "Loading…" }: { label?: string }) {
   return (
     <div className="py-8 text-center">
       <p className="text-xs text-faint">{label}</p>
@@ -84,8 +300,6 @@ export function Loading({ label = "Loading..." }: { label?: string }) {
 }
 
 // ── ErrorState ───────────────────────────────────────────────────────────────
-// Distinguishes "no data" from "request failed" — these are different
-// states and should never be visually identical.
 
 export function ErrorState({ message }: { message?: string }) {
   return (
@@ -96,9 +310,7 @@ export function ErrorState({ message }: { message?: string }) {
   );
 }
 
-// ── StatCard ─────────────────────────────────────────────────────────────────
-// value can legitimately be null/undefined per API_STATE_REFERENCE — render
-// an em dash rather than "0" or "null" so absence isn't mistaken for a real zero.
+// ── Legacy StatCard (used on Home page) ──────────────────────────────────────
 
 export function StatCard({
   label,
@@ -112,57 +324,63 @@ export function StatCard({
   accent?: boolean;
 }) {
   const display =
-    value === null || value === undefined || value === ""
-      ? "—"
-      : typeof value === "number"
-      ? value.toLocaleString(undefined, { maximumFractionDigits: 1 })
-      : value;
-
+    value === null || value === undefined || value === "" ? "—" : String(value);
   return (
-    <Card className="flex flex-col gap-1">
-      <SectionLabel>{label}</SectionLabel>
+    <div className="bg-surface border border-border rounded-card p-4">
+      <p className="font-mono text-[9.5px] tracking-[1.7px] uppercase text-faint mb-2">
+        {label}
+      </p>
       <p
         className={clsx(
-          "text-2xl font-semibold tabular-nums",
+          "font-serif text-2xl font-semibold",
           accent ? "text-green" : "text-ink"
         )}
       >
         {display}
-        {unit && display !== "—" && (
-          <span className="text-xs text-faint ml-1 font-normal">{unit}</span>
+        {unit && (
+          <span className="font-mono text-[11px] text-faint font-normal ml-1">
+            {unit}
+          </span>
         )}
       </p>
-    </Card>
+    </div>
   );
 }
 
-// ── PaceBadge ────────────────────────────────────────────────────────────────
-// pace_status from mart_goal_pacing: ahead/on_track/at_risk/behind/complete/binary
+// ── SectionLabel (legacy, used on Home page) ─────────────────────────────────
 
-const PACE_STYLES: Record<string, string> = {
-  ahead:       "bg-green/15 text-green",
-  on_track:    "bg-green/10 text-green-light",
-  at_risk:     "bg-amber/15 text-amber",
-  behind:      "bg-red/15 text-red",
-  complete:    "bg-green/20 text-green",
-  binary:      "bg-border text-muted",
-  not_started: "bg-border text-faint",
-  // goals without a numeric target (str-type, e.g. "promotion", "roth_ira")
-  // come back as pace_status: "unknown" — not an error, just not pace-trackable
-  unknown:     "bg-border text-faint",
-};
+export function SectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="font-mono text-[9.5px] tracking-[1.7px] uppercase text-faint mb-2">
+      {children}
+    </p>
+  );
+}
+
+// ── PaceBadge (legacy alias) ─────────────────────────────────────────────────
 
 export function PaceBadge({ status }: { status?: string | null }) {
-  if (!status) return null;
-  const style = PACE_STYLES[status] ?? "bg-border text-muted";
+  return <Pace status={status} />;
+}
+
+// ── PageHeader (legacy, used on Home page) ───────────────────────────────────
+
+export function PageHeader({
+  title,
+  sub,
+  right,
+}: {
+  title: string;
+  sub?: string;
+  right?: ReactNode;
+}) {
   return (
-    <span
-      className={clsx(
-        "text-2xs font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide",
-        style
-      )}
-    >
-      {status.replace("_", " ")}
-    </span>
+    <div className="px-6 py-4 border-b border-border bg-surface flex items-center justify-between">
+      <div>
+        <h1 className="text-xl font-semibold text-ink">{title}</h1>
+        {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
+      </div>
+      {right}
+    </div>
   );
 }

@@ -24,22 +24,26 @@ const SIZE_CLASSES = {
 export function TeamLogo({
   team,
   size = "md",
+  px,
   className,
 }: {
   team: string;
   size?: keyof typeof SIZE_CLASSES;
+  /** Almanac addition: exact pixel size, overrides the size keyword's class
+   *  when present (used for the team profile header, matchup crests, etc.) */
+  px?: number;
   className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const id = TEAM_IDS[team];
-  const sizeClass = SIZE_CLASSES[size];
+  const sizeClass = px ? "" : SIZE_CLASSES[size];
+  const pxStyle = px ? { width: px, height: px } : undefined;
 
-  // No known ID for this team, or the image failed to load — show a
-  // text fallback instead of a broken image icon.
   if (!id || failed) {
     return (
       <span
         className={`${sizeClass} rounded-full bg-canvas border border-border flex items-center justify-center text-2xs font-semibold text-faint shrink-0 ${className ?? ""}`}
+        style={pxStyle}
         title={team}
       >
         {team.charAt(0)}
@@ -54,6 +58,7 @@ export function TeamLogo({
       title={team}
       onError={() => setFailed(true)}
       className={`${sizeClass} object-contain shrink-0 ${className ?? ""}`}
+      style={pxStyle}
     />
   );
 }

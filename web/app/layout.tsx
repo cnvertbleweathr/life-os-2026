@@ -16,7 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="flex h-screen overflow-hidden bg-canvas text-ink font-sans antialiased">
         <Sidebar />
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto ons-scroll">{children}</main>
       </body>
     </html>
   );
