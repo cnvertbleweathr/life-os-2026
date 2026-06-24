@@ -174,13 +174,13 @@ export default function SportsPage() {
         }
       />
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        {/* My Teams */}
+      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
+        {/* Left column: My Teams + Top 5 + Other Popular, stacked */}
         <div>
           <div className="mb-4" style={{ borderTop: "2.5px solid #1d5536", paddingTop: 12 }}>
             <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>My Teams Today</K>
           </div>
-          <Card pad={0}>
+          <Card pad={0} style={{ marginBottom: 8 }}>
             <div style={{ padding: "4px 18px 12px" }}>
               {my_teams.length === 0 ? (
                 <Empty
@@ -192,14 +192,11 @@ export default function SportsPage() {
               )}
             </div>
           </Card>
-          <p className="font-mono text-faint mt-[10px]" style={{ fontSize: 8.5, lineHeight: 1.5 }}>
+          <p className="font-mono text-faint mb-[22px]" style={{ fontSize: 8.5, lineHeight: 1.5 }}>
             STREAM LISTINGS ONLY — NO STANDINGS OR RECORD DATA SOURCE EXISTS YET.
             LOGOS COVER MLB/NBA/NFL ONLY — ORLANDO CITY (MLS) AND PANTHERS/AVALANCHE (NHL) SHOW INITIALS UNTIL A LOGO SOURCE IS ADDED.
           </p>
-        </div>
 
-        {/* Top 5 + Popular */}
-        <div>
           <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #9a6a1e", paddingTop: 12 }}>
             <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>Top 5 Today</K>
             <span className="font-mono text-faint" style={{ fontSize: 9 }}>AI-RANKED · streamed.pk</span>
@@ -225,47 +222,47 @@ export default function SportsPage() {
             </div>
           </Card>
         </div>
-      </div>
 
-      {/* News — your teams only */}
-      <div className="mt-[22px]">
-        <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #3a5f7a", paddingTop: 12 }}>
-          <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>News · Your Teams</K>
-          <span className="font-mono text-faint" style={{ fontSize: 9 }}>NewsAPI · per-team query</span>
-        </div>
-        <Card pad={0}>
-          <div style={{ padding: "4px 18px 12px" }}>
-            {newsError ? (
-              <Empty message="Couldn't load news." detail={newsError} />
-            ) : news === null ? (
-              <Empty message="Loading…" />
-            ) : news.length === 0 ? (
-              <Empty
-                message="Not configured."
-                detail="NEWS_API_KEY isn't set in .env — same dependency as Music. Once set, this section queries all 8 of your teams and merges results, but each team gets its own query rather than one generic sports search — a real /sports/team-news endpoint that does this server-side is on the roadmap to replace this client-side merge."
-              />
-            ) : (
-              news.slice(0, 12).map((a, i) => (
-                <a
-                  key={i}
-                  href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ons-row flex items-start gap-3 no-underline text-inherit cursor-pointer border-t border-border-2"
-                  style={{ padding: "11px 6px", margin: "0 -6px" }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-ink" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.title}</div>
-                    <div className="font-mono text-faint mt-1" style={{ fontSize: 9.5 }}>
-                      {a.source}
-                      {a.published && ` · ${new Date(a.published).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                    </div>
-                  </div>
-                </a>
-              ))
-            )}
+        {/* Right column: News, running alongside at full height */}
+        <div>
+          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #3a5f7a", paddingTop: 12 }}>
+            <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>News · Your Teams</K>
+            <span className="font-mono text-faint" style={{ fontSize: 9 }}>NewsAPI · per-team query</span>
           </div>
-        </Card>
+          <Card pad={0}>
+            <div style={{ padding: "4px 18px 12px" }}>
+              {newsError ? (
+                <Empty message="Couldn't load news." detail={newsError} />
+              ) : news === null ? (
+                <Empty message="Loading…" />
+              ) : news.length === 0 ? (
+                <Empty
+                  message="Not configured."
+                  detail="NEWS_API_KEY isn't set in .env — same dependency as Music. Once set, this section queries all 8 of your teams and merges results, but each team gets its own query rather than one generic sports search — a real /sports/team-news endpoint that does this server-side is on the roadmap to replace this client-side merge."
+                />
+              ) : (
+                news.slice(0, 12).map((a, i) => (
+                  <a
+                    key={i}
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ons-row flex items-start gap-3 no-underline text-inherit cursor-pointer border-t border-border-2"
+                    style={{ padding: "11px 6px", margin: "0 -6px" }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-ink" style={{ fontSize: 13, lineHeight: 1.4 }}>{a.title}</div>
+                      <div className="font-mono text-faint mt-1" style={{ fontSize: 9.5 }}>
+                        {a.source}
+                        {a.published && ` · ${new Date(a.published).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                      </div>
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
     </div>
   );
