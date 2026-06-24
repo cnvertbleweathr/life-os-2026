@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fitnessApi, type FitnessSummary, type CrossfitEntry } from "@/lib/api";
+import { fitnessApi, type FitnessSummary, type CrossfitEntry, type RunDay } from "@/lib/api";
 import {
   Card, PageHead, K, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
@@ -183,26 +183,37 @@ function MiniStat({ v, u, l, color }: { v: string | number; u: string; l: string
 export default function FitnessPage() {
   const [data, setData] = useState<FitnessSummary | null>(null);
   const [crossfit, setCrossfit] = useState<CrossfitEntry[] | null>(null);
+  const [runDays, setRunDays] = useState<RunDay[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([fitnessApi.summary(), fitnessApi.crossfit(200)])
-      .then(([f, cf]) => { setData(f); setCrossfit(cf); })
+    const year = new Date().getFullYear();
+    Promise.all([fitnessApi.summary(), fitnessApi.crossfit(200), fitnessApi.runDays(year)])
+      .then(([f, cf, rd]) => { setData(f); setCrossfit(cf); setRunDays(rd); })
       .catch((e) => setError(e.message));
   }, []);
 
   if (error) return <ErrorState message={error} />;
-  if (!data || !crossfit) return <Loading />;
+  if (!data || !crossfit || !runDays) return <Loading />;
 
   const { running_summary: rs, recent_runs, weekly_miles } = data;
   const weeklyRunData = weekly_miles.map((w) => w.miles);
   const paceSeries = [...recent_runs].reverse().map((r) => 12 - r.pace);
 
   // ── Build the real per-day activity map for the heatmap ──
+  // Uses runDays (full-year, no cap, from strava.activities directly)
+  // instead of recent_runs (capped to last 30 days/10 rows server-side).
+  // Multiple runs on the same date get summed into one cell.
   const days = new Map<string, DayActivity>();
-  for (const r of recent_runs) {
-    const key = r.run_date.slice(0, 10);
-    days.set(key, { date: key, ran: true, crossfit: false, runMiles: r.miles, cfTitle: null });
+  for (const r of runDays) {
+    const key = r.start_date.slice(0, 10);
+    const existing = days.get(key);
+    if (existing) {
+      existing.ran = true;
+      existing.runMiles += r.distance_miles;
+    } else {
+      days.set(key, { date: key, ran: true, crossfit: false, runMiles: r.distance_miles, cfTitle: null });
+    }
   }
   for (const c of crossfit) {
     const key = c.date;
@@ -262,31 +273,19 @@ export default function FitnessPage() {
 
   // Avg workout days per week, across all of 2026.
   //
-  // Honest constraint: /fitness/summary's recent_runs is capped server-side
-  // to the last 30 days (max 10 rows) — not enough to know which specific
-  // days you ran across the full year. weekly_miles IS a full-year query
-  // and tells us which weeks had >0 running miles. CrossFit dates ARE
-  // full-year (capped at limit=200, well above real attendance).
-  //
-  // So: count a week as a "workout week" if it had running miles > 0
-  // OR at least one CrossFit class that week, then average days/week
-  // using CrossFit's actual day-level density for the CrossFit side and
-  // 1 day/week credit for any running-only week (a real day count for
-  // running weeks isn't available without a backend change).
+  // Now computed from REAL daily-granularity data on both sides —
+  // runDays gives exact run dates for the full year (no more 1-day/week
+  // credit approximation), and crossfit class dates were already exact.
+  // A day counts once whether it had a run, a CrossFit class, or both.
   const yearStart = new Date(now.getFullYear(), 0, 1);
   const daysElapsed = Math.floor((now.getTime() - yearStart.getTime()) / 86400000) + 1;
   const weeksElapsed = Math.max(1, daysElapsed / 7);
 
-  // CrossFit: exact day count, full year
-  const cfDaysThisYear = [...classDates].filter(
-    (d) => new Date(d + "T00:00:00").getFullYear() === now.getFullYear()
+  const workoutDaysThisYear = [...days.values()].filter(
+    (a) => (a.ran || a.crossfit) && new Date(a.date + "T00:00:00").getFullYear() === now.getFullYear()
   ).length;
 
-  // Running: weekly_miles gives complete week-level coverage but not
-  // day-level — credit 1 day for each week with running miles > 0
-  const runWeeksThisYear = weekly_miles.filter((w) => w.miles > 0).length;
-
-  const avgWorkoutDaysPerWeek = (cfDaysThisYear + runWeeksThisYear) / weeksElapsed;
+  const avgWorkoutDaysPerWeek = workoutDaysThisYear / weeksElapsed;
 
   return (
     <div className="ons-page ons-scroll" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
@@ -315,7 +314,7 @@ export default function FitnessPage() {
           </div>
         </div>
         <div className="font-mono text-faint mb-3" style={{ fontSize: 8.5 }}>
-          CrossFit counted by exact day · running weeks counted as 1 day (day-level running data beyond 30 days isn't in the API yet)
+          CrossFit and running both counted by exact day — full year, no cap, sourced directly from strava.activities and your SugarWOD log.
         </div>
         <TrainingHeatmap days={days} />
       </Card>

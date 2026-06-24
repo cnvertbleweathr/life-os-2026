@@ -30,7 +30,6 @@ export default function MusicPage() {
 
   const hrs = summary.minutes_ytd != null ? Math.round(summary.minutes_ytd / 60) : null;
   const goalHrs = summary.goal_minutes != null ? Math.round(summary.goal_minutes / 60) : null;
-  const topArtistsBroken = artists.length === 0;
   const maxArtistMinutes = Math.max(...artists.map((a) => a.minutes), 1);
 
   return (
@@ -69,16 +68,10 @@ export default function MusicPage() {
           <Card pad={0} style={{ marginBottom: 22 }}>
             <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
               <K>Top Artists · YTD</K>
-              {topArtistsBroken && (
-                <span className="font-mono" style={{ fontSize: 8.5, color: "#a8473a" }}>KNOWN ISSUE</span>
-              )}
             </div>
             <div style={{ padding: "0 18px 16px" }}>
-              {topArtistsBroken ? (
-                <Empty
-                  message="This endpoint is returning empty — confirmed open bug, not a config gap."
-                  detail="Root cause not yet found; likely streams_clean.csv missing a current-year row. Logged in ROADMAP.md."
-                />
+              {artists.length === 0 ? (
+                <Empty message="No listening data for this year yet." />
               ) : (
                 artists.map((a, i) => (
                   <div
@@ -122,10 +115,7 @@ export default function MusicPage() {
             <div style={{ padding: "16px 18px 12px" }}><K>Most-Played Tracks</K></div>
             <div style={{ padding: "0 18px 14px" }}>
               {tracks.length === 0 ? (
-                <Empty
-                  message="This endpoint is returning empty — same root cause as Top Artists."
-                  detail="Both read from streams_clean.csv; logged as one open bug in ROADMAP.md."
-                />
+                <Empty message="No listening data for this year yet." />
               ) : (
                 tracks.map((t, i) => (
                   <div
@@ -149,36 +139,59 @@ export default function MusicPage() {
         {/* Daily 10 + News */}
         <div>
           <Card accent pad={0} style={{ overflow: "hidden", marginBottom: 22 }}>
-            <div
-              style={{
-                aspectRatio: "16/9",
-                background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 8px, #fbfaf5 8px, #fbfaf5 16px)",
-                display: "grid",
-                placeItems: "center",
-                borderBottom: "1px solid #ebe5d8",
-                position: "relative",
-              }}
-            >
-              <div className="text-center p-4">
-                <div className="font-mono text-green" style={{ fontSize: 9, letterSpacing: "1.5px" }}>
-                  DAILY 10 · COVER
-                </div>
-                <div className="font-serif font-semibold text-ink mt-1.5" style={{ fontSize: 17 }}>
-                  {daily10.available ? "Today's Playlist" : "No Playlist Yet"}
-                </div>
-              </div>
-              {daily10.available && (
+            {daily10.available && daily10.cover_image_path ? (
+              <div style={{ position: "relative", borderBottom: "1px solid #ebe5d8" }}>
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api"}/music/daily10/cover`}
+                  alt="Today's Daily 10 cover art"
+                  style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }}
+                  onError={(e) => {
+                    // Falls back to the placeholder if the file is
+                    // somehow missing despite cover_image_path being
+                    // set (e.g. covers/ dir cleared, but the JSON entry
+                    // wasn't regenerated) — same honest-gap pattern as
+                    // every other "data says X but the file isn't there"
+                    // case in this app.
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
                 <span
                   className="absolute font-mono text-faint"
                   style={{
                     top: 10, right: 12, fontSize: 8, letterSpacing: "0.5px",
                     border: "1px solid #e6e3dc", borderRadius: 999, padding: "2px 8px",
+                    background: "rgba(251,250,245,0.85)",
                   }}
                 >
                   gpt-image-1
                 </span>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  aspectRatio: "16/9",
+                  background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 8px, #fbfaf5 8px, #fbfaf5 16px)",
+                  display: "grid",
+                  placeItems: "center",
+                  borderBottom: "1px solid #ebe5d8",
+                  position: "relative",
+                }}
+              >
+                <div className="text-center p-4">
+                  <div className="font-mono text-green" style={{ fontSize: 9, letterSpacing: "1.5px" }}>
+                    DAILY 10 · COVER
+                  </div>
+                  <div className="font-serif font-semibold text-ink mt-1.5" style={{ fontSize: 17 }}>
+                    {daily10.available ? "Today's Playlist" : "No Playlist Yet"}
+                  </div>
+                  {daily10.available && (
+                    <p className="text-faint mt-2 mb-0" style={{ fontSize: 10 }}>
+                      No cover saved locally yet — only playlists generated after this fix shipped will have one.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ padding: "14px 18px" }}>
               {daily10.available ? (
                 <>

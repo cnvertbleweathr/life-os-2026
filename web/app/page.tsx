@@ -295,18 +295,33 @@ export default function HomePage() {
           <K style={{ marginBottom: 12 }}>Daily 10 · Cover</K>
           {daily10 ? (
             <>
-              <div
-                className="grid place-items-center mb-[11px]"
-                style={{
-                  aspectRatio: "16/8",
-                  background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 7px, #fbfaf5 7px, #fbfaf5 14px)",
-                  border: "1px solid #e6e3dc",
-                }}
-              >
-                <span className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "1px" }}>
-                  {daily10.date}
-                </span>
-              </div>
+              {daily10.cover_image_path ? (
+                <img
+                  src={`${process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api"}/music/daily10/cover`}
+                  alt="Today's Daily 10 cover art"
+                  className="mb-[11px]"
+                  style={{
+                    width: "100%", aspectRatio: "16/8", objectFit: "cover",
+                    display: "block", border: "1px solid #e6e3dc",
+                  }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              ) : (
+                <div
+                  className="grid place-items-center mb-[11px]"
+                  style={{
+                    aspectRatio: "16/8",
+                    background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 7px, #fbfaf5 7px, #fbfaf5 14px)",
+                    border: "1px solid #e6e3dc",
+                  }}
+                >
+                  <span className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "1px" }}>
+                    {daily10.date}
+                  </span>
+                </div>
+              )}
               <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.45, color: "#232a22" }}>
                 {daily10.description}
               </p>

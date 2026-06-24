@@ -17,6 +17,7 @@ from api.deps import get_db, query, query_one
 router          = APIRouter()
 ROOT            = Path(__file__).resolve().parents[2]
 DAILY10_PATH    = ROOT / "data" / "spotify" / "processed" / "daily10_latest.json"
+COVERS_DIR      = ROOT / "data" / "spotify" / "processed" / "covers"
 STREAMS_CLEAN   = ROOT / "data" / "spotify" / "processed" / "streams_clean.csv"
 SPOTIFY_SUMMARY = ROOT / "data" / "spotify" / "metrics" / f"spotify_summary_{date.today().year}.csv"
 
@@ -61,10 +62,10 @@ async def top_artists(limit: int = 20):
         return []
     try:
         df = pd.read_csv(STREAMS_CLEAN)
-        df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
-        df = df[df["ts"].dt.year == date.today().year]
+        df["played_at"] = pd.to_datetime(df["played_at"], errors="coerce")
+        df = df[df["played_at"].dt.year == date.today().year]
         top = (
-            df.groupby("master_metadata_album_artist_name")["ms_played"]
+            df.groupby("artist_name")["ms_played"]
             .sum()
             .sort_values(ascending=False)
             .head(limit)
@@ -84,11 +85,10 @@ async def top_tracks(limit: int = 20):
         return []
     try:
         df = pd.read_csv(STREAMS_CLEAN)
-        df["ts"] = pd.to_datetime(df["ts"], errors="coerce")
-        df = df[df["ts"].dt.year == date.today().year]
+        df["played_at"] = pd.to_datetime(df["played_at"], errors="coerce")
+        df = df[df["played_at"].dt.year == date.today().year]
         top = (
-            df.groupby(["master_metadata_track_name", "master_metadata_album_artist_name"])
-            ["ms_played"]
+            df.groupby(["track_name", "artist_name"])["ms_played"]
             .sum()
             .sort_values(ascending=False)
             .head(limit)
@@ -135,3 +135,14 @@ async def music_news():
     except Exception:
         pass
     return []
+
+
+@router.get("/daily10/cover")
+async def daily10_cover():
+    today_str = date.today().strftime("%Y-%m-%d")
+    cover_path = COVERS_DIR / f"{today_str}.jpg"
+    if not cover_path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="No cover saved for today yet")
+    from fastapi.responses import FileResponse
+    return FileResponse(cover_path, media_type="image/jpeg")

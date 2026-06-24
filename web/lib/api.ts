@@ -57,6 +57,12 @@ export interface HomeSummary {
     updated_at_utc: string;
     description: string;
     tewnidge_artists: string[];
+    // Relative path written by spotify_daily10_decorate.py once it saves
+    // a local copy of the generated cover (e.g. "covers/2026-06-24.jpg").
+    // Same field/served via the same /music/daily10/cover endpoint as
+    // the Music page — only present for runs after the local-save fix
+    // shipped (2026-06-24).
+    cover_image_path?: string;
   } | null;
   picks: unknown[];
   goals: Goal[];
@@ -132,10 +138,23 @@ export interface CrossfitEntry {
   is_pr: boolean;
 }
 
+/** Confirmed real shape from /fitness/run-days, sourced directly from
+ *  strava.activities (is_run boolean, no artificial date/row cap --
+ *  unlike FitnessSummary.recent_runs, which is capped server-side to
+ *  the last 30 days / 10 rows). One row per run; multiple runs on the
+ *  same calendar date are NOT pre-aggregated here. */
+export interface RunDay {
+  strava_id: number;
+  start_date: string;
+  distance_miles: number;
+  moving_time_s: number;
+}
+
 export const fitnessApi = {
   summary: () => get<FitnessSummary>("/fitness/summary"),
   crossfit: (limit = 200) => get<CrossfitEntry[]>(`/fitness/crossfit?limit=${limit}`),
   prs: () => get<CrossfitEntry[]>("/fitness/prs"),
+  runDays: (year: number) => get<RunDay[]>(`/fitness/run-days?year=${year}`),
 };
 
 // ── Reading ──────────────────────────────────────────────────────────────────
@@ -202,6 +221,12 @@ export interface MusicDaily10 {
   updated_at_utc?: string;
   description?: string;
   tewnidge_artists?: string[];
+  // Relative path written by spotify_daily10_decorate.py once it saves
+  // a local copy of the generated cover (e.g. "covers/2026-06-24.jpg").
+  // Only present for runs after the local-save fix shipped — older
+  // daily10_latest.json entries won't have this field at all, which is
+  // an expected gap (no image was ever saved for those days), not a bug.
+  cover_image_path?: string;
 }
 
 export interface TopArtist {
@@ -218,10 +243,11 @@ export interface TopTrack {
 export const musicApi = {
   summary: () => get<MusicSummary>("/music/summary"),
   daily10: () => get<MusicDaily10>("/music/daily10"),
-  // Confirmed broken upstream as of 2026-06-20 — always returns [] and the
-  // root cause hasn't been found yet (possibly streams_clean.csv missing
-  // a current-year row). Don't treat [] here as "pipeline hasn't run";
-  // it's a known open bug, not an expected empty state. See ROADMAP.md.
+  // Confirmed fixed 2026-06-24 — the bug was top_artists()/top_tracks()
+  // in api/routers/music.py referencing raw Spotify export field names
+  // (master_metadata_album_artist_name, etc) instead of the actual
+  // streams_clean.csv columns (artist_name, track_name, played_at).
+  // Not a data gap — verified real artists/tracks return correctly now.
   topArtists: (limit = 20) => get<TopArtist[]>(`/music/top-artists?limit=${limit}`),
   topTracks: (limit = 20) => get<TopTrack[]>(`/music/top-tracks?limit=${limit}`),
   news: () => get<unknown[]>("/music/news"),

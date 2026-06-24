@@ -445,6 +445,16 @@ def main() -> int:
     print("Uploading cover image to Spotify…")
     _spotify_upload_cover_image(sp, args.playlist_id, b64)
 
+    # Save the generated cover locally so the dashboard can serve it --
+    # previously this image only ever existed on Spotify CDN.
+    from pathlib import Path as _CoverPath
+    _covers_dir = _CoverPath(__file__).resolve().parents[1] / "data" / "spotify" / "processed" / "covers"
+    _covers_dir.mkdir(parents=True, exist_ok=True)
+    _cover_filename = f"{d.strftime(chr(37)+chr(89)+chr(45)+chr(37)+chr(109)+chr(45)+chr(37)+chr(100))}.jpg"
+    _cover_path = _covers_dir / _cover_filename
+    _cover_path.write_bytes(jpeg_bytes)
+    print(f"Saved cover locally: {_cover_path}")
+
     print("Updating playlist description…")
     _spotify_update_description(sp, args.playlist_id, desc, max_len=args.max_desc)
 
@@ -457,6 +467,7 @@ def main() -> int:
             _payload = json.loads(_latest_path.read_text(encoding="utf-8"))
             _payload["description"] = _spotify_sanitize_description(desc, max_len=args.max_desc)
             _payload["description_full"] = desc.strip()
+            _payload["cover_image_path"] = f"covers/{_cover_filename}"
             _latest_path.write_text(json.dumps(_payload, indent=2), encoding="utf-8")
             print(f"Updated description in {_latest_path}")
         except Exception as _e:

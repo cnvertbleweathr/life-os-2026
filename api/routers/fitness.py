@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 
 import pandas as pd
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from api.deps import _clean, get_db, query, query_one
 
@@ -114,3 +114,33 @@ async def personal_records():
     available = [c for c in cols if c in prs.columns]
     raw_rows = prs[available].to_dict(orient="records")
     return [{k: _clean(v) for k, v in row.items()} for row in raw_rows]
+
+
+@router.get("/run-days")
+async def fitness_run_days(request: Request, year: int = Query(..., description="e.g. 2026")):
+    """
+    Every run in the given year -- date, distance, moving time -- with
+    NO artificial cap, unlike /fitness/summary's recent_runs (capped to
+    last 30 days / 10 rows). Confirmed real columns from
+    strava.activities: is_run (boolean), start_date, distance_miles,
+    moving_time_s.
+
+    Returns one row per run. Multiple runs on the same calendar date
+    are NOT pre-aggregated here -- the frontend should group by date
+    itself if it needs one heatmap cell per day, since collapsing two
+    real runs into one row here would silently lose data a caller might
+    actually want (e.g. total miles that day vs. number of distinct runs).
+    """
+    db = get_db(request)
+    rows = query(db, """
+        SELECT
+            strava_id,
+            start_date,
+            distance_miles,
+            moving_time_s
+        FROM strava.activities
+        WHERE is_run = true
+          AND extract(year FROM start_date) = ?
+        ORDER BY start_date ASC
+    """, [year])
+    return rows
