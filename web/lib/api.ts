@@ -353,6 +353,72 @@ export interface CfbRecruitingYear {
   single_year_rank: number;
 }
 
+export interface CfbMatchupRequest {
+  home_team: string;
+  away_team: string;
+  spread: number; // negative = home favored
+  over_under?: number;
+  season?: number;
+}
+
+export interface CfbCoachH2H {
+  home_record: number;
+  away_record: number;
+  total: number;
+  leader: string;
+  trend: string;
+}
+
+/** Confirmed real shape from /cfb/matchup-lab, verified against live
+ *  output 2026-06-22 (Georgia/Alabama 2024 test case). */
+export interface CfbMatchupResult {
+  matchup: string;
+  bet: string;
+  model_score: number;
+  edges: string[];
+  n_edges: number;
+  warnings: string[];
+  ppa_gap: number | null;
+  sp_gap: number | null;
+  ret_gap: number | null;
+  recruiting_gap: number | null;
+  home_coach: string | null;
+  away_coach: string | null;
+  coach_h2h: CfbCoachH2H | null;
+  spread: number;
+  over_under: number | null;
+  season: number;
+  // True only if model_score >= 70 AND n_edges >= 4 -- the same bar
+  // generate_picks.py uses to decide whether a real game is worth
+  // publishing as a weekly pick. A matchup can have a real, populated
+  // model_score and still have meets_publish_bar: false -- that's the
+  // model correctly saying "no strong signal here," not missing data.
+  meets_publish_bar: boolean;
+}
+
+/** Returned instead of CfbMatchupResult when cfbd.advanced_stats has no
+ *  row for one or both teams in the required prior season -- a genuine
+ *  data gap, distinct from a low/zero model_score. */
+export interface CfbMatchupError {
+  error: string;
+  message: string;
+}
+
+/** Confirmed real shape from /cfb/schedule, built from cfbd_pipeline.py's
+ *  own /games field mapping (id, startDate, homeTeam, awayTeam, etc). */
+export interface CfbScheduleGame {
+  game_id: number;
+  season: number;
+  week: number;
+  start_date: string | null;
+  neutral_site: boolean;
+  conference_game: boolean;
+  home_team: string;
+  home_conference: string | null;
+  away_team: string;
+  away_conference: string | null;
+}
+
 export const cfbApi = {
   teams: () => get<CfbTeam[]>("/cfb/teams"),
   team: (team: string) =>
@@ -363,6 +429,22 @@ export const cfbApi = {
     get<CfbRecruitingYear[]>(`/cfb/recruiting/${encodeURIComponent(team)}`),
   modelInfo: () => get<Record<string, unknown>>("/cfb/model-info"),
   lineAccuracy: () => get<Record<string, unknown>[]>("/cfb/line-accuracy"),
+  schedule: (season: number, week: number) =>
+    get<CfbScheduleGame[]>(`/cfb/schedule?season=${season}&week=${week}`),
+  matchupLab: async (
+    req: CfbMatchupRequest
+  ): Promise<CfbMatchupResult | CfbMatchupError> => {
+    const res = await fetch(`${API_BASE}/cfb/matchup-lab`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`API /cfb/matchup-lab returned ${res.status}`);
+    }
+    return res.json();
+  },
 };
 
 export interface SeasonRoi {

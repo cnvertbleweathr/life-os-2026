@@ -62,7 +62,7 @@ app.add_middleware(
         "https://www.capuchin.cyou",
     ],
     allow_credentials=True,
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
