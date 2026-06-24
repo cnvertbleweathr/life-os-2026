@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { homeApi, habitsApi, type HomeSummary, type HabitToday } from "@/lib/api";
-import { Card, K, Pace, Watermark, Loading, ErrorState } from "@/components/ui/primitives";
+import { homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type StreamsToday, type StreamMatch } from "@/lib/api";
+import { Card, K, Watermark, Loading, ErrorState } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 
 const CFB_BACKTEST_ROI = "+34.5"; // confirmed 4-season walk-forward backtest, same fact as the CFB page header
@@ -18,9 +18,11 @@ function CalendarIcon({ title }: { title: string }) {
 export default function HomePage() {
   const [data, setData] = useState<HomeSummary | null>(null);
   const [habitsToday, setHabitsToday] = useState<HabitToday | null>(null);
+  const [streams, setStreams] = useState<StreamsToday | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [vote, setVote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [streamsError, setStreamsError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([homeApi.summary(), habitsApi.today()])
@@ -30,12 +32,18 @@ export default function HomePage() {
         setDone(Object.fromEntries(t.habits.map((x) => [x.key, x.done])));
       })
       .catch((e) => setError(e.message));
+
+    // Separate call/catch — a streams fetch failure shouldn't block the
+    // rest of Home, same pattern as Music News.
+    sportsApi.streams()
+      .then(setStreams)
+      .catch((e) => setStreamsError(e.message));
   }, []);
 
   if (error) return <ErrorState message={error} />;
   if (!data || !habitsToday) return <Loading label="Loading today's summary..." />;
 
-  const { stat_cards: sc, calendar, daily10, goals } = data;
+  const { stat_cards: sc, calendar, daily10 } = data;
   const todayLong = new Date(data.date).toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
@@ -333,35 +341,77 @@ export default function HomePage() {
           )}
         </Card>
 
-        <Card>
-          <K style={{ marginBottom: 12 }}>Goal Pacing · 2026</K>
-          {goals.length === 0 ? (
-            <div className="text-center text-muted py-8" style={{ fontSize: 13 }}>No goals tracked yet.</div>
-          ) : (
-            <div className="flex flex-col gap-[11px]">
-              {goals.slice(0, 5).map((g) => {
-                const pct = g.progress_percent != null ? Math.min(100, g.progress_percent) : 0;
-                const col = g.pace_status === "behind" ? "#a8473a"
-                  : g.pace_status === "at_risk" ? "#9a6a1e"
-                  : g.pace_status === "unknown" || g.pace_status === "binary" ? "#a39d8c"
-                  : "#1d5536";
-                return (
-                  <div key={g.goal_key}>
-                    <div className="flex justify-between items-baseline mb-[5px]">
-                      <span style={{ fontSize: 12.5 }}>{g.label}</span>
-                      <Pace status={g.pace_status} />
+        <Card pad={0}>
+          <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
+            <K>My Teams Today</K>
+            <a href="/sports" className="font-mono text-faint no-underline" style={{ fontSize: 9 }}>
+              VIEW ALL →
+            </a>
+          </div>
+          <div style={{ padding: "0 18px 10px" }}>
+            {streamsError ? (
+              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>Couldn't load streams.</div>
+            ) : !streams ? (
+              <div className="text-center text-faint py-6" style={{ fontSize: 12.5 }}>Loading…</div>
+            ) : streams.my_teams.filter((m) => m.category.toLowerCase() !== "golf").length === 0 ? (
+              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>
+                None of your teams are playing today.
+              </div>
+            ) : (
+              streams.my_teams
+                .filter((m) => m.category.toLowerCase() !== "golf")
+                .slice(0, 3)
+                .map((m, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-3 border-t border-border-2"
+                    style={{ padding: "9px 6px", margin: "0 -6px" }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate" style={{ fontSize: 13, fontWeight: 600 }}>
+                        {m.team_label ? m.team_label.replace(/^[^\s]+\s/, "") : m.title}
+                      </div>
+                      <div className="text-faint truncate" style={{ fontSize: 10.5 }}>
+                        {m.home_team && m.away_team ? `${m.away_team} @ ${m.home_team}` : m.title}
+                      </div>
                     </div>
-                    <div className="relative" style={{ height: 3, background: "#efebe1" }}>
-                      <div
-                        className="absolute inset-0"
-                        style={{ width: `${pct}%`, background: col, transition: "width .6s" }}
-                      />
-                    </div>
+                    <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: m.is_live ? "#a8473a" : "#736e5f" }}>
+                      {m.is_live ? "● LIVE" : (m.kickoff_local ?? "TBD")}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))
+            )}
+          </div>
+
+          <div className="flex justify-between items-center border-t border-border-2" style={{ padding: "16px 18px 12px" }}>
+            <K>Top 5 Today</K>
+            <span className="font-mono text-faint" style={{ fontSize: 9 }}>AI-RANKED</span>
+          </div>
+          <div style={{ padding: "0 18px 12px" }}>
+            {streamsError ? (
+              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>Couldn't load streams.</div>
+            ) : !streams ? (
+              <div className="text-center text-faint py-6" style={{ fontSize: 12.5 }}>Loading…</div>
+            ) : streams.top5.length === 0 ? (
+              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>No top-5 picks today.</div>
+            ) : (
+              streams.top5.slice(0, 3).map((m, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 border-t border-border-2"
+                  style={{ padding: "9px 6px", margin: "0 -6px" }}
+                >
+                  <span className="font-serif font-bold text-faint shrink-0" style={{ fontSize: 14, width: 16 }}>
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0 truncate" style={{ fontSize: 13 }}>{m.title}</div>
+                  <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: m.is_live ? "#a8473a" : "#736e5f" }}>
+                    {m.is_live ? "● LIVE" : (m.kickoff_local ?? "TBD")}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </Card>
       </div>
     </div>

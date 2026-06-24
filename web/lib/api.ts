@@ -250,7 +250,11 @@ export const musicApi = {
   // Not a data gap — verified real artists/tracks return correctly now.
   topArtists: (limit = 20) => get<TopArtist[]>(`/music/top-artists?limit=${limit}`),
   topTracks: (limit = 20) => get<TopTrack[]>(`/music/top-tracks?limit=${limit}`),
-  news: () => get<unknown[]>("/music/news"),
+  // Real shape confirmed from api/routers/music.py — same NewsAPI
+  // pattern as sportsApi.news(), just a different query
+  // ("music OR album OR concert OR tour"). [] means NEWS_API_KEY isn't
+  // set, not a bug.
+  news: () => get<NewsArticle[]>("/music/news"),
 };
 
 // ── Shows ────────────────────────────────────────────────────────────────────
