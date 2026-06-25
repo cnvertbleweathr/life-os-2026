@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-06-20
+Last updated: 2026-06-24
 
 ---
 
@@ -39,6 +39,7 @@ The platform has matured past "collect more data." The next phase focuses on hel
 - 🟡 **In Progress** — partially built or needs wiring
 - 🔵 **Planned** — scoped, not started
 - ⚪ **Idea** — not yet scoped
+- 🔴 **Blocked externally** — confirmed broken on a third party's end, not fixable on our side
 
 ---
 
@@ -52,7 +53,7 @@ The platform has matured past "collect more data." The next phase focuses on hel
 | 4 | **Expand Warehouse Discipline** | dbt tests, mart documentation, source freshness checks, data contracts |
 | 5 | **Snowflake / MotherDuck Experimentation** | Mirror selected marts to cloud; evaluate managed warehouse patterns |
 
-**Milestone 2 is now substantially complete** — FastAPI and Next.js are both deployed and verified against live data as of 2026-06-20. Tailscale remote access is the remaining gap.
+**Milestone 2 is now substantially complete** — FastAPI and Next.js are both deployed and verified against live data as of 2026-06-20, with significant additional debugging and feature work through 2026-06-24 (Music, Fitness, Sports, Home, CFB, KGLW). Tailscale remote access is the remaining gap.
 
 ---
 
@@ -118,6 +119,7 @@ OpenClaw is the AI layer that sits above the data and talks to you. It is the an
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk space, DuckDB size, dbt last run, backup status, Tailscale, failed jobs |
 | 🔵 | Data freshness and quality center | Per-source freshness, dbt tests, expected row counts |
+| 🔵 | Add `kglw_pipeline.py` + `kglw_youtube_pipeline.py` to `daily_sync.py` | Neither is in the master step registry yet — both still manual-only |
 
 ---
 
@@ -137,20 +139,21 @@ Domain: capuchin.cyou
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Design concept approved | Bento grid, dark sidebar, forest green accent |
-| 🟢 | FastAPI layer — all 10 routers | Original 9 + `kglw.py`. **Debugged against live data**: 8 real bugs found and fixed across 7 commits (path resolution, column mismatches, NaN serialization shared-helper bug affecting every router, timestamp comparisons, mixed-timezone parsing, dict-key iteration bug). See `API_STATE_REFERENCE.md` for confirmed response shapes. |
-| 🟢 | All 11 Next.js pages built and deployed | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in. **Visually verified against real data** by clicking through every page. |
+| 🟢 | FastAPI layer — all 10 routers | Original 9 + `kglw.py`. **Debugged against live data**: 8 real bugs found and fixed across 7 commits (path resolution, column mismatches, NaN serialization shared-helper bug affecting every router, timestamp comparisons, mixed-timezone parsing, dict-key iteration bug). See `API_STATE_REFERENCE.md` for confirmed response shapes. New `/cfb/matchup-lab`, `/cfb/schedule`, `/fitness/run-days`, `/kglw/youtube-matches`, `/music/daily10/cover` endpoints added 2026-06-24 (see CFB, Fitness, KGLW, and Music sections below). |
+| 🟢 | All 11 Next.js pages built and deployed | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in. **Visually verified against real data** by clicking through every page. Music, Fitness, Sports, Home, and CFB pages received substantial additional fixes and layout work on 2026-06-24. |
 | 🟢 | CFB team logos | `TeamLogo.tsx`, real 263-team ID map (built from live `cfbd.team_profiles` cross-referenced against CFBD's `/teams`), 260/263 logos downloaded |
+| 🟢 | Pro sports + NHL/MLS team logos | `ProTeamLogo.tsx` for MLB/NBA/NFL (92 team logos from `klunn91/team-logos`), separate drop for NHL (34 SVGs extracted from `.tsx` React components) and MLS (30 SVGs, San Diego FC missing — 2025 expansion team not in source repo). Wired into the Sports page's match cards with league-detection + team-name matching, including a confirmed-and-fixed suffix-matching bug (the matcher originally tried the 2-word suffix first and never fell through to the 1-word match, so "Colorado Rockies" never resolved to the "Rockies" map key). |
 | 🟢 | `ARCHITECTURE.md` | Full data flow diagram |
 | 🟢 | `REMOTE_ACCESS.md` | Tailscale + Cloudflare Tunnel setup guide |
 | 🟢 | `API_STATE_REFERENCE.md` | Confirmed response shapes, nullable fields, formatting quirks, untested endpoints — built from the live debugging session |
 | 🟢 | Deploy on Mac mini | Both FastAPI and Next.js running and verified |
-| 🟢 | Download logos locally | 260/263 — 3 genuine 404s from CFBD's CDN for smaller programs |
+| 🟢 | Download logos locally | 260/263 CFB — 3 genuine 404s from CFBD's CDN for smaller programs |
 | 🔵 | Tailscale setup | 15 min — see `REMOTE_ACCESS.md` |
 | 🔵 | capuchin.cyou DNS | Point to production app |
 | 🔵 | Decommission Streamlit | `app/` can be removed — parity confirmed |
 | 🔵 | OpenClaw morning brief page | Daily AI brief surfaced on Home page |
 | 🔵 | OpenClaw weekly review page | Sunday review with domain breakdown |
-| 🟢 | KGLW page | Rebuilt against confirmed real API. **Note:** no globe/map visualization — KGLW's API has no lat/lng anywhere, so this is a searchable list/explorer, not a literal globe. A real globe would need a separate geocoding pass layered on top. |
+| 🟢 | KGLW page | Rebuilt against confirmed real API. Show mode (upcoming shows list + on-this-day) and Song mode (searchable catalog + jam chart versions). Real YouTube embeds now render for matched shows — see KGLW section below. **Note:** still no globe/map visualization — KGLW's API has no lat/lng anywhere, so this remains a searchable list/explorer, not a literal globe. |
 
 ### Real bugs found and fixed during the Next.js build (not in the original design)
 
@@ -160,6 +163,13 @@ Domain: capuchin.cyou
 | CFB win rate showed `6820%` instead of `68%` | `win_rate`/`roi_pct` are already percentages from the API, not `0–1` fractions — a `* 100` was applied on top | Removed the erroneous multiplication |
 | Fitness weekly-miles bar chart rendered with zero visible height | A flex child needs an explicit `h-full` for a percentage-based `height` to resolve correctly — `flex-1` alone doesn't propagate the parent's height | Added `h-full` to the bar wrapper |
 | 17 color-opacity utility classes silently rendered nothing (`bg-green/70`, `text-amber/60`, etc.) across the whole app | Colors were defined as raw CSS custom properties consumed by hand-written flat classes — Tailwind had no theme-registered colors, so it couldn't generate opacity-modifier variants | Registered the full palette in `tailwind.config.js theme.colors` |
+| `/api/music/top-artists` and `/api/music/top-tracks` always returned `[]` | `top_artists()`/`top_tracks()` in `api/routers/music.py` referenced raw Spotify export field names (`master_metadata_album_artist_name`, `ts`) instead of the real `streams_clean.csv` columns (`artist_name`, `played_at`) — confirmed 2026-06-24, was never a data gap | Fixed column references, verified live with real data |
+| Daily 10 cover image never rendered anywhere | `daily10_latest.json` had no image reference at all — the AI-generated cover was uploaded straight to Spotify's CDN via `playlist_upload_cover_image()` and never saved locally, so the frontend had no real image to point at regardless of any UI code | Patched `spotify_daily10_decorate.py` to save the JPEG locally and record `cover_image_path` in the JSON; added `/music/daily10/cover` serving endpoint; wired into both Home and Music pages |
+| Music News always showed "Not configured" | The real `/music/news` endpoint and `musicApi.news()` client method both existed and worked — the Music page simply never called it, rendering a hardcoded static card unconditionally | Wired the real fetch with its own error state |
+| CFB Matchup Lab always returned `no_data` | `analyse_game()` (the function the endpoint called) has a hardcoded publish-threshold gate (`model_score>=70`, `n_edges>=4`) — correct for `generate_picks.py`'s real weekly picks, wrong for an exploratory tool. The gate was silently filtering legitimate below-threshold matchups, not reporting a missing-data problem | Switched the endpoint to call `score_game()` directly (via `generate_picks.py`'s internals), bypassing the publish gate; surfaces a separate `meets_publish_bar` boolean so the two states aren't conflated |
+| CFB Matchup Lab logo order swapped | `"Away @ Home".split(" @ ")` returns `[away, home]` at indices `[0, 1]` — the crests were rendered with those indices reversed | Swapped the index usage |
+| Sports/Home schedule row logos missing or wrong-positioned | Several real, distinct bugs found via direct DOM inspection during debugging — none turned out to be missing files or bad data, just layout/matching logic (see Sports section below for full detail) | Fixed suffix-matching logic; confirmed remaining visual gaps were perception-at-a-glance, not bugs |
+| `Fitness` avg-workout-days/week stat used a week-level approximation | `/fitness/summary`'s `recent_runs` was capped server-side to 30 days/10 rows, so running weeks were credited as "1 day" regardless of actual frequency | New `/fitness/run-days` endpoint queries `strava.activities` directly (`is_run` boolean, no cap) — now real daily-granularity data for both running and CrossFit |
 
 ---
 
@@ -197,6 +207,9 @@ Weeks 1-4: +39.5% ROI (strongest window)
 | 🟢 | Push notifications | `notify.py` — ntfy.sh picks alert + sync alerts, confirmed working |
 | 🟢 | CFB team logos | Real 263-team ID map, 260/263 downloaded, `TeamLogo.tsx` wired and verified rendering |
 | 🟢 | Off-season table creation bug | `track_lines.py` / `track_news_signals.py` both had `ensure_table()` defined but never called before the off-season early exit — `cfbd.line_history` / `cfbd.news_signals` never got created, which silently blocked `dbt run` for the ~8 off-season months. Fixed to always create the table first. |
+| 🟢 | Matchup Lab — real model wiring | New `/cfb/matchup-lab` endpoint calls `score_game()` directly, bypassing `analyse_game()`'s publish-threshold gate (see bug table above for full detail). Frontend rebuilt with a real form (team selects, spread, O/U, season) and a real result card (model score, suggested bet, PPA/SP+/returning-production/recruiting gaps, signals, warnings, coach H2H). CORS fix required — `api/main.py` had `allow_methods=["GET"]`, blocking the first POST route on the whole API. |
+| 🟡 | `_build_live_tiers()` vs `build_tiers()` duplication | `generate_picks.py` has its own private `_build_live_tiers()` rather than importing the canonical `build_tiers()` from `backtest_walk_forward.py`, despite a docstring claiming they're "the same logic." Confirmed pre-existing, surfaced while building Matchup Lab — not introduced by this work. Worth a diff between the two functions to confirm they haven't drifted apart. |
+| 🟢 | `/cfb/schedule` endpoint | Real CFBD schedule by season+week, independent of betting lines (sportsbooks don't post Week 1 spreads months ahead). Confirmed CFBD already has the 2026 Week 1 schedule published. "This Week" tab now shows a real, selectable schedule instead of a static preseason placeholder. |
 | 🔵 | Model score calibration audit | 70-79 outperforms 90-99 — investigate signal stacking |
 | 🔵 | Re-run ablation at 2026 Week 4 | Recalibrate weights against real data |
 | 🔵 | Line movement signal | `track_lines.py` → `score_game()` adjustment |
@@ -219,6 +232,7 @@ Weeks 1-4: +39.5% ROI (strongest window)
 | 🟢 | Next.js Goals page — array-of-groups shape bug | `/api/goals/by-domain` returns `[{domain, goals}]`, not a dict — fixed the type and component to match |
 | 🔵 | Goal pacing mart — move beyond current vs target |
 | 🔵 | Plaid integration for Finance goals actuals |
+| 🔵 | Reorganize Goals page layout | Deferred 2026-06-24 by request — "needs a fresh brain," no direction set yet on the right structure |
 
 ---
 
@@ -234,21 +248,27 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 - **Jam chart covers only 247 notable versions, not full setlist history** — "everywhere this song has been played" via the song explorer is really "everywhere this song has a jam-chart-flagged version," a meaningfully smaller set than the song's true performance history.
 - **No setlist or links endpoints built yet** — `/shows` returns show-level metadata only; full per-show setlists and YouTube/audio links are not ingested by the current pipeline (`--shows-only` mode covers shows/songs/venues/jamchart only).
 - **`/shows` has no working pagination** — ignores `page`/`per_page` and returns the complete dataset in one response, sorted oldest-first. Found via a bug where the original pipeline looped 20 identical "pages," burning 20x the necessary API calls before the merge key silently deduplicated it back to the correct count.
+- **`links/show/{id}` is confirmed dead on kglw.net's own server (2026-06-22)** — every call returns HTTP 200 with a raw PHP `PDOException` as the body ("Column not found: 1054 Unknown column 'show'"). Not a rate-limit issue, not fixable on our end. `kglw_pipeline.py` still attempts and logs failures for this every run — worth deciding whether to stop calling it entirely now that it's superseded (see below).
 
 ### Roadmap
 
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | `kglw_pipeline.py` | Shows/songs/venues/jamchart ingestion working, verified against real data. 4 real bugs found and fixed (wrong field names on venues/jamchart/shows, fake pagination loop). |
-| 🟢 | KGLW FastAPI router (`api/routers/kglw.py`) | 9 endpoints: summary, shows (filterable), show detail, on-this-day, songs (searchable), song→jamchart-shows, venues (searchable), jamchart (filterable) |
-| 🟢 | KGLW Next.js page | Rebuilt against confirmed real API. Show mode (upcoming shows list + on-this-day) and Song mode (searchable catalog + jam chart versions) |
-| 🔵 | Setlists + links ingestion | Needed before YouTube embed / full setlist features can work — not yet built |
+| 🔴 | `kglw_pipeline.py`'s `links/show/{id}` calls | Confirmed dead on kglw.net's own server — see limitations above. Superseded by the YouTube-channel-matching approach below. |
+| 🟢 | KGLW FastAPI router (`api/routers/kglw.py`) | 9 original endpoints (summary, shows, show detail, on-this-day, songs, song→jamchart-shows, venues, jamchart) plus new `/kglw/youtube-matches` (2026-06-24). |
+| 🟢 | KGLW Next.js page | Rebuilt against confirmed real API. Show mode and Song mode. Real YouTube embeds now render for matched shows (2026-06-24) instead of "no recording linked yet." |
+| 🟢 | `pipelines/kglw_youtube_pipeline.py` (new 2026-06-24) | Ingests the full official YouTube channel via the YouTube Data API — quota-efficient (uploads playlist + batched video-details calls, not the expensive `search.list`). 167 videos ingested. |
+| 🟢 | `dbt/models/marts/mart_kglw_youtube_matches.sql` (new 2026-06-24) | Parses video titles and matches to `kglw.shows` by location + date + inferred night number. 61/167 videos matched (16 high, 38 medium, 6 low confidence, final count). Confirmed real-data edge cases handled: smart-quote variants (`'`, `'`, `'`) including a left-curly-quote variant that only some 2024 titles used; a literal zero-width space corrupting one real title between the apostrophe and the year digits; titles with no parenthetical at all (single-night city stops); 7 confirmed festival/state/metro-name aliases where the title text never appears literally in `kglw.shows` (Field of Vision→Meadow Creek, New York/New York City→Queens, Kentucky→Newport KY, Oregon→Troutdale OR, Arkansas→Fayetteville AR, Los Angeles→Inglewood CA, Maine→Portland ME — the last one required adding state-level disambiguation after a real Portland,OR/Portland,ME collision was caught during testing, since 8 real Portland,OR shows exist in `kglw.shows`). |
+| 🟢 | `/kglw/youtube-matches` endpoint (new 2026-06-24) | Serves the mart; fully replaces the dead `links/show/{id}` dependency. |
+| 🔵 | Remaining 106 unmatched YouTube videos | Mostly confirmed non-show content (official videos, remixes, "Making of" documentaries) — correctly excluded, not a gap. Possibly a few more live-show title formats remain unexamined across the full catalog. |
+| 🔵 | YouTube Music live-show page (`music.youtube.com/browse/...`) | Sent as a third potential KGLW data source, never investigated. Needs a real sample pulled before any matching logic gets built against it — same discipline as the main channel work. |
+| 🔵 | Setlists ingestion | Needed before full setlist features can work — not yet built. (YouTube embed no longer blocked on this — see above.) |
 | 🔵 | Song gap tracker | Blocked — no gap/frequency data exists on `/songs`; would need deriving from full setlist history |
 | 🔵 | Shows page integration | Pull KGLW venue history when a Gizz show appears in the Denver feed |
 | 🔵 | Pre-show playlist generator | Likely setlist songs → Spotify playlist via venue history |
 | 🔵 | Personal song stats | Most-heard live, album representation across attended shows |
 | 🔵 | Setlist.fm integration | Concert history across all artists (not just Gizz) |
-| 🔵 | YouTube Data API | Search recordings by date, embed player, pull view counts |
 | 🔵 | Venue geocoding pass | Required before any literal globe visualization is possible |
 | ⚪ | Tour set probability engine | Frequency model from current tour setlists |
 
@@ -259,7 +279,8 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Denver concerts — AEG + Ticketmaster | Daily, artist matching |
-| 🟢 | Shows Next.js page | Artist match highlighting, upcoming list — visually verified against real data |
+| 🟢 | Shows Next.js page | Artist match highlighting, upcoming list — visually verified against real data. Stat band removed by request 2026-06-24 (no replacement requested at this time). |
+| 🔵 | Artist matching false positives | Substring search matches short/common-word artist names — confirmed real, deliberately deferred, disclosed honestly in the UI copy |
 | 🔵 | Venue map | Denver map with show pins |
 | 🔵 | Personal attendance log | Mark attended, rate shows |
 | 🔵 | KGLW show cross-reference | Link Denver shows to KGLW setlist data |
@@ -272,10 +293,12 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | Strava (running) | Daily, OAuth, YTD summary |
+| 🟢 | Strava (running) | Daily, OAuth, YTD summary. Full historical re-sync completed 2026-06-24 — real activity history confirmed back to 2019-07-13, 353 total activities. |
 | 🟢 | SugarWOD (CrossFit) | CSV import, attendance + performance |
 | 🟢 | WOD scraper | Park Hill CrossFit via Playwright |
-| 🟢 | Fitness Next.js page | YTD/total miles, avg pace, weekly bar chart — bar chart height bug fixed, verified rendering correctly |
+| 🟢 | Fitness Next.js page | YTD/total miles, avg pace, weekly bar chart, training-consistency heatmap — bar chart height bug fixed, verified rendering correctly |
+| 🟢 | `/fitness/run-days` endpoint (new 2026-06-24) | Replaces the documented 30-day/10-row approximation entirely. Queries `strava.activities` directly (`is_run` boolean, confirmed real column, no cap) — works now that the full Strava re-sync brought real history back to 2019. |
+| 🟢 | Heatmap + avg-workout-days/week — real data | Both now use real daily-granularity data for running, matching what CrossFit already had. No more "running weeks credited as 1 day" approximation. |
 | 🔵 | Apple Health | Sleep, HRV, resting HR, VO2 max, steps, body weight |
 | 🔵 | Training readiness mart | 7-day + 28-day load, consecutive days, recovery signals |
 | 🔵 | Training load mart (`mart_training_load`) | CTL/ATL/TSB model across Strava + CrossFit |
@@ -294,8 +317,11 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 |--------|------|-------|
 | 🟢 | Extended streaming history | Daily ingestion |
 | 🟢 | Daily 10 playlist | Generated daily with AI art + description |
-| 🟢 | Music Next.js page | Top artists + news, honest empty states confirmed working (NEWS_API_KEY not set → "Not configured" rather than broken) |
-| 🟡 | `/api/music/top-artists` returns `[]` | Confirmed empty in testing, root cause not yet found — worth checking whether `streams_clean.csv` has a current-year row |
+| 🟢 | Daily 10 cover image — local save + serving (new 2026-06-24) | Real structural gap, not a frontend bug: `daily10_latest.json` had no image reference at all, since the cover was uploaded straight to Spotify's CDN and never saved locally. Patched `spotify_daily10_decorate.py` to save the JPEG locally (after the dry-run check and real Spotify upload succeed — an ordering bug here was caught and fixed before shipping, since saving before the dry-run check would have produced local files even during test runs) and record `cover_image_path` in the JSON. New `/music/daily10/cover` endpoint serves it. Wired into both Home and Music pages. First real cover appears after the next `daily_sync.py` run following deployment. |
+| 🟢 | Music Next.js page — top artists + tracks | **Fixed 2026-06-24** — confirmed real root cause (wrong CSV column names, see UI Rebuild bug table), not a data gap. Verified live with real data. "KNOWN ISSUE" framing removed from the UI now that it's resolved. |
+| 🟢 | Music News (new 2026-06-24) | Endpoint and client method both already existed and worked — the page simply never called them. Fixed; now shows real headlines when `NEWS_API_KEY` is set, same honest "Not configured" state as before when it isn't. |
+| 🟢 | Spotify embed player on Music page (new 2026-06-24) | Real `open.spotify.com/embed/playlist/{id}` iframe, no API key needed. Fixed an initial sizing bug — `theme=0` forced Spotify's compact "now playing" widget instead of the full tracklist, and the height was sized for that widget, leaving empty card space once removed. |
+| 🟢 | Music page layout restructure (new 2026-06-24) | Cover + player left, News right, Top Artists + Most-Played Tracks side-by-side below. |
 | 🔵 | Fix 5 + 15 bucket logic | Bucket B sometimes produces fewer than 15 tracks |
 | 🔵 | Move Daily 10 rules to config | `config/daily10.yaml` |
 | 🔵 | Music discovery analytics | New artists, exploration ratio, familiarity ratio |
@@ -319,24 +345,48 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 
 ---
 
+## Sports
+
+| Status | Item | Notes |
+|--------|------|-------|
+| 🟢 | streamed.pk live streams | My Teams Today, Top 5 Today, Other Popular — real data, real logos for MLB/NBA/NFL teams |
+| 🟢 | Per-team news | Fires one query per team against the existing generic `/sports/news?q=` param, merges client-side. Real but interim — see open item below. |
+| 🟢 | Page layout restructure (new 2026-06-24) | My Teams Today / Top 5 Today / Other Popular now stack in one left column; News runs full-height in the right column, instead of sitting below as a separate full-width section. |
+| 🟢 | Golf incorrectly always matching "My Teams" | `fetch_streams.py`'s `is_my_team()` unconditionally returns `True` for any golf-category match, regardless of whether it involves a real configured team. Filtered out client-side with a comment explaining why — root cause is in the Python script, not the frontend. |
+| 🔵 | Dedicated `/sports/team-news` endpoint | Current per-team news is a client-side merge of multiple `/sports/news?q=` calls — a real server-side endpoint that loops the 8 configured teams would be cleaner and cheaper. |
+| 🔵 | Team standings/records data source | No win/loss or standings data exists anywhere in the stack for the 8 real configured teams — only stream listings. |
+| 🔵 | NHL/MLS team logos | Logos downloaded (34 NHL SVGs, 30 MLS SVGs) but not yet wired into match-card rendering the same way MLB/NBA/NFL are — Orlando City (MLS) and Panthers/Avalanche (NHL) currently show initials. San Diego FC (MLS) has no logo source at all — 2025 expansion team not in the source repo. |
+
+---
+
+## Home Page
+
+| Status | Item | Notes |
+|--------|------|-------|
+| 🟢 | Real Daily 10 cover (new 2026-06-24) | Home had its own separate, simpler Daily 10 card that wasn't updated when the Music page first got the image-rendering logic — fixed to match. |
+| 🟢 | Goal Pacing card replaced with My Teams Today / Top 5 Today (new 2026-06-24) | Reuses the same `/sports/streams` data and golf-filtering logic already proven on the Sports page. Capped at 3 items per section with a "View All" link — deliberate scope choice for a quick-glance dashboard, not a final ceiling. |
+| 🔵 | Expand My Teams/Top 5 beyond 3 items | Easy follow-up if a fuller preview is wanted on Home |
+
+---
+
 ## Data Ingestion
 
 | Status | Source | Current State | Next Step |
 |--------|--------|--------------|-----------|
-| 🟢 | Spotify | Extended history, Daily 10 | Fix 5+15 bucket |
+| 🟢 | Spotify | Extended history, Daily 10, real cover image saved locally (2026-06-24) | Fix 5+15 bucket |
 | 🟢 | Google Calendar | Calendar metrics | Time allocation mart |
 | 🟢 | Hardcover | Reading metrics | Velocity mart |
 | 🟢 | SugarWOD | CrossFit attendance | — |
-| 🟢 | Strava | Running metrics | Webhooks, extended efforts |
+| 🟢 | Strava | Running metrics, full history re-synced to 2019 (2026-06-24) | Webhooks, extended efforts |
 | 🟢 | Pixela | Habit metrics | — |
 | 🟢 | AEG/Ticketmaster | Denver shows | KGLW cross-reference |
-| 🟢 | CFBD | CFB historical 2021-2025 | Weekly during season |
+| 🟢 | CFBD | CFB historical 2021-2025, real schedule confirmed published for 2026 | Weekly during season |
 | 🟢 | WOD scraper | Park Hill CrossFit | — |
-| 🟢 | KGLW.net API | 1104 shows, 1001 songs, 671 venues, 247 jamchart — confirmed real data | Setlists + links ingestion; YouTube recordings |
+| 🟢 | KGLW.net API | 1104 shows, 1001 songs, 671 venues, 247 jamchart — confirmed real data | `links/show/{id}` confirmed dead server-side — superseded by YouTube channel matching (see KGLW section) |
+| 🟢 | YouTube Data API (KGLW channel) | 167 videos ingested, 61 matched to real shows (2026-06-24) | Investigate the YouTube Music live-show page as a possible third source |
 | 🟡 | Letterboxd | Dry-run confirmed working | Real run + wire into daily_sync |
 | 🟡 | Insights pipeline | Built but dormant | Wire into weekly sync |
 | 🔵 | Setlist.fm | Not started | Full concert history all artists |
-| 🔵 | YouTube Data API | Not started | KGLW recordings search + embed |
 | 🔵 | Apple Health | Not started | Sleep, HRV, steps, weight |
 | 🔵 | OpenWeatherMap | Not started | Denver daily forecast |
 | 🔵 | Whoop or Garmin | Not started | Recovery %, strain, sleep |
@@ -362,14 +412,21 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 | 🟢 | `LETTERBOXD_USERNAME` in `.env` | Set and confirmed |
 | 🟢 | `NTFY_TOPIC` in `.env` | Set, test notification confirmed delivered |
 | 🟢 | `.gitignore` `lib/` collision bug | The bare Python-build `lib/` ignore rule was matching `web/lib/` too (real Next.js source, including `api.ts`), which would have silently excluded it from every commit. Scoped to `/lib/` (repo root only). |
+| 🟢 | DuckDB single-writer concurrency discipline | Confirmed repeatedly 2026-06-22 through 2026-06-24: FastAPI must be fully stopped before any `dbt run`, and restarted afterward to pick up new tables — its long-lived connection does not see schema changes made by other processes after it was opened. Caused several real lock-conflict and "table not found despite existing" debugging sessions before this was established as a standing rule. |
 | 🔵 | Tailscale remote access | 15 min setup |
 | 🔵 | MotherDuck free tier | Mirror selected marts; cloud path for FastAPI + Vercel |
 | 🔵 | Mac Mini health monitoring | Disk, CPU, DuckDB size, Plex, Tailscale, failed jobs |
 | 🔵 | Token health checks | Spotify, Strava, Google, OpenAI |
 | 🔵 | Restore test for DuckDB backup | Prove backups are usable |
 | 🔵 | Public/private publishing controls | `privacy_level`: private / household / public |
-| 🔵 | `ANTHROPIC_API_KEY` confirmed in `.env` | Needed for morning brief / weekly review — not yet confirmed this session |
+| 🟡 | `ANTHROPIC_API_KEY` confirmed in `.env` | Needed for morning brief / weekly review — reported not yet confirmed as of the most recent session; not independently re-verified |
 | 🔵 | `KGLW_ATTENDED_SHOW_IDS` in `.env` | Left blank — personal attended-show IDs not yet looked up; pipeline runs fine without it |
+| 🟡 | 4 dbt models from a prior session | `mart_goal_pacing.sql`, `mart_weekly_scorecard.sql`, `mart_training_load.sql`, `core__life_events.sql` — reported but not yet confirmed copied into `dbt/models/` on this machine |
+| 🔵 | Morning brief test run | Not yet run — needs `ANTHROPIC_API_KEY` confirmed first |
+| 🔵 | GitHub Actions runner + Dependabot on Mac mini | Reported not yet done as of the most recent session |
+| 🔵 | Final smoke test re-run | Worth doing given the volume of router/pipeline additions since the last confirmed 18/18 pass |
+| 🟡 | Stray nested `.git` directory at `life-os-2026/life-os-2026/.git` | Surfaced as a confusing "submodule modified" warning in every `git status` since the KGLW session — confirmed via `find . -name ".git"` to be a leftover from a tarball extraction, not a real configured submodule (`.gitmodules` doesn't exist). Investigation started (checked it's a stray nested repo) but not finished — still needs `ls -la` / `du -sh` review before deciding to `rm -rf` it. |
+| 🔵 | `scripts/upsert_strava_csv_2026.py` | Appeared as an untracked file during a `git status` check — origin and purpose not yet confirmed; flagged but not resolved. |
 
 ---
 
@@ -390,11 +447,17 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 | P1 | `goals/2026.yaml` deleted from working tree | 🟢 Fixed | Recovered via `git restore` — was a tracked file with an uncommitted deletion sitting in git status |
 | P1 | `smoke_test.py` 5 false-positive failures | 🟢 Fixed | Missing `sys.modules` registration broke dataclass resolution under `importlib.util.module_from_spec()`; one check expected the wrong function name |
 | P1 | `.gitignore` bare `lib/` rule collided with `web/lib/` | 🟢 Fixed | Scoped to `/lib/` (repo root only) |
+| P1 | `/api/music/top-artists` + `/api/music/top-tracks` returned `[]` | 🟢 Fixed | Wrong column names (raw Spotify export fields vs real `streams_clean.csv` columns) — confirmed 2026-06-24, see UI Rebuild bug table |
+| P1 | Daily 10 cover image never displayed anywhere | 🟢 Fixed | Structural gap — no image was ever saved locally. See Spotify & Music Analytics section. |
+| P1 | CFB Matchup Lab returned `no_data` for every matchup | 🟢 Fixed | Publish-threshold gate in `analyse_game()` was filtering legitimate results, not reporting missing data. See CFB section. |
+| P1 | CORS blocked Matchup Lab's POST request | 🟢 Fixed | `allow_methods=["GET"]` → added `POST` |
 | P2 | Mixed old/new pipeline patterns | 🔵 Open | Consolidate after insights wired |
 | P2 | Limited test coverage | 🟡 Partial | Smoke tests done, unit tests pending |
-| P2 | `/api/music/top-artists` returns `[]` | 🟡 Open | Not yet explained — check if `streams_clean.csv` has a current-year row |
 | P2 | `shows.py` artist matching false positives | 🔵 Deferred | Substring search matches short/common-word artist names — known, not urgent |
 | P2 | `/api/cfb/line-accuracy` missing `game_id` | 🔵 Open | Needed if linking line-accuracy rows to game-context detail views |
+| P2 | `_build_live_tiers()` duplicates `build_tiers()` instead of importing it | 🟡 Open | Confirmed pre-existing in `generate_picks.py` vs `backtest_walk_forward.py`, surfaced while building CFB Matchup Lab. Not urgent — worth a diff to confirm no drift. |
+| P2 | Music News + Spotify embed player were both real but unwired/misconfigured | 🟢 Fixed | See Spotify & Music Analytics section |
+| P2 | Stray nested `.git` directory in repo | 🟡 Open | See Infrastructure section — investigation started, not finished |
 
 ---
 
@@ -403,11 +466,11 @@ KGLW.net API v2 — no auth, JSON, shows/songs/venues/jamcharts. **Confirmed liv
 | Status | Document | Notes |
 |--------|----------|-------|
 | 🟢 | `README.md` | Rewritten 2026-06-20 — reflects FastAPI + Next.js architecture, all 10 routers, all 11 pages, KGLW |
-| 🟢 | `ROADMAP.md` | This file |
+| 🟢 | `ROADMAP.md` | This file — updated 2026-06-24 with Music/Fitness/Sports/Home/CFB/KGLW session work |
 | 🟢 | `ARCHITECTURE.md` | Full data flow diagram |
 | 🟢 | `REMOTE_ACCESS.md` | Tailscale + Cloudflare Tunnel guide |
-| 🟢 | `API_STATE_REFERENCE.md` | Confirmed response shapes from the live FastAPI debugging session — authoritative for frontend work |
-| 🟢 | `MIGRATION.md` | Append-only changelog. New 2026-06-20 entry documents Streamlit → FastAPI/Next.js, the KGLW pipeline+router, CFB logos, and infrastructure fixes |
+| 🟢 | `API_STATE_REFERENCE.md` | Confirmed response shapes from the live FastAPI debugging session — authoritative for frontend work. Should be refreshed to include the new `/cfb/matchup-lab`, `/cfb/schedule`, `/fitness/run-days`, `/kglw/youtube-matches`, `/music/daily10/cover` endpoints. |
+| 🟢 | `MIGRATION.md` | Append-only changelog. New 2026-06-20 entry documents Streamlit → FastAPI/Next.js, the KGLW pipeline+router, CFB logos, and infrastructure fixes. Needs a new 2026-06-24 entry for this session's work. |
 | 🗄️ | `docs/archive/CHECKPOINT_2026-01-01.md` | Archived — superseded snapshot, kept for history |
 | 🗄️ | `docs/archive/MIGRATION_2026-05-12.md` | Archived as a dated entry's worth of history — current `MIGRATION.md` continues the convention |
 | 🔵 | `RUNBOOK.md` | Operational recovery steps |
@@ -422,7 +485,7 @@ The authoritative implementation order for the next phase. Domain work is subord
 
 ### Phase 1 — Deploy What Is Already Built
 
-**Status: substantially complete as of 2026-06-20.** Items 1, 2, 3, 7, 8 done. Items 4-6, 9 remain.
+**Status: substantially complete as of 2026-06-20, with continued debugging and feature work through 2026-06-24.** Items 1, 2, 3, 7, 8 done. Items 4-6, 9 remain.
 
 1. ~~Deploy FastAPI on the Mac mini~~ ✅ Done
 2. ~~Deploy Next.js on the Mac mini~~ ✅ Done
@@ -490,7 +553,7 @@ The authoritative implementation order for the next phase. Domain work is subord
 
 Domain work proceeds when the required platform foundation exists. Priority candidates:
 
-1. ~~KGLW pipeline~~ ✅ Done — pipeline + router + page all built and verified
+1. ~~KGLW pipeline~~ ✅ Done — pipeline + router + page all built and verified; YouTube channel matching added 2026-06-24 as a replacement for the dead `links/show/{id}` endpoint
 2. Apple Health
 3. Open-Meteo or OpenWeatherMap
 4. Career Impact Ledger
@@ -538,9 +601,11 @@ Life OS should not become another obligation. It should quietly collect reliable
 - What one action would create the most leverage
 - Whether the last recommended action actually helped
 
-### A note on tonight's discipline (added 2026-06-20)
+### A note on tonight's discipline (added 2026-06-20, reaffirmed 2026-06-24)
 
-Nearly every real bug found across the FastAPI debugging session, the Next.js rebuild, and the KGLW pipeline work shared the same root cause: an assumption about a data shape that turned out to be wrong, caught only by actually hitting the live system and reading the real response. This isn't a one-time cleanup — it's a standing practice worth keeping. When a router, pipeline, or component doc comment says "confirmed real shape as of [date]," that should mean someone checked, not guessed. Treat that discipline as part of the platform's design principles, not a phase that ends.
+Nearly every real bug found across the FastAPI debugging session, the Next.js rebuild, and the KGLW pipeline work shared the same root cause: an assumption about a data shape that turned out to be wrong, caught only by actually hitting the live system and reading the real response. This isn't a one-time cleanup — it's a standing practice worth keeping. When a router, pipeline, or component doc comment says "confirmed real shape as of [date]," that should mean someone checked, not guessed.
+
+The 2026-06-24 session reaffirmed this repeatedly: the Music top-artists bug, the Daily 10 cover gap, the CFB Matchup Lab publish-gate discovery, and several of the KGLW YouTube title-parsing edge cases were all found by reading the real data/response/source directly rather than guessing — and at least one real bug (the Portland,ME/Portland,OR alias collision) was caught by deliberately testing against a constructed edge case *before* it shipped, not after. Treat both halves of that discipline — verify against real data, and test edge cases proactively — as part of the platform's design principles, not a phase that ends.
 
 ---
 
@@ -559,7 +624,7 @@ Using ONS as a real-world environment to learn CI/CD, analytics engineering qual
 | 5 | Security Automation | 🟡 Partial | pip-audit, bandit, ruff, secret scanning in ci-analytics; CodeQL pending |
 | 6 | Python Compatibility Matrix | 🟢 Built | 3.12 + 3.13 matrix in ci-analytics.yml |
 | 7 | Workflow Artifacts | 🟢 Built | dbt run_results.json, manifest.json, dbt docs uploaded on main |
-| 8 | Mac Mini Self-Hosted Runner | 🔵 Planned | `mac-mini-refresh.yml` built — needs runner registration on Mac mini |
+| 8 | Mac Mini Self-Hosted Runner | 🔵 Planned | `mac-mini-refresh.yml` built — reported not yet registered on the Mac mini |
 | 9 | Scheduled Life OS Workflows | 🟡 Partial | Daily schedule in mac-mini-refresh.yml — needs runner first |
 | 10 | Manual Workflow Inputs | 🟢 Built | `workflow_dispatch` with domain + mode inputs in mac-mini-refresh.yml |
 | 11 | Public Website CI/CD | 🔵 Planned | Privacy validation → static site → GitHub Pages or Vercel |
@@ -951,7 +1016,7 @@ FastAPI Pydantic models → OpenAPI schema → generated TypeScript client → N
 
 Benefits: fewer duplicated types, compile-time frontend validation, safer API changes, automatic client generation, breaking-change detection in CI.
 
-**Status note (2026-06-20):** the typed client (`web/lib/api.ts`) exists today as hand-written TypeScript interfaces, manually kept in sync with confirmed API responses — not yet generated from FastAPI's OpenAPI schema. This is exactly the kind of drift risk this section is meant to eliminate; several of tonight's bugs (the Goals array-shape mismatch, the CFB win_rate units) were precisely the class of error that generated types from a real schema would catch at compile time instead of at runtime.
+**Status note (2026-06-20, still accurate 2026-06-24):** the typed client (`web/lib/api.ts`) exists today as hand-written TypeScript interfaces, manually kept in sync with confirmed API responses — not yet generated from FastAPI's OpenAPI schema. This is exactly the kind of drift risk this section is meant to eliminate; several bugs across both the 2026-06-20 and 2026-06-24 sessions (the Goals array-shape mismatch, the CFB win_rate units, the Music top-artists column names, three separate CFB Matchup Lab import errors) were precisely the class of error that generated types or stricter contracts would catch sooner — though notably, most of these were *backend* Python referencing wrong field/table/function names, not frontend TypeScript drift, suggesting the same discipline gap exists on both sides of the stack.
 
 | Status | Item | Notes |
 |--------|------|-------|
@@ -1408,20 +1473,21 @@ Create `ai.feedback`.
 
 ### Recommended Immediate Priorities
 
-The strongest next actions in sequence — **updated to reflect tonight's progress:**
+The strongest next actions in sequence — **updated to reflect 2026-06-24 progress:**
 
 1. ~~Deploy FastAPI and Next.js~~ ✅ Done — validated, debugged, verified against real data
 2. Activate Mac mini runner and launchd jobs — launchd done; GitHub Actions runner still pending
 3. ~~Implement `ops.pipeline_runs`~~ ✅ Done
 4. Complete backup restore testing — backup itself works; restore has not been tested
 5. Add API contracts and generated TypeScript types — typed client exists hand-written; not yet generated from a real schema
-6. Build `core.life_events` — create the normalized event foundation
-7. Build `raw.capture_inbox` — add low-friction capture for context APIs cannot provide
-8. Build `core.actions` — close the loop from recommendation to execution
-9. Build `mart_goal_pacing` — enable risk detection and corrective recommendations
-10. Build `mart_daily_features` — enable cross-domain pattern analysis
-11. Activate the morning brief — deliver the first complete OpenClaw vertical slice
-12. Add claims, evaluations, feedback, and permissions — make AI output grounded, measurable, and safe
+6. Resolve the stray nested `.git` directory and `scripts/upsert_strava_csv_2026.py` housekeeping items — small, but lingering across multiple sessions
+7. Build `core.life_events` — create the normalized event foundation
+8. Build `raw.capture_inbox` — add low-friction capture for context APIs cannot provide
+9. Build `core.actions` — close the loop from recommendation to execution
+10. Build `mart_goal_pacing` — enable risk detection and corrective recommendations
+11. Build `mart_daily_features` — enable cross-domain pattern analysis
+12. Activate the morning brief — deliver the first complete OpenClaw vertical slice (needs `ANTHROPIC_API_KEY` confirmed first)
+13. Add claims, evaluations, feedback, and permissions — make AI output grounded, measurable, and safe
 
 ---
 
