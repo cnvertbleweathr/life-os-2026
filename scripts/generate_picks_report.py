@@ -91,7 +91,7 @@ def format_pick(pick: dict, rank: int) -> str:
     matchup    = pick.get("matchup", "")
     bet        = pick.get("bet", "")
     line       = pick.get("line", "")
-    confidence = int(pick.get("confidence", 0))
+    confidence = int(pick.get("model_score", 0))
     week       = pick.get("week", "?")
     ou         = pick.get("ou", "N/A")
     bet_type   = pick.get("bet_type", "EDGE")
@@ -217,11 +217,11 @@ def generate_report(picks: list[dict], week: int, year: int) -> str:
     lines.append("| # | Matchup | Bet | Confidence | Tier |")
     lines.append("|---|---------|-----|-----------|------|")
     for i, pick in enumerate(picks, 1):
-        stars, tier = conf_to_stars(int(pick.get("confidence", 0)))
+        stars, tier = conf_to_stars(int(pick.get("model_score", 0)))
         lines.append(
             f"| {i} | {pick.get('matchup','')} | "
             f"{pick.get('bet','')} | "
-            f"{stars} {pick.get('confidence',0)}% | {tier} |"
+            f"{stars} {pick.get('model_score',0)}% | {tier} |"
         )
     lines.append("")
 
