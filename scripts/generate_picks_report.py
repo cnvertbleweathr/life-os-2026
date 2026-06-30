@@ -118,8 +118,17 @@ def format_pick(pick: dict, rank: int) -> str:
     # The bet in plain English
     away, home = matchup.split(" @ ")
     bet_team = home if "home fav" in bet or "home dog" in bet else away
-    if bet_type == "FADE":
-        lines.append(f"**The bet:** Fade the line — bet {bet_team} to cover.")
+    if bet_type == "FADE_TIER_RISK":
+        # UPDATED 2026-06-29: bet_type used to mean "the model reversed
+        # the bet to the opposite side" (a bug -- see generate_picks.py).
+        # It now means "this bet is on a team whose own historical tier
+        # is STRONG_FADE" -- a risk flag on the SAME bet, not a different
+        # recommendation. The bet itself is identical to a normal EDGE
+        # pick; only the framing below changes to surface the risk.
+        lines.append(f"**The bet:** {bet_team} covers the spread. "
+                      f"**Risk note:** {bet_team} has a STRONG_FADE historical tier "
+                      f"in this situation — this pick already survived that penalty "
+                      f"in scoring, but the underlying risk is real and worth weighing.")
     else:
         lines.append(f"**The bet:** {bet_team} covers the spread.")
     lines.append("")

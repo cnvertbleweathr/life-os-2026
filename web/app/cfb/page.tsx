@@ -652,8 +652,8 @@ function ScheduleColumn({
 // system, not a feature in itself — see ROADMAP.md.
 
 function PickCard({ p }: { p: CfbPick }) {
-  const isFade = p.bet_type === "FADE";
-  const accentColor = isFade ? "#9a6a1e" : "#1d5536";
+  const isTierRisk = p.bet_type === "FADE_TIER_RISK";
+  const accentColor = isTierRisk ? "#9a6a1e" : "#1d5536";
   const [awayName, homeName] = p.matchup.split(" @ ");
 
   return (
@@ -676,8 +676,13 @@ function PickCard({ p }: { p: CfbPick }) {
         </Mono>
       </div>
 
-      {isFade && (
-        <Mono s={9} c={accentColor}>FADE — betting against the favorite</Mono>
+      {isTierRisk && (
+        // FIXED 2026-06-29: this used to read "FADE — betting against the
+        // favorite," which was true under the old (buggy) reversal logic
+        // but is false now -- the bet above IS on the STRONG_FADE-tiered
+        // team, this is a risk note about that team's own history, not a
+        // description of a different bet.
+        <Mono s={9} c={accentColor}>⚠ Bet is on a team with a STRONG_FADE historical tier in this situation</Mono>
       )}
 
       <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }}>

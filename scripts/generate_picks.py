@@ -49,6 +49,21 @@ TARGET_CONFERENCES = {
     "SEC", "Big Ten", "Big 12", "ACC", "Pac-12",
     "American Athletic", "Mountain West", "Conference USA",
     "Mid-American", "Sun Belt",
+    # FIXED 2026-06-29 -- this set never included FBS Independents
+    # (Notre Dame, UConn, UMass, etc). Under the original (buggy)
+    # home-only conference check, this was masked: Notre Dame games only
+    # got excluded when Notre Dame was the HOME team (its conference was
+    # the one checked), and passed through uninspected whenever Notre
+    # Dame was away. The symmetry fix (also 2026-06-29) made the home/away
+    # check consistent, which correctly surfaced this as a total
+    # exclusion of every Notre Dame game -- confirmed live: Notre Dame @
+    # Wisconsin, Week 1 2026, newly skipped_reason=excluded_conference
+    # after the symmetry fix where it previously scored. Excluding every
+    # Independent program was never an intended policy -- ONS_CFB_BETTING_
+    # COMPLETE.md documents a specific Notre Dame auto-bet rule (away
+    # underdog, 91.7% historical cover) that this exclusion would have
+    # silently made unreachable.
+    "FBS Independents",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -71,9 +86,25 @@ def cfbd_get(endpoint: str, params: dict) -> list[dict]:
 
 
 def current_cfb_week(year: int) -> int | None:
-    """Estimate current CFB week from date. Season: Week 1 ≈ last week of Aug."""
+    """Estimate current CFB week from date. Season: Week 1 ≈ last week of Aug.
+
+    KNOWN LIMITATION (flagged 2026-06-29, not yet fixed): this still infers
+    the week from calendar arithmetic off a hardcoded Aug 24 anchor, not
+    from real schedule data. It will drift from the official CFB week
+    designation around Week 0 games, byes, conference championship week,
+    and bowls. Treat this as a rough estimate for unattended/scheduled
+    runs only -- explicit --week is more reliable and is what every
+    manual run in this project has used so far.
+    """
     today = date.today()
-    if today.month < 8 or today.month > 1:
+    # Off-season is Feb through July inclusive. The original condition here
+    # (`today.month < 8 or today.month > 1`) was TRUE for every month of
+    # the year with no exceptions -- confirmed by brute-force checking all
+    # 12 months -- meaning this function always returned None, silently
+    # breaking any unattended/scheduled call site that relies on it (any
+    # caller passing an explicit --week was unaffected, which is why this
+    # went unnoticed across every manual run in this project so far).
+    if 2 <= today.month <= 7:
         return None  # off-season
     # Rough: Week 1 starts ~Aug 24
     from datetime import timedelta
@@ -315,19 +346,35 @@ def analyse_game(
         except Exception:
             pass
 
-    # ── Determine bet type ────────────────────────────────────────────────
-    # STRONG_FADE teams trigger a fade bet
+    # ── Determine bet type label ─────────────────────────────────────────
+    # FIXED 2026-06-29 -- this previously REASSIGNED bet_team to the
+    # opposite side when the PPA-selected team's tier was STRONG_FADE,
+    # while model_score/edges/warnings remained the values score_game()
+    # computed for the ORIGINAL (PPA-selected) side. That meant the
+    # published pick's score and edge list described a bet that was not
+    # the bet being recommended -- a real correctness bug, not a display
+    # quirk (confirmed by tracing score_game()'s single bet_home
+    # assignment against this block's separate, later bet_team
+    # reassignment). The walk-forward backtest never performs this
+    # reversal -- it always grades the PPA-selected side, with
+    # STRONG_FADE applied only as a scoring penalty (see score_game()'s
+    # Rule 7) -- so the live system was silently diverging from the
+    # validated strategy for any game matching this condition.
+    #
+    # Fix: bet_team is no longer touched here. STRONG_FADE's only effect
+    # on which side gets bet is the -18 model_score penalty already
+    # applied inside score_game() to whichever side PPA selected -- if
+    # that's severe enough, the game simply won't clear the publish bar.
+    # bet_type is now purely a label for "is this bet on a team your own
+    # tier history says is historically bad in this situation" -- it
+    # describes risk context, it does not change WHO the bet is on.
     away_tier = tiers.get(away, "NEUTRAL")
     home_tier = tiers.get(home, "NEUTRAL")
+    bet_team_tier = home_tier if bet_home else away_tier
 
-    if home_is_fav and home_tier == "STRONG_FADE":
-        bet_type  = "FADE"
-        fade_team = home
-        bet_team  = away
-    elif not home_is_fav and away_tier == "STRONG_FADE":
-        bet_type  = "FADE"
-        fade_team = away
-        bet_team  = home
+    if bet_team_tier == "STRONG_FADE":
+        bet_type  = "FADE_TIER_RISK"
+        fade_team = bet_team  # the bet itself is on a STRONG_FADE team -- flag it, don't reverse it
     else:
         bet_type  = "EDGE"
         fade_team = None
@@ -365,20 +412,26 @@ def _build_pick(
     week   = game.get("week", "?")
     spread_display = f"{spread:+.1f}"
 
-    if bet_type == "FADE":
-        bet_str = f"Fade {fade_team} — bet {bet_team}"
+    is_home_bet = bet_team == home
+    home_is_fav = spread < 0
+    if is_home_bet and home_is_fav:
+        bet_str = f"{home} {spread:+.1f} (home fav)"
+    elif is_home_bet and not home_is_fav:
+        bet_str = f"{home} +{abs(spread):.1f} (home dog)"
+    elif not is_home_bet and not home_is_fav:
+        bet_str = f"{away} -{abs(spread):.1f} (away fav)"
     else:
-        # Determine what the bet is
-        is_home_bet = bet_team == home
-        home_is_fav = spread < 0
-        if is_home_bet and home_is_fav:
-            bet_str = f"{home} {spread:+.1f} (home fav)"
-        elif is_home_bet and not home_is_fav:
-            bet_str = f"{home} +{abs(spread):.1f} (home dog)"
-        elif not is_home_bet and not home_is_fav:
-            bet_str = f"{away} -{abs(spread):.1f} (away fav)"
-        else:
-            bet_str = f"{away} +{abs(spread):.1f} (away dog)"
+        bet_str = f"{away} +{abs(spread):.1f} (away dog)"
+
+    if bet_type == "FADE_TIER_RISK":
+        # FIXED 2026-06-29 -- fade_team and bet_team are now always the
+        # SAME team (see analyse_game()). This used to read "Fade X —
+        # bet Y" when X and Y were genuinely different teams under the
+        # old (buggy) reversal behavior; that phrasing would now be
+        # nonsensical ("Fade Stanford — bet Stanford"). The bet string
+        # itself is unchanged from a normal pick; the risk context is
+        # carried by bet_type and the edge/warning labels instead.
+        pass
 
     EDGE_LABELS = {
         "PPA_primary":           "PPA efficiency edge",
@@ -520,8 +573,30 @@ def main() -> int:
             skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "no_line"})
             continue
 
-        conf = game.get("homeConference", game.get("home_conference", ""))
-        if conf and conf not in TARGET_CONFERENCES:
+        # FIXED 2026-06-29 -- this previously checked ONLY homeConference,
+        # never away. An excluded-conference team playing AWAY against a
+        # target-conference home team passed through untouched; the
+        # asymmetry was silent (no skipped_reason distinguished it from
+        # any other included game). Now symmetric: both teams must be in
+        # TARGET_CONFERENCES.
+        #
+        # LARGER FINDING, not fully resolved by this fix: the historical
+        # walk-forward backtest (backtest_walk_forward.py, the source of
+        # the validated 224-94 / +34.5% ROI record) applies NO conference
+        # filter at all -- confirmed by its absence anywhere in that file
+        # or in mart_cfbd_line_accuracy.sql. This conference restriction
+        # exists only in the live picks path. That means the live
+        # system's eligible game population has never matched the
+        # backtested population's, independent of whether this check was
+        # symmetric -- it's an undocumented divergence between what was
+        # validated and what's actually running. Symmetric vs. asymmetric
+        # was a bug; the filter's existence at all, with no backtest
+        # counterpart, is a separate open question for ROADMAP.md.
+        home_conf = game.get("homeConference") or game.get("home_conference", "")
+        away_conf = game.get("awayConference") or game.get("away_conference", "")
+        home_ok = (not home_conf) or (home_conf in TARGET_CONFERENCES)
+        away_ok = (not away_conf) or (away_conf in TARGET_CONFERENCES)
+        if not (home_ok and away_ok):
             skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "excluded_conference"})
             continue
 

@@ -55,13 +55,18 @@ def compute_cover(spread: float, home_score: int, away_score: int) -> tuple[bool
 def grade_one_pick(pick: dict, home_score: int, away_score: int) -> dict:
     """
     Returns {"outcome": "win"|"loss"|"push", "pnl": float} for a single
-    archived pick, given the final score. Handles both bet_type values:
-      - "EDGE": pick["bet"] names a team to back directly.
-      - "FADE": pick["bet"] is "Fade {fade_team} — bet {bet_team}" -- the
-        model is betting AGAINST fade_team, i.e. for the other side. Cover
-        math is identical either way once we know which team the bet is
-        actually on; bet_type only affected how the pick was phrased when
-        generate_picks.py built it, not how grading works.
+    archived pick, given the final score.
+
+    UPDATED 2026-06-29: generate_picks.py's bet_type == "FADE" reversal
+    bug is fixed (it used to silently swap bet_team to the opposite side
+    from whatever score_game() actually scored, producing a "Fade X — bet
+    Y" string with X and Y as genuinely different teams). bet_type is now
+    "FADE_TIER_RISK" purely as a risk label -- the bet itself is always on
+    whichever team score_game()'s PPA-direction selection chose, and
+    pick["bet"] always has the normal "{team} {spread} (home/away fav/dog)"
+    shape regardless of bet_type. The old special-cased "— bet " string
+    parsing below is removed -- it was built around the buggy shape and
+    would silently misattribute the backed team if left in place.
     """
     matchup = pick["matchup"]
     away_team, home_team = [s.strip() for s in matchup.split(" @ ")]
@@ -78,16 +83,11 @@ def grade_one_pick(pick: dict, home_score: int, away_score: int) -> dict:
     if push:
         return {"outcome": "push", "pnl": 0.0}
 
-    # Which team did the model actually back? bet_type == "FADE" means
-    # pick["bet"] reads "Fade {team} — bet {other_team}" -- the backed team
-    # is named after "bet ", not before "Fade ".
+    # pick["bet"] always starts with the backed team's name now
+    # ("Georgia Tech -7.0 (home fav)", "Notre Dame -20.5 (away fav)") --
+    # bet_type no longer changes this shape.
     bet_str = pick.get("bet", "")
-    if pick.get("bet_type") == "FADE" and "— bet " in bet_str:
-        backed_team = bet_str.split("— bet ")[-1].strip()
-    else:
-        # EDGE bets: pick["bet"] starts with the backed team's name
-        # ("Georgia Tech -7.0 (home fav)", "Notre Dame -20.5 (away fav)").
-        backed_team = home_team if bet_str.startswith(home_team) else away_team
+    backed_team = home_team if bet_str.startswith(home_team) else away_team
 
     backing_home = backed_team == home_team
 

@@ -263,12 +263,22 @@ def score_game(
             model_score -= 3
 
     # Rule 11: Travel — disabled key: "travel"
+    # FIXED 2026-06-29 -- this used to append a "travel_{n}mi" label into
+    # the SAME edges list whose length (len(edges) >= 4) gates whether a
+    # game gets published as a pick, despite the comment immediately
+    # below explicitly stating travel has zero model_score impact
+    # (confirmed by ablation: 0.0% ΔROI). That meant a non-predictive
+    # display label could silently be one of the four "edges" required
+    # for publication. Removed entirely rather than kept as display-only,
+    # per decision 2026-06-29 -- travel distance is no longer shown in
+    # the edge list at all. If display-only travel context is wanted
+    # again later, it needs its own separate list, not a shared one with
+    # the publish-bar count.
     if "travel" not in disabled:
-        # Travel: ablation shows 0.0% ΔROI — no score adjustment
-        # Keep edge label for display/reporting only, no model_score impact
-        travel = safe_float(row.get("travel_miles"))
-        if travel is not None and travel >= 1500:
-            edges.append(f"travel_{int(travel)}mi")  # display only, no score change
+        pass  # travel_miles is still computed/joined upstream and stored
+              # in the pick's travel_miles/travel_bucket fields directly
+              # (see generate_picks.py's _build_pick metadata) -- only the
+              # edges-list label is removed here.
 
     # Rule 12: Recruiting — disabled key: "recruiting"
     if "recruiting" not in disabled:

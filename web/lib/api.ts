@@ -452,9 +452,17 @@ export interface CfbScheduleGame {
 /** Confirmed real shape written by scripts/generate_picks.py into
  *  data/bets/todays_picks.json, served by GET /cfb/picks (filtered to
  *  model_score >= min_score, sorted descending) and read by the CFB
- *  page's always-visible PicksList. bet_type "FADE" means the model is
- *  betting AGAINST a STRONG_FADE-tier favorite, not the favorite itself
- *  — `bet` always names which side to actually take. */
+ *  page's always-visible PicksList.
+ *
+ *  bet_type "FADE_TIER_RISK" (renamed from "FADE" 2026-06-29) means the
+ *  bet IS on a team whose own historical tier is STRONG_FADE in this
+ *  situation -- it is a risk label on the bet, not a different bet. The
+ *  prior "FADE" value corresponded to a real bug where bet_team was
+ *  silently reassigned to the opposite side from whatever score_game()
+ *  actually scored, so the displayed model_score/edges described a team
+ *  other than the one being recommended. `bet` always names which side
+ *  to actually take, and that side is always the one score_game() scored
+ *  -- no exceptions, now. */
 export interface CfbPick {
   matchup: string;
   bet: string;
@@ -473,7 +481,7 @@ export interface CfbPick {
   ou: string;
   ppa_gap: number | null;
   sp_gap: number | null;
-  bet_type: "EDGE" | "FADE";
+  bet_type: "EDGE" | "FADE_TIER_RISK";
   generated_at: string;
   ret_gap?: number | null;
   recruiting_gap?: number | null;
