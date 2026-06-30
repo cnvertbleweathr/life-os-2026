@@ -37,6 +37,7 @@ ROOT    = Path(__file__).resolve().parents[1]
 DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 OUT     = ROOT / "data" / "bets" / "todays_picks.json"
 OUT.parent.mkdir(parents=True, exist_ok=True)
+HISTORY_DIR = ROOT / "data" / "bets" / "history"
 
 load_dotenv(ROOT / ".env")
 
@@ -249,10 +250,13 @@ def analyse_game(
         row, tiers, coach_changes, prior_sp
     )
 
-    if model_score < 70:
-        return None
-    if len(edges) < 4:
-        return None
+    # Same threshold as before (model_score >= 70, n_edges >= 4), but no
+    # longer a discard gate here -- always return the scored result so the
+    # caller can archive every analyzable game, not just the ones that
+    # clear the bar. generate_picks.py's main() is responsible for
+    # filtering meets_publish_bar=True games into todays_picks.json; the
+    # full scored list (qualifying or not) goes into the per-week archive.
+    meets_publish_bar = model_score >= 70 and len(edges) >= 4
 
     ppa_gap  = safe_float(row_data.get("off_ppa_gap"))
     bet_home = bool(ppa_gap and ppa_gap > 0)
@@ -345,6 +349,8 @@ def analyse_game(
     pick["model_score"]      = model_score
     pick["n_edges"]          = len(edges)
     pick["warnings"]         = warnings
+    pick["season"]           = year
+    pick["meets_publish_bar"] = meets_publish_bar
 
     return pick
 
@@ -501,32 +507,42 @@ def main() -> int:
     except Exception:
         pass
 
-    picks: list[dict] = []
+    all_scored: list[dict] = []   # every analyzable game, qualifying or not
+    skipped:    list[dict] = []   # games that never reached scoring, with why
+
     for game in games:
         gid  = game.get("id")
+        home = game.get("homeTeam") or game.get("home_team", "?")
+        away = game.get("awayTeam") or game.get("away_team", "?")
         line = lines_by_id.get(gid)
+
         if not line:
+            skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "no_line"})
             continue
 
         conf = game.get("homeConference", game.get("home_conference", ""))
         if conf and conf not in TARGET_CONFERENCES:
-            continue  # Skip small conferences
+            skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "excluded_conference"})
+            continue
 
         try:
             pick = analyse_game(con, game, line, year, tiers, coach_changes, prior_sp)
             if pick:
-                picks.append(pick)
-                print(f"  ✅ {pick['matchup']} — {pick['bet']} ({pick['model_score']}%)")
+                all_scored.append(pick)
+                tag = "✅" if pick["meets_publish_bar"] else "·"
+                print(f"  {tag} {pick['matchup']} — {pick['bet']} ({pick['model_score']}%)")
             else:
-                home = game.get('homeTeam') or game.get('home_team','?')
-                away = game.get('awayTeam') or game.get('away_team','?')
+                # analyse_game() only returns None when the line had no
+                # usable spread value -- a real data gap, not a low score.
+                skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "no_spread_value"})
         except Exception as e:
-            home = game.get('homeTeam') or game.get('home_team','?')
-            away = game.get('awayTeam') or game.get('away_team','?')
             print(f"  Error analysing {home} vs {away}: {e}")
+            skipped.append({"matchup": f"{away} @ {home}", "skipped_reason": "error", "error": str(e)})
 
     con.close()
 
+    # ── todays_picks.json: qualifying picks only, same rules as before ────
+    picks = [p for p in all_scored if p["meets_publish_bar"]]
     # Sort: EDGE picks first (higher conviction), then FADE, then by confidence
     picks.sort(key=lambda x: (0 if x["bet_type"] == "EDGE" else 1, -x["model_score"]))
     # Cap at 8 picks — more than that is noise
@@ -534,6 +550,7 @@ def main() -> int:
 
     print(f"\n{'='*50}")
     print(f"Generated {len(picks)} qualifying picks for Week {week} (model v3 walk-forward)")
+    print(f"Scored {len(all_scored)} total games, skipped {len(skipped)}")
     print(f"{'='*50}")
 
     if args.dry_run:
@@ -542,6 +559,24 @@ def main() -> int:
 
     OUT.write_text(json.dumps(picks, indent=2))
     print(f"Written to {OUT}")
+
+    # ── Full-slate archive: every scored game (qualifying or not) + skips ──
+    # One file per (season, week), never overwritten by a later week's run
+    # -- this is the source of truth grade_picks.py (next piece) will read
+    # from once games conclude. todays_picks.json above stays a derived
+    # "current published picks" view for the frontend, unchanged.
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    history_path = HISTORY_DIR / f"{year}_wk{week:02d}.json"
+    history_payload = {
+        "season":        year,
+        "week":          week,
+        "generated_at":  datetime.now().isoformat(timespec="seconds"),
+        "games":         all_scored,
+        "skipped":       skipped,
+    }
+    history_path.write_text(json.dumps(history_payload, indent=2))
+    print(f"Archived {len(all_scored)} scored + {len(skipped)} skipped games to {history_path}")
+
     return 0
 
 
