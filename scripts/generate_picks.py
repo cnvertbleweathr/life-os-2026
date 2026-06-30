@@ -605,7 +605,7 @@ def main() -> int:
             if pick:
                 all_scored.append(pick)
                 tag = "✅" if pick["meets_publish_bar"] else "·"
-                print(f"  {tag} {pick['matchup']} — {pick['bet']} ({pick['model_score']}%)")
+                print(f"  {tag} {pick['matchup']} — {pick['bet']} (score: {pick['model_score']})")
             else:
                 # analyse_game() only returns None when the line had no
                 # usable spread value -- a real data gap, not a low score.

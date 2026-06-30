@@ -113,7 +113,7 @@ def format_pick(pick: dict, rank: int) -> str:
     lines.append(f"---\n")
     lines.append(f"## {rank}. {matchup}")
     lines.append(f"**{bet}** · Line: {line} · O/U: {ou}")
-    lines.append(f"{stars} **{tier_label}** · {confidence}% confidence · Week {week}\n")
+    lines.append(f"{stars} **{tier_label}** · Model score: {confidence} · Week {week}\n")
 
     # The bet in plain English
     away, home = matchup.split(" @ ")
@@ -223,14 +223,14 @@ def generate_report(picks: list[dict], week: int, year: int) -> str:
     # Summary table
     lines.append("## Summary")
     lines.append("")
-    lines.append("| # | Matchup | Bet | Confidence | Tier |")
+    lines.append("| # | Matchup | Bet | Model Score | Tier |")
     lines.append("|---|---------|-----|-----------|------|")
     for i, pick in enumerate(picks, 1):
         stars, tier = conf_to_stars(int(pick.get("model_score", 0)))
         lines.append(
             f"| {i} | {pick.get('matchup','')} | "
             f"{pick.get('bet','')} | "
-            f"{stars} {pick.get('model_score',0)}% | {tier} |"
+            f"{stars} {pick.get('model_score',0)} | {tier} |"
         )
     lines.append("")
 
@@ -249,10 +249,14 @@ Every signal has been validated against historical ATS cover rates.
 6. Coach H2H (3-4 games) — 72.6% cover rate (likely confounded by home field)
 7. Travel distance — 52.9% cover rate at 1500+ miles (tiebreaker only)
 
-**Confidence score:** Starts at 50 (coin flip). Each validated signal adds or subtracts
-based on its historical cover rate. 80+ = strong bet, 70-79 = lean, <70 = marginal.
+**Model score:** Starts at a base value of 50, an arbitrary scoring origin point —
+not a 50% probability. Each validated signal adds or subtracts points based on its
+historical cover rate (shown above). The resulting number (0-99) is an ordinal
+ranking signal: higher means more confirming signals stacked, not a calibrated
+chance of covering. 80+ = strong bet, 70-79 = lean, <70 = marginal.
 
-**This model does not guarantee results.** Bet responsibly.
+**This model does not guarantee results, and the score above is not a win
+probability.** Bet responsibly.
 """)
 
     # Individual picks

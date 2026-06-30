@@ -665,7 +665,14 @@ function PickCard({ p }: { p: CfbPick }) {
           <Crest name={homeName} size={20} />
         </div>
         <span className="font-mono shrink-0" style={{ fontSize: 13, color: accentColor }}>
-          {p.stars} {p.model_score}%
+          {/* FIXED 2026-06-29 -- score_game()'s own docstring states
+              model_score is NOT a probability, it's an ordinal ranking
+              signal (0-99, capped). Displaying it with a % sign implies
+              a calibrated cover probability that doesn't exist -- no
+              calibration layer converts model_score to a win/cover rate
+              anywhere in this system. "Model: 86" makes the same ranking
+              information available without the false claim. */}
+          {p.stars} Model: {p.model_score}
         </span>
       </div>
 
