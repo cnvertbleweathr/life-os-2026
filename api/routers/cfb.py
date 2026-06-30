@@ -61,6 +61,36 @@ async def cfb_picks_summary():
         return {"count": 0}
 
 
+@router.get("/live-tracker")
+async def cfb_live_tracker(request: Request, season: int | None = None):
+    """
+    Real graded-record aggregates for the Live Tracker banner: graded
+    picks, W-L-push record, win rate, ROI, and how many qualifying picks
+    are still pending (game not yet played/graded). Backed by
+    mart_live_picks, which is built from data/bets/history/*.json via
+    pipelines/live_picks_pipeline.py + grade_picks.py.
+
+    Returns the most recent season's row if `season` isn't given. Returns
+    a zeroed/empty-state row (not a 404) when no rows exist yet -- e.g.
+    before the season starts -- so the frontend can render "0 / 0-0 / — /
+    —" without special-casing a missing-data error.
+    """
+    db = get_db(request)
+    yr = season or (date.today().year)
+    row = query_one(db, """
+        SELECT season, graded_picks, wins, losses, pushes,
+               win_rate_pct, total_pnl, roi_pct, pending_picks
+        FROM main_marts.mart_live_picks
+        WHERE season = ?
+    """, [yr])
+    if row:
+        return row
+    return {
+        "season": yr, "graded_picks": 0, "wins": 0, "losses": 0, "pushes": 0,
+        "win_rate_pct": None, "total_pnl": None, "roi_pct": None, "pending_picks": 0,
+    }
+
+
 # ── Team intel ────────────────────────────────────────────────────────────────
 
 @router.get("/teams")

@@ -344,6 +344,33 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB — grade archived picks against real results (every day)
+        # ------------------------------------------------------------------
+        # No run_on_days gate, unlike the two steps above -- games finish
+        # on varying weekdays (Thu/Fri/Sat/occasional Tue), so this needs
+        # to check daily, not on a fixed schedule. Idempotent and cheap:
+        # already-fully-graded weeks are skipped before any CFBD call.
+        Step(
+            name="grade_picks",
+            cmd=["python3", "scripts/grade_picks.py"],
+            run_if_exists=ROOT / "scripts/grade_picks.py",
+            tags=["betting", "cfb"],
+        ),
+
+        # ------------------------------------------------------------------
+        # CFB — load picks archive into DuckDB (every day, after grading)
+        # ------------------------------------------------------------------
+        # Runs after grade_picks so cfbd.live_picks reflects same-day
+        # outcome updates, not yesterday's. Merge write_disposition means
+        # this is cheap even when nothing changed.
+        Step(
+            name="live_picks_pipeline",
+            cmd=["python3", "pipelines/live_picks_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/live_picks_pipeline.py",
+            tags=["betting", "cfb", "pipelines"],
+        ),
+
+        # ------------------------------------------------------------------
         # Shows — playlist artist cross-reference
         # ------------------------------------------------------------------
         Step(
