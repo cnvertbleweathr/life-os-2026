@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cfbApi, parseSeasonRois, type CfbTeam, type CfbTeamDetail, type CfbMatchupResult, type CfbMatchupError, type CfbScheduleGame } from "@/lib/api";
+import { cfbApi, parseSeasonRois, type CfbTeam, type CfbTeamDetail, type CfbMatchupResult, type CfbMatchupError, type CfbScheduleGame, type CfbPick } from "@/lib/api";
 import {
-  Card, PageHead, Stat, K, Pill, Watermark, Empty, Loading, ErrorState,
+  Card, PageHead, K, Pill, Watermark, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 
@@ -479,38 +479,54 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
   );
 }
 
-function ScheduleGameRow({ g }: { g: CfbScheduleGame }) {
+function ScheduleGameRow({ g, showDateHeader }: { g: CfbScheduleGame; showDateHeader?: string }) {
   const time = g.start_date
     ? new Date(g.start_date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     : "TBD";
   return (
-    <div className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "11px 6px", margin: "0 -6px" }}>
-      <span className="font-mono text-faint shrink-0" style={{ fontSize: 10, width: 56 }}>{time}</span>
-      <div className="flex-1 flex items-center gap-2 min-w-0">
-        <Crest name={g.away_team} size={20} />
-        <span className="truncate" style={{ fontSize: 13.5 }}>{g.away_team}</span>
-        <span className="text-faint shrink-0" style={{ fontSize: 13.5 }}>@</span>
-        <Crest name={g.home_team} size={20} />
-        <span className="truncate" style={{ fontSize: 13.5 }}>{g.home_team}</span>
+    <>
+      {showDateHeader && (
+        <div
+          className="font-mono uppercase text-faint"
+          style={{ fontSize: 8.5, letterSpacing: "1px", padding: "12px 6px 4px" }}
+        >
+          {showDateHeader}
+        </div>
+      )}
+      <div className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "11px 6px", margin: "0 -6px" }}>
+        <span className="font-mono text-faint shrink-0" style={{ fontSize: 10, width: 56 }}>{time}</span>
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <Crest name={g.away_team} size={20} />
+          <span className="truncate" style={{ fontSize: 13.5 }}>{g.away_team}</span>
+          <span className="text-faint shrink-0" style={{ fontSize: 13.5 }}>@</span>
+          <Crest name={g.home_team} size={20} />
+          <span className="truncate" style={{ fontSize: 13.5 }}>{g.home_team}</span>
+        </div>
+        {g.conference_game && (
+          <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>CONF</span>
+        )}
+        {g.neutral_site && (
+          <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>NEUTRAL</span>
+        )}
       </div>
-      {g.conference_game && (
-        <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>CONF</span>
-      )}
-      {g.neutral_site && (
-        <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>NEUTRAL</span>
-      )}
-    </div>
+    </>
   );
 }
 
-function Slate() {
+// ── ScheduleColumn — right column of "This Week" ─────────────────────────────
+// Same schedule-fetching logic that used to live inside Slate(), now a
+// standalone column that receives season/week as props instead of owning
+// that state itself, so PicksColumn (left column) can share the exact same
+// selection and the two stay in sync.
+
+function ScheduleColumn({
+  season, week, onWeekChange, onSeasonChange,
+}: {
+  season: number; week: number;
+  onWeekChange: (w: number) => void;
+  onSeasonChange: (s: number) => void;
+}) {
   const now = new Date();
-  // CFB season runs Aug-Jan; if we're in the Jan-July off-season window,
-  // default to the upcoming season's year rather than the current
-  // calendar year, since "this year's season" hasn't started yet.
-  const defaultSeason = now.getMonth() < 7 ? now.getFullYear() : now.getFullYear();
-  const [season, setSeason] = useState(defaultSeason);
-  const [week, setWeek] = useState(1);
   const [games, setGames] = useState<CfbScheduleGame[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -524,6 +540,20 @@ function Slate() {
       .finally(() => setLoading(false));
   }, [season, week]);
 
+  // CFBD's /games endpoint doesn't guarantee chronological order — confirmed
+  // 2026-06-29, the raw response mixes 10am/1pm/5pm/6pm/8pm games with no
+  // consistent pattern. Sort ascending by kickoff time for display; games
+  // with no start_date (TBD) sort last rather than colliding with real
+  // times at an arbitrary position.
+  const sortedGames = games
+    ? [...games].sort((a, b) => {
+        if (!a.start_date && !b.start_date) return 0;
+        if (!a.start_date) return 1;
+        if (!b.start_date) return -1;
+        return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
+      })
+    : null;
+
   return (
     <Card pad={0}>
       <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
@@ -531,7 +561,7 @@ function Slate() {
         <div className="flex items-center gap-2">
           <select
             value={week}
-            onChange={(e) => setWeek(parseInt(e.target.value, 10))}
+            onChange={(e) => onWeekChange(parseInt(e.target.value, 10))}
             style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 12 }}
           >
             {Array.from({ length: 15 }, (_, i) => i + 1).map((w) => (
@@ -540,7 +570,7 @@ function Slate() {
           </select>
           <select
             value={season}
-            onChange={(e) => setSeason(parseInt(e.target.value, 10))}
+            onChange={(e) => onSeasonChange(parseInt(e.target.value, 10))}
             style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 12 }}
           >
             {[now.getFullYear(), now.getFullYear() + 1].map((y) => (
@@ -554,13 +584,40 @@ function Slate() {
           <Loading label="Fetching schedule from CFBD…" />
         ) : error ? (
           <ErrorState message={error} />
-        ) : !games || games.length === 0 ? (
+        ) : !sortedGames || sortedGames.length === 0 ? (
           <Empty
             message={`No games found for ${season} Week ${week}.`}
             detail="Either CFBD hasn't published this far-out week yet, or CFBD_API_TOKEN isn't set in .env — both are normal, not errors. Schedule is independent of betting lines, so it can populate before sportsbooks post Week 1 spreads."
           />
         ) : (
-          games.map((g) => <ScheduleGameRow key={g.game_id} g={g} />)
+          sortedGames.map((g, i) => {
+            // Show a date header before the first game of each new calendar
+            // day (in the viewer's local time, matching how `time` itself is
+            // displayed) -- otherwise two correctly-sorted games on different
+            // days both show a bare time like "5:00 PM" with nothing to tell
+            // them apart, which looks shuffled even though it isn't. CFBD's
+            // "Week 1" genuinely spans multiple days (Thu-Wed), so this isn't
+            // an edge case -- it's the normal shape of the data.
+            const dayKey = g.start_date
+              ? new Date(g.start_date).toDateString()
+              : "tbd";
+            const prevDayKey = i > 0
+              ? (sortedGames[i - 1].start_date
+                  ? new Date(sortedGames[i - 1].start_date as string).toDateString()
+                  : "tbd")
+              : null;
+            const isNewDay = dayKey !== prevDayKey;
+            const dateLabel = g.start_date
+              ? new Date(g.start_date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
+              : "Date TBD";
+            return (
+              <ScheduleGameRow
+                key={g.game_id}
+                g={g}
+                showDateHeader={isNewDay ? dateLabel : undefined}
+              />
+            );
+          })
         )}
       </div>
       <div style={{ padding: "0 18px 14px" }}>
@@ -569,6 +626,162 @@ function Slate() {
         </p>
       </div>
     </Card>
+  );
+}
+
+// ── PicksColumn — left column of "This Week" ─────────────────────────────────
+//
+// Renders data/bets/todays_picks.json via GET /cfb/picks. Takes the SAME
+// season/week selection as ScheduleColumn so the two columns always agree
+// on which week is being viewed.
+//
+// IMPORTANT, real constraint (confirmed 2026-06-29): todays_picks.json
+// holds exactly ONE week's picks at a time — it's overwritten every run,
+// with no history directory and no results-grading step anywhere in the
+// codebase yet. So "show me last week's picks" or "show me what the model
+// said 3 weeks ago" isn't something this can honestly do right now — that
+// data doesn't exist on disk. What this CAN honestly do is compare the
+// fetched picks' own (season, week) against what's selected in the
+// dropdowns, and say clearly which of three states we're in:
+//   1. selected week matches the picks file → show the real picks
+//   2. selected week is earlier than the picks file's week → past week,
+//      not archived (archival is planned, not yet built)
+//   3. selected week is later than the picks file's week → future week,
+//      picks haven't been generated yet
+// This is a deliberately honest stand-in for the real archive/grading
+// system, not a feature in itself — see ROADMAP.md.
+
+function PickCard({ p }: { p: CfbPick }) {
+  const isFade = p.bet_type === "FADE";
+  const accentColor = isFade ? "#9a6a1e" : "#1d5536";
+  const [awayName, homeName] = p.matchup.split(" @ ");
+
+  return (
+    <Card accent accentColor={accentColor} style={{ position: "relative", overflow: "hidden" }}>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Crest name={awayName} size={20} />
+          <span className="truncate font-serif font-bold" style={{ fontSize: 15 }}>{p.matchup}</span>
+          <Crest name={homeName} size={20} />
+        </div>
+        <span className="font-mono shrink-0" style={{ fontSize: 13, color: accentColor }}>
+          {p.stars} {p.model_score}%
+        </span>
+      </div>
+
+      <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
+        <span style={{ fontSize: 14, fontWeight: 600 }}>{p.bet}</span>
+        <Mono s={10.5}>
+          {p.line}{p.ou && p.ou !== "N/A" ? ` · O/U ${p.ou}` : ""}
+        </Mono>
+      </div>
+
+      {isFade && (
+        <Mono s={9} c={accentColor}>FADE — betting against the favorite</Mono>
+      )}
+
+      <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }}>
+        {p.edge}
+      </p>
+
+      {p.warnings.length > 0 && (
+        <div className="flex flex-col gap-1 mt-2">
+          {p.warnings.map((w, i) => (
+            <Mono key={i} s={10} c="#9a6a1e">⚠️ {w}</Mono>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function PicksColumn({ season, week }: { season: number; week: number }) {
+  const [picks, setPicks] = useState<CfbPick[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    cfbApi.picks().then(setPicks).catch((e) => setError(e.message));
+  }, []);
+
+  // Picks file has no season/week selector server-side — it's always
+  // "whatever generate_picks.py last wrote." So we fetch once and compare
+  // client-side against the selected (season, week) rather than refetching
+  // per-selection — there's only ever one version to fetch anyway.
+  const picksWeek = picks?.[0]?.week;
+  const picksSeason = picks?.[0]?.season;
+  const matchesSelection =
+    picks && picks.length > 0 &&
+    picksWeek === week &&
+    (picksSeason == null || picksSeason === season); // tolerate older files with no season field
+
+  let mismatchReason: "past" | "future" | null = null;
+  if (picks && picks.length > 0 && !matchesSelection && picksWeek != null) {
+    mismatchReason = week < (picksWeek as number) ? "past" : "future";
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <K color="#1d5536">
+          {picks && picks.length > 0
+            ? `Picks · ${picksSeason ?? season} Week ${picksWeek}`
+            : "This Week's Picks"}
+          {" "}· model v3 walk-forward
+        </K>
+      </div>
+      {error ? (
+        <ErrorState message={error} />
+      ) : !picks ? (
+        <Loading label="Loading picks…" />
+      ) : picks.length === 0 ? (
+        <Card>
+          <Empty
+            message="No qualifying picks yet."
+            detail="Either lines haven't posted for this week, or nothing clears the model's publish threshold (model_score ≥ 70, n_edges ≥ 4) — that's the model correctly saying 'no strong signal,' not missing data."
+          />
+        </Card>
+      ) : mismatchReason === "past" ? (
+        <Card>
+          <Empty
+            message={`No archived picks for ${season} Week ${week}.`}
+            detail="Picks aren't archived per-week yet — only the current week's picks are kept on disk, and they get overwritten each time the model re-runs. A real history/grading system is planned but not built (see ROADMAP.md)."
+          />
+        </Card>
+      ) : mismatchReason === "future" ? (
+        <Card>
+          <Empty
+            message={`${season} Week ${week} is too far out — no picks yet.`}
+            detail={`The model hasn't run for this week. Current picks on file are for ${picksSeason ?? season} Week ${picksWeek}.`}
+          />
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {picks.map((p, i) => <PickCard key={`${p.matchup}-${i}`} p={p} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Slate() {
+  const now = new Date();
+  // CFB season runs Aug-Jan; if we're in the Jan-July off-season window,
+  // default to the upcoming season's year rather than the current
+  // calendar year, since "this year's season" hasn't started yet.
+  const defaultSeason = now.getMonth() < 7 ? now.getFullYear() : now.getFullYear();
+  const [season, setSeason] = useState(defaultSeason);
+  const [week, setWeek] = useState(1);
+
+  return (
+    <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <PicksColumn season={season} week={week} />
+      <ScheduleColumn
+        season={season}
+        week={week}
+        onWeekChange={setWeek}
+        onSeasonChange={setSeason}
+      />
+    </div>
   );
 }
 
@@ -614,26 +827,6 @@ export default function CfbPage() {
           </div>
         }
       />
-
-      <div style={{ borderTop: "1.5px solid #232a22", borderBottom: "1px solid #e6e3dc", marginBottom: 28 }}>
-        <div className="flex justify-between items-center" style={{ padding: "12px 0 4px" }}>
-          <K color="#1d5536">2026 Season · Live Tracker</K>
-          <span className="font-mono" style={{ fontSize: 9, color: "#9a6a1e", border: "1px solid rgba(154,106,30,0.33)", borderRadius: 999, padding: "2px 9px" }}>
-            PRESEASON
-          </span>
-        </div>
-        <div className="grid grid-cols-4">
-          <Stat label="Graded Picks" value={0} />
-          <Stat label="Record" value="0–0" />
-          <Stat label="Win Rate" value="—" />
-          <Stat label="ROI" value="—" last />
-        </div>
-        <div style={{ padding: "0 0 12px" }}>
-          <span className="font-mono text-faint" style={{ fontSize: 9.5 }}>
-            MODEL LOCKED FROM 4-SEASON WALK-FORWARD BACKTEST · 224–94 · 70.4% · +34.5% ROI (318 BETS, 4/4)
-          </span>
-        </div>
-      </div>
 
       {tab === "slate" && <Slate />}
       {tab === "lab" && <MatchupLab teams={teams} />}

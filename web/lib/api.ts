@@ -449,7 +449,79 @@ export interface CfbScheduleGame {
   away_conference: string | null;
 }
 
+/** Confirmed real shape written by scripts/generate_picks.py into
+ *  data/bets/todays_picks.json, served by GET /cfb/picks (filtered to
+ *  model_score >= min_score, sorted descending) and read by the CFB
+ *  page's always-visible PicksList. bet_type "FADE" means the model is
+ *  betting AGAINST a STRONG_FADE-tier favorite, not the favorite itself
+ *  — `bet` always names which side to actually take. */
+export interface CfbPick {
+  matchup: string;
+  bet: string;
+  line: string;
+  sport: string;
+  edge: string;
+  model_score: number;
+  stars: string;
+  week: number | string;
+  // Added alongside the always-visible PicksColumn so the frontend can
+  // compare a selected (season, week) against what these picks were
+  // actually generated for. Optional because picks files written before
+  // this field existed won't have it -- treat a missing season as
+  // "can't confirm this matches the selected week," not as season 0.
+  season?: number;
+  ou: string;
+  ppa_gap: number | null;
+  sp_gap: number | null;
+  bet_type: "EDGE" | "FADE";
+  generated_at: string;
+  ret_gap?: number | null;
+  recruiting_gap?: number | null;
+  travel_miles?: number | null;
+  travel_bucket?: string | null;
+  home_coach?: string | null;
+  away_coach?: string | null;
+  coach_h2h?: CfbCoachH2H | null;
+  n_edges: number;
+  warnings: string[];
+}
+
+/** Confirmed real shape from GET /cfb/picks/summary. Returns {count: 0}
+ *  with no other keys when todays_picks.json is empty/missing — the
+ *  other fields are only present when count > 0. */
+export interface CfbPicksSummary {
+  count: number;
+  avg_score?: number;
+  week?: number | string | null;
+  season?: number | string | null;
+}
+
+/** Real season-level aggregates from main_marts.mart_live_picks, backing
+ *  the site-wide Live Tracker banner. win_rate_pct/total_pnl/roi_pct are
+ *  null (not 0) when graded_picks is 0 -- there's a real difference
+ *  between "0% win rate" and "no graded picks yet," and the banner
+ *  should render an em-dash for the latter, not a misleading 0%. */
+export interface CfbLiveTracker {
+  season: number;
+  graded_picks: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  win_rate_pct: number | null;
+  total_pnl: number | null;
+  roi_pct: number | null;
+  pending_picks: number;
+}
+
 export const cfbApi = {
+  // min_score defaults to 70 server-side too (api/routers/cfb.py) --
+  // passed explicitly here so the client's default is self-documenting
+  // and doesn't silently drift from the server's if either changes.
+  picks: (minScore = 70) =>
+    get<CfbPick[]>(`/cfb/picks?min_score=${minScore}`),
+  picksSummary: () => get<CfbPicksSummary>("/cfb/picks/summary"),
+  liveTracker: (season?: number) =>
+    get<CfbLiveTracker>(`/cfb/live-tracker${season ? `?season=${season}` : ""}`),
   teams: () => get<CfbTeam[]>("/cfb/teams"),
   team: (team: string) =>
     get<CfbTeamDetail>(`/cfb/team/${encodeURIComponent(team)}`),
