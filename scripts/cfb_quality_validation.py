@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""
+cfb_quality_validation.py
+
+Phase 0.2 — Stage 1 validation scaffold (skeleton).
+
+Per design v5 (docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md): this harness
+answers "does X predict future football performance" — nothing about
+betting markets or ATS results belongs here. That's Stage 2, gated on
+Stage 1 passing, and explicitly NOT built yet (see design doc Phase D).
+
+WHY THIS EXISTS BEFORE PHASE A: the design's build order puts the scaffold
+before Phase A specifically so Phase A's real quality scores can be
+checked against this harness the moment they exist, rather than building
+all four phases first and validating at the end -- the same lesson
+tonight's live-model audit already taught the hard way.
+
+WHAT THIS SCRIPT CURRENTLY DOES: runs the scaffold against the simplest
+possible baseline that needs nothing from Phase A -- does a team's own
+prior-season off_ppa predict next season's off_ppa? This proves the
+harness's data access, season-pairing, and metric-reporting machinery
+work correctly BEFORE any quality-score logic exists to plug in. Once
+Phase A produces preseason_off_rating_z/preseason_def_rating_z, those
+get passed through the exact same `validate_predictor()` function --
+no scaffold changes needed, by design.
+
+CONFIG-DRIVEN, per design v5's "repeatable harness, not a one-off
+script" requirement: every parameter that could be tuned is a function
+argument, not a hardcoded constant, so future Phase A/C parameter sweeps
+go through this same harness rather than spawning ad hoc variants.
+
+Usage:
+  python scripts/cfb_quality_validation.py                  # run the baseline self-test
+  python scripts/cfb_quality_validation.py --target off_ppa  # test a different stat
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import duckdb
+import pandas as pd
+
+ROOT    = Path(__file__).resolve().parents[1]
+DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Season classification — Phase 0.3, read directly from the data contract
+# rather than re-decided here. See docs/cfb_quality/CFB_QUALITY_DATA_CONTRACT.md
+# finding #8 for the reasoning behind this exact split.
+# ─────────────────────────────────────────────────────────────────────────────
+
+SEASON_CLASSIFICATION = {
+    2021: "previously_examined_dev",
+    2022: "previously_examined_dev",
+    2023: "previously_examined_dev",
+    2024: "parameter_selection",
+    2025: "parameter_selection",
+    2026: "future_live_holdout",  # never touched by this script until Stage 2 is built and frozen
+}
+
+DEV_SEASONS               = [s for s, c in SEASON_CLASSIFICATION.items() if c == "previously_examined_dev"]
+PARAMETER_SELECTION_SEASONS = [s for s, c in SEASON_CLASSIFICATION.items() if c == "parameter_selection"]
+HOLDOUT_SEASONS            = [s for s, c in SEASON_CLASSIFICATION.items() if c == "future_live_holdout"]
+
+
+def fetch_team_season_stat(con: duckdb.DuckDBPyConnection, stat_column: str) -> pd.DataFrame:
+    """
+    Pulls one column from cfbd.advanced_stats for every (team, season) row
+    available. Generic by design -- this is the data-access layer every
+    future Stage 1 predictor (including real Phase A quality scores, once
+    they exist in their own mart) will reuse, not something specific to
+    one baseline test.
+    """
+    df = con.execute(f"""
+        SELECT team, season, {stat_column}
+        FROM cfbd.advanced_stats
+        WHERE {stat_column} IS NOT NULL
+        ORDER BY team, season
+    """).df()
+    return df
+
+
+def build_predictor_pairs(df: pd.DataFrame, stat_column: str, seasons: list[int]) -> pd.DataFrame:
+    """
+    For every team, pairs season N's value with season N+1's value --
+    "does X this year predict X next year" is the trivial self-test;
+    swapping in a real predictor column (e.g. preseason_off_rating_z)
+    against a real target column (e.g. next season's actual off_ppa) is
+    the same shape of join, just different column names. Restricted to
+    the given season list so dev/parameter-selection/holdout splits are
+    enforced at this layer, not left to the caller to remember.
+    """
+    df = df[df["season"].isin(seasons)]
+    pairs = df.merge(
+        df, on="team", suffixes=("_prior", "_next")
+    )
+    pairs = pairs[pairs["season_next"] == pairs["season_prior"] + 1]
+    return pairs[["team", "season_prior", "season_next", f"{stat_column}_prior", f"{stat_column}_next"]]
+
+
+def validate_predictor(pairs: pd.DataFrame, predictor_col: str, target_col: str) -> dict:
+    """
+    The core, reusable metric-reporting function. Every future Stage 1
+    validation run -- including real preseason_quality vs future PPA,
+    once Phase A exists -- calls this same function. Keeping this one
+    function as the single source of truth for "how do we measure
+    predictive power" is what makes the harness repeatable rather than
+    a pile of one-off correlation checks.
+    """
+    if len(pairs) < 10:
+        return {"n": len(pairs), "status": "insufficient_sample", "correlation": None}
+
+    correlation = pairs[predictor_col].corr(pairs[target_col])
+
+    return {
+        "n":             len(pairs),
+        "status":        "ok",
+        "correlation":   round(float(correlation), 3) if correlation is not None else None,
+        "predictor_mean": round(float(pairs[predictor_col].mean()), 4),
+        "target_mean":    round(float(pairs[target_col].mean()), 4),
+    }
+
+
+def run_baseline_self_test(stat_column: str = "off_ppa") -> None:
+    """
+    Proves the scaffold works end-to-end using a trivial, already-known-
+    to-be-reasonable baseline (a stat predicting its own next-season
+    value) BEFORE any real quality score exists. If this baseline shows
+    a sane, non-zero correlation, the harness's data access and pairing
+    logic are trustworthy; if it shows something nonsensical (near-zero,
+    or a sign that doesn't make sense), that's a scaffold bug to fix
+    before Phase A ever touches this code, not a finding about football.
+    """
+    con = duckdb.connect(DB_PATH, read_only=True)
+    df = fetch_team_season_stat(con, stat_column)
+    con.close()
+
+    print(f"Stage 1 scaffold self-test: does prior-season {stat_column} predict next-season {stat_column}?")
+    print(f"{'='*70}")
+
+    for label, seasons in [
+        ("Dev seasons (2021-2023)",              DEV_SEASONS),
+        ("Parameter-selection seasons (2024-2025)", PARAMETER_SELECTION_SEASONS),
+    ]:
+        pairs = build_predictor_pairs(df, stat_column, seasons + [s + 1 for s in seasons])
+        result = validate_predictor(pairs, f"{stat_column}_prior", f"{stat_column}_next")
+        print(f"\n{label}:")
+        for k, v in result.items():
+            print(f"  {k}: {v}")
+
+    print(f"\n{'='*70}")
+    print("BOUNDARY NOTE (not a bug, but worth being explicit): season pairs")
+    print("near the dev/parameter-selection split (e.g. 2023 predictor -> 2024")
+    print("target) cross that boundary. This is fine for a READ-ONLY")
+    print("correlation check like this self-test -- no parameter is being")
+    print("tuned against the result. It would NOT be fine for an actual")
+    print("weight-fitting step (e.g. estimating beta_off/beta_def per design")
+    print("v5) without explicit care about which season's data is allowed to")
+    print("influence which fitted value. Future tuning code reusing this")
+    print("scaffold's pairing logic must handle that distinction itself --")
+    print("this harness does not currently enforce it beyond the dev vs.")
+    print("holdout (2026) boundary.")
+    print(f"{'='*70}")
+
+    print(f"\nHOLDOUT SEASONS (2026): {HOLDOUT_SEASONS} — never queried by this self-test.")
+    print("Confirms the harness respects the season split even when it would")
+    print("be technically easy to peek (2026 data doesn't exist yet anyway,")
+    print("but the season list itself enforces the boundary going forward).")
+    print(f"{'='*70}")
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description="Phase 0.2 Stage 1 validation scaffold (skeleton)")
+    p.add_argument("--target", default="off_ppa",
+                    help="Which cfbd.advanced_stats column to run the baseline self-test against")
+    args = p.parse_args()
+
+    run_baseline_self_test(args.target)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
