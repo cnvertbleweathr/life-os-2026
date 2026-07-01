@@ -289,6 +289,74 @@ def run_phase_a_def_validation() -> None:
     print(f"\n{'='*70}")
 
 
+def run_phase_a_margin_validation() -> None:
+    """
+    Alternative Stage 1 target: future scoring margin instead of future
+    off_ppa. The betting model cares about margins, not efficiency metrics
+    -- if preseason_off_rating_z predicts actual scoring margins better
+    than it predicts PPA, that's more directly useful signal.
+    """
+    con = duckdb.connect(DB_PATH, read_only=True)
+
+    # Need team-season avg scoring margin -- compute from game results
+    margin_df = con.execute("""
+        SELECT
+            home_team AS team,
+            season,
+            avg(home_score - away_score) AS avg_margin
+        FROM main_marts.mart_cfbd_line_accuracy
+        WHERE home_score IS NOT NULL AND away_score IS NOT NULL
+          AND home_conference IN (
+              'SEC', 'Big Ten', 'Big 12', 'ACC', 'Pac-12',
+              'American Athletic', 'Mountain West', 'Conference USA',
+              'Mid-American', 'Sun Belt', 'FBS Independents'
+          )
+        GROUP BY home_team, season
+        UNION ALL
+        SELECT
+            away_team AS team,
+            season,
+            avg(away_score - home_score) AS avg_margin
+        FROM main_marts.mart_cfbd_line_accuracy
+        WHERE home_score IS NOT NULL AND away_score IS NOT NULL
+          AND home_conference IN (
+              'SEC', 'Big Ten', 'Big 12', 'ACC', 'Pac-12',
+              'American Athletic', 'Mountain West', 'Conference USA',
+              'Mid-American', 'Sun Belt', 'FBS Independents'
+          )
+        GROUP BY away_team, season
+    """).df()
+
+    # Collapse home + away into one margin per team-season
+    margin_df = margin_df.groupby(["team", "season"])["avg_margin"].mean().reset_index()
+
+    df = con.execute("""
+        SELECT q.team, q.season AS predictor_season,
+               q.preseason_off_rating_z AS predictor
+        FROM main_marts.mart_cfb_preseason_quality q
+        WHERE q.preseason_off_rating_z IS NOT NULL
+    """).df()
+    con.close()
+
+    # Pair predictor_season N with actual margin in season N
+    pairs = df.merge(margin_df, left_on=["team", "predictor_season"],
+                     right_on=["team", "season"])
+
+    print("Phase A Stage 1 (margin target): preseason_off_rating_z vs next-season scoring margin")
+    print(f"{'='*70}")
+
+    for label, seasons in [
+        ("Dev seasons (2021-2023)",               DEV_SEASONS),
+        ("Parameter-selection seasons (2024-2025)", PARAMETER_SELECTION_SEASONS),
+    ]:
+        subset = pairs[pairs["predictor_season"].isin(seasons)]
+        result = validate_predictor(subset, "predictor", "avg_margin")
+        print(f"\n{label}:")
+        for k, v in result.items():
+            print(f"  {k}: {v}")
+    print(f"{'='*70}")
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Phase 0.2 Stage 1 validation scaffold")
     p.add_argument("--target", default="off_ppa",
@@ -297,12 +365,16 @@ def main() -> int:
                    help="Run Phase A offensive validation (preseason_off_rating_z vs next-season off_ppa)")
     p.add_argument("--phase-a-def", action="store_true",
                    help="Run Phase A defensive validation (preseason_def_rating_z vs next-season def_ppa)")
+    p.add_argument("--phase-a-margin", action="store_true",
+                   help="Run Phase A margin validation (preseason_off_rating_z vs next-season scoring margin)")
     args = p.parse_args()
 
     if args.phase_a:
         run_phase_a_validation()
     elif args.phase_a_def:
         run_phase_a_def_validation()
+    elif args.phase_a_margin:
+        run_phase_a_margin_validation()
     else:
         run_baseline_self_test(args.target)
     return 0

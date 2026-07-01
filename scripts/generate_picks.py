@@ -474,8 +474,8 @@ def _build_pick(
         "stars":      stars,
         "week":       week,
         "ou":         str(ou) if ou else "N/A",
-        "ppa_gap":    round(ppa_gap, 3) if ppa_gap else None,
-        "sp_gap":     round(sp_gap, 1)  if sp_gap  else None,
+        "ppa_gap":    round(ppa_gap, 3) if ppa_gap is not None else None,
+        "sp_gap":     round(sp_gap, 1)  if sp_gap is not None else None,
         "bet_type":   bet_type,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
     }
@@ -504,9 +504,20 @@ def main() -> int:
     print(f"🏈 Generating picks for {year} Week {week}...")
 
     # Fetch games
-    games = cfbd_get("/games", {"year": year, "week": week, "division": "fbs"})
+    # FIXED 2026-06-30: division="fbs" does NOT filter to FBS-only games --
+    # confirmed via direct API verification: response includes FCS/D-II/D-III
+    # opponents with total game counts (2,400-3,700/season) far exceeding a
+    # real FBS schedule (~750-900 games). Correct filter requires manually
+    # checking both homeClassification and awayClassification == "fbs".
+    # See docs/cfb_quality/CFB_QUALITY_DATA_CONTRACT.md finding #7.
+    all_games = cfbd_get("/games", {"year": year, "week": week, "division": "fbs"})
+    games = [
+        g for g in all_games
+        if g.get("homeClassification") == "fbs"
+        and g.get("awayClassification") == "fbs"
+    ]
     if not games:
-        print("No games found from CFBD API")
+        print("No FBS-vs-FBS games found from CFBD API")
         OUT.write_text(json.dumps([], indent=2))
         return 0
 
