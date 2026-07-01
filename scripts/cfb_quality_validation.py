@@ -172,13 +172,139 @@ def run_baseline_self_test(stat_column: str = "off_ppa") -> None:
     print(f"{'='*70}")
 
 
+def run_phase_a_validation() -> None:
+    """
+    The first real Stage 1 validation: does preseason_off_rating_z
+    (Phase A's composite quality score) predict next-season off_ppa
+    better than the raw prior-season off_ppa baseline?
+
+    This is the question the scaffold was built to answer. If
+    preseason_off_rating_z doesn't beat 0.40-0.43, the additional
+    complexity of the talent/program and prior_results blocks isn't
+    earning its keep and the design needs revisiting before Phase B.
+    """
+    con = duckdb.connect(DB_PATH, read_only=True)
+
+    # Pull preseason_off_rating_z (the predictor) paired with next
+    # season's actual off_ppa (the target). The quality score for
+    # season N was built from season N-1 data, so it's already a
+    # valid prior-season predictor of season N outcomes.
+    df = con.execute("""
+        SELECT
+            q.team,
+            q.season AS predictor_season,
+            q.season + 1 AS target_season,
+            q.preseason_off_rating_z AS predictor,
+            a.off_ppa AS target
+        FROM main_marts.mart_cfb_preseason_quality q
+        JOIN cfbd.advanced_stats a
+            ON a.team = q.team AND a.season = q.season
+        WHERE q.preseason_off_rating_z IS NOT NULL
+          AND a.off_ppa IS NOT NULL
+    """).df()
+    con.close()
+
+    print("Phase A Stage 1 validation: does preseason_off_rating_z predict next-season off_ppa?")
+    print("Baseline to beat: raw prior-season off_ppa -> next-season off_ppa = 0.43 (dev) / 0.40 (param-selection)")
+    print(f"{'='*70}")
+
+    for label, seasons in [
+        ("Dev seasons (2021-2023)",               DEV_SEASONS),
+        ("Parameter-selection seasons (2024-2025)", PARAMETER_SELECTION_SEASONS),
+    ]:
+        subset = df[df["predictor_season"].isin(seasons)]
+        result = validate_predictor(subset, "predictor", "target")
+        print(f"\n{label}:")
+        for k, v in result.items():
+            print(f"  {k}: {v}")
+
+    print(f"\n{'='*70}")
+    print("INTERPRETATION GUIDE:")
+    print("  > 0.45: clearly beats the raw off_ppa baseline -- the extra inputs add value")
+    print("  0.40-0.45: roughly matches baseline -- extra complexity not yet justified")
+    print("  < 0.40: worse than baseline -- something in the composite is hurting signal")
+    print(f"{'='*70}")
+
+
+def run_phase_a_def_validation() -> None:
+    """
+    Defensive equivalent of run_phase_a_validation(). Tests whether
+    preseason_def_rating_z predicts next-season def_ppa better than
+    raw prior-season def_ppa alone.
+
+    Note: def_ppa is stored as "points allowed per play" -- lower is
+    better defense. So a NEGATIVE correlation between
+    preseason_def_rating_z (higher = better defense) and next-season
+    def_ppa (lower = better defense) would be the correct, expected
+    direction here -- not a sign error.
+    """
+    con = duckdb.connect(DB_PATH, read_only=True)
+
+    # Baseline: does raw def_ppa predict itself year-over-year?
+    baseline_df = con.execute("""
+        SELECT team, season, def_ppa
+        FROM cfbd.advanced_stats
+        WHERE def_ppa IS NOT NULL
+    """).df()
+
+    # Phase A composite vs next-year def_ppa
+    df = con.execute("""
+        SELECT
+            q.team,
+            q.season AS predictor_season,
+            q.preseason_def_rating_z AS predictor,
+            a.def_ppa AS target
+        FROM main_marts.mart_cfb_preseason_quality q
+        JOIN cfbd.advanced_stats a
+            ON a.team = q.team AND a.season = q.season
+        WHERE q.preseason_def_rating_z IS NOT NULL
+          AND a.def_ppa IS NOT NULL
+    """).df()
+    con.close()
+
+    print("Phase A Stage 1 defensive validation")
+    print("preseason_def_rating_z vs next-season def_ppa")
+    print("(Note: expected direction is NEGATIVE -- higher rating = better defense = lower def_ppa allowed)")
+    print(f"{'='*70}")
+
+    for label, seasons in [
+        ("Dev seasons (2021-2023)",               DEV_SEASONS),
+        ("Parameter-selection seasons (2024-2025)", PARAMETER_SELECTION_SEASONS),
+    ]:
+        # Baseline
+        b_pairs = build_predictor_pairs(baseline_df, "def_ppa",
+                                        seasons + [s + 1 for s in seasons])
+        b_result = validate_predictor(b_pairs, "def_ppa_prior", "def_ppa_next")
+
+        # Phase A composite
+        subset = df[df["predictor_season"].isin(seasons)]
+        result = validate_predictor(subset, "predictor", "target")
+
+        print(f"\n{label}:")
+        print(f"  Baseline (raw def_ppa -> next def_ppa): {b_result.get('correlation')}")
+        print(f"  Phase A  (preseason_def_rating_z -> next def_ppa):")
+        for k, v in result.items():
+            print(f"    {k}: {v}")
+
+    print(f"\n{'='*70}")
+
+
 def main() -> int:
-    p = argparse.ArgumentParser(description="Phase 0.2 Stage 1 validation scaffold (skeleton)")
+    p = argparse.ArgumentParser(description="Phase 0.2 Stage 1 validation scaffold")
     p.add_argument("--target", default="off_ppa",
-                    help="Which cfbd.advanced_stats column to run the baseline self-test against")
+                   help="Which cfbd.advanced_stats column to run the baseline self-test against")
+    p.add_argument("--phase-a", action="store_true",
+                   help="Run Phase A offensive validation (preseason_off_rating_z vs next-season off_ppa)")
+    p.add_argument("--phase-a-def", action="store_true",
+                   help="Run Phase A defensive validation (preseason_def_rating_z vs next-season def_ppa)")
     args = p.parse_args()
 
-    run_baseline_self_test(args.target)
+    if args.phase_a:
+        run_phase_a_validation()
+    elif args.phase_a_def:
+        run_phase_a_def_validation()
+    else:
+        run_baseline_self_test(args.target)
     return 0
 
 

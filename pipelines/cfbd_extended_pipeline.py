@@ -126,6 +126,21 @@ def weather_resource(year: int) -> Iterator[dict]:
     name="coaches",
     write_disposition="merge",
     primary_key=["first_name", "last_name", "school", "year"],
+    columns={
+        # FIXED 2026-06-30 -- confirmed missing from the live cfbd.coaches
+        # table despite being correctly yielded below. Root cause: same
+        # DLT silent-column-drop pattern found earlier tonight in
+        # live_picks_pipeline.py. preseason_rank/postseason_rank are
+        # legitimately NULL for most teams (only the AP-poll-ranked ~25
+        # of ~130 FBS teams have a real value each season) -- confirmed
+        # directly against CFBD's raw API: Ohio 2023 (10-3, unranked) has
+        # both fields null; Michigan 2023 (the actual national champion)
+        # has postseasonRank=1. The data is real and correct from CFBD;
+        # DLT dropped the column because some load had too few non-null
+        # values to infer a type from.
+        "preseason_rank":  {"data_type": "bigint", "nullable": True},
+        "postseason_rank": {"data_type": "bigint", "nullable": True},
+    },
 )
 def coaches_resource(year: int) -> Iterator[dict]:
     data = cfbd_get("/coaches", {"year": year})
