@@ -26,16 +26,22 @@ PICKS_PATH = ROOT / "data" / "bets" / "todays_picks.json"
 
 @router.get("/picks")
 async def cfb_picks(
-    min_score: int = Query(70, description="Minimum model score"),
+    min_score: int = Query(0, description="Minimum model score (0 = all scored picks including watchlist)"),
     limit:     int = Query(20),
 ):
-    """This week's qualifying picks, sorted by model score descending."""
+    """This week's picks, sorted by model score descending.
+    Includes both official picks (meets_publish_bar=True) and watchlist
+    candidates (meets_publish_bar=False). Frontend uses meets_publish_bar
+    to render them differently. Pass min_score=70 to get official-only."""
     if not PICKS_PATH.exists():
         return []
     try:
         picks = json.loads(PICKS_PATH.read_text())
         picks = [p for p in picks if p.get("model_score", p.get("confidence", 0)) >= min_score]
-        picks.sort(key=lambda x: x.get("model_score", x.get("confidence", 0)), reverse=True)
+        picks.sort(key=lambda x: (
+            0 if x.get("meets_publish_bar") else 1,
+            -x.get("model_score", x.get("confidence", 0))
+        ))
         return picks[:limit]
     except Exception:
         return []

@@ -699,9 +699,21 @@ function PickCard({ p, isOfficial = true }: { p: CfbPick; isOfficial?: boolean }
 
       {p.warnings.length > 0 && (
         <div className="flex flex-col gap-1 mt-2">
-          {p.warnings.map((w, i) => (
-            <Mono key={i} s={10} c="#9a6a1e">⚠️ {w}</Mono>
-          ))}
+          {p.warnings.map((w, i) => {
+            const WARNING_LABELS: Record<string, string> = {
+              "ret_low_home":      "Low returning production for home team",
+              "ret_low_away":      "Low returning production for away team",
+              "coach_change":      "Head coach change this offseason",
+              "coach_change+low_ret": "Coach change + low returning production",
+              "SP+_disagrees":     "SP+ rating disagrees with this bet",
+              "tier_FADE":         "Bet team has a FADE historical tier",
+              "tier_STRONG_FADE":  "Bet team has a STRONG FADE historical tier",
+              "home_havoc_vs_bet": "Home defense havoc rate works against this bet",
+              "away_havoc_vs_bet": "Away defense havoc rate works against this bet",
+            };
+            const label = WARNING_LABELS[w] ?? w;
+            return <Mono key={i} s={10} c="#9a6a1e">⚠️ {label}</Mono>;
+          })}
         </div>
       )}
     </Card>

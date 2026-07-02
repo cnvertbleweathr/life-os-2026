@@ -525,8 +525,8 @@ export const cfbApi = {
   // min_score defaults to 70 server-side too (api/routers/cfb.py) --
   // passed explicitly here so the client's default is self-documenting
   // and doesn't silently drift from the server's if either changes.
-  picks: (minScore = 70) =>
-    get<CfbPick[]>(`/cfb/picks?min_score=${minScore}`),
+  picks: () =>
+    get<CfbPick[]>(`/cfb/picks`),
   picksSummary: () => get<CfbPicksSummary>("/cfb/picks/summary"),
   liveTracker: (season?: number) =>
     get<CfbLiveTracker>(`/cfb/live-tracker${season ? `?season=${season}` : ""}`),
