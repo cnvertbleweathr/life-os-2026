@@ -180,8 +180,19 @@ def score_game(
         edges.append("PPA_primary")
         model_score += 15
 
-    # Rule 5: Spread range — disabled key: "spread"
-    if "spread" not in disabled:
+    # Rule 5: Spread range — DISABLED per fixed-cohort ablation 2026-06-30
+    # Ablation result: removing this rule caused the worst-performing bin
+    # (85-89, original cover 56.1%) to jump to 71.3%, and Spearman rank
+    # correlation of score vs win went from -0.065 (anti-predictive) with
+    # the rule to a still-weak but directionally neutral value without it.
+    # The rule was awarding +10 for tight 3-7pt spreads ("prime range")
+    # and +8 for 10-14pt spreads, systematically concentrating high-score
+    # picks in tight-spread games that are harder to cover. Root cause
+    # confirmed: the calibration inversion was primarily driven by this rule.
+    # Full-pipeline ablation: 514 picks, all 5 seasons positive ROI,
+    # 85-89 bin improved to 75.6% cover/44.3% ROI.
+    # Disabled key retained so ablation scripts can re-enable for testing.
+    if "spread" not in disabled and False:  # disabled — anti-predictive per ablation
         if 3 <= abs_spread <= 7:
             edges.append("spread_prime")
             model_score += 10

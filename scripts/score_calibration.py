@@ -43,7 +43,7 @@ def run() -> None:
     # We re-score them here to get model_score, then bin them
     df = con.execute("""
         SELECT
-            m.season, m.week, m.home_team, m.away_team,
+            m.game_id, m.season, m.week, m.home_team, m.away_team,
             m.spread, m.over_under,
             m.off_ppa_gap, m.def_ppa_gap,
             m.home_off_success_rate, m.away_off_success_rate,
@@ -101,9 +101,10 @@ def run() -> None:
                 outcome = "win" if not bool(row["spread_covered"]) else "loss"
 
             scored_rows.append({
-                "season": season,
+                "game_id":     row["game_id"],
+                "season":      season,
                 "model_score": model_score,
-                "outcome": outcome,
+                "outcome":     outcome,
             })
 
     if not scored_rows:
@@ -111,6 +112,16 @@ def run() -> None:
         return
 
     scored = pd.DataFrame(scored_rows)
+
+    # Deduplicate: mart has multiple line-provider rows per game.
+    # Confirmed: 12,995 duplicate game_ids across 20,263 lined games.
+    # Keep highest model_score per game_id.
+    before = len(scored)
+    scored = (scored
+              .sort_values('model_score', ascending=False)
+              .drop_duplicates(subset=['game_id'], keep='first')
+              .reset_index(drop=True))
+    print(f"Deduped {before:,} scored rows → {len(scored):,} unique games")
     print(f"Qualifying picks scored: {len(scored):,}")
     print()
 
