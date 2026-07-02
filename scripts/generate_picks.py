@@ -627,17 +627,28 @@ def main() -> int:
 
     con.close()
 
-    # ── todays_picks.json: qualifying picks only, same rules as before ────
-    picks = [p for p in all_scored if p["meets_publish_bar"]]
-    # Sort: EDGE picks first (higher conviction), then FADE, then by confidence
-    picks.sort(key=lambda x: (0 if x["bet_type"] == "EDGE" else 1, -x["model_score"]))
-    # Cap at 8 picks — more than that is noise
-    picks = picks[:8]
+    # ── todays_picks.json: top 5 total (official + watchlist) ───────────
+    # Official picks: meets_publish_bar (score >= 70, edges >= 4)
+    # Watchlist: scored but below threshold -- shown in UI with a different
+    # visual treatment, not official picks. Gives context when official
+    # picks are scarce (e.g. early season, few lines posted).
+    official = [p for p in all_scored if p["meets_publish_bar"]]
+    official.sort(key=lambda x: (0 if x["bet_type"] == "EDGE" else 1, -x["model_score"]))
+    official = official[:5]
+
+    # Fill remaining slots up to 5 with highest-scoring non-qualifying games
+    watchlist = [p for p in all_scored if not p["meets_publish_bar"] and p["model_score"] > 0]
+    watchlist.sort(key=lambda x: -x["model_score"])
+    slots_remaining = max(0, 5 - len(official))
+    watchlist = watchlist[:slots_remaining]
+
+    picks = official + watchlist
 
     print(f"\n{'='*50}")
-    print(f"Generated {len(picks)} qualifying picks for Week {week} (model v3 walk-forward)")
+    print(f"Generated {len(official)} official picks + {len(watchlist)} watchlist for Week {week} (model v3 walk-forward)")
     print(f"Scored {len(all_scored)} total games, skipped {len(skipped)}")
     print(f"{'='*50}")
+
 
     if args.dry_run:
         print(json.dumps(picks, indent=2))

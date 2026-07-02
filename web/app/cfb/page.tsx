@@ -651,29 +651,35 @@ function ScheduleColumn({
 // This is a deliberately honest stand-in for the real archive/grading
 // system, not a feature in itself — see ROADMAP.md.
 
-function PickCard({ p }: { p: CfbPick }) {
+function PickCard({ p, isOfficial = true }: { p: CfbPick; isOfficial?: boolean }) {
   const isTierRisk = p.bet_type === "FADE_TIER_RISK";
-  const accentColor = isTierRisk ? "#9a6a1e" : "#1d5536";
+  const accentColor = !isOfficial ? "#a39d8c" : isTierRisk ? "#9a6a1e" : "#1d5536";
   const [awayName, homeName] = p.matchup.split(" @ ");
 
   return (
-    <Card accent accentColor={accentColor} style={{ position: "relative", overflow: "hidden" }}>
+    <Card accent={isOfficial} accentColor={accentColor} style={{
+      position: "relative", overflow: "hidden",
+      opacity: isOfficial ? 1 : 0.82,
+      background: isOfficial ? undefined : "#faf8f4",
+    }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
           <Crest name={awayName} size={20} />
           <span className="truncate font-serif font-bold" style={{ fontSize: 15 }}>{p.matchup}</span>
           <Crest name={homeName} size={20} />
         </div>
-        <span className="font-mono shrink-0" style={{ fontSize: 13, color: accentColor }}>
-          {/* FIXED 2026-06-29 -- score_game()'s own docstring states
-              model_score is NOT a probability, it's an ordinal ranking
-              signal (0-99, capped). Displaying it with a % sign implies
-              a calibrated cover probability that doesn't exist -- no
-              calibration layer converts model_score to a win/cover rate
-              anywhere in this system. "Model: 86" makes the same ranking
-              information available without the false claim. */}
-          {p.stars} Model: {p.model_score}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          {!isOfficial && (
+            <span style={{
+              fontSize: 9, fontFamily: "monospace", textTransform: "uppercase",
+              letterSpacing: "0.06em", color: "#a39d8c",
+              border: "1px solid #d4cfc5", borderRadius: 3, padding: "1px 5px"
+            }}>watch</span>
+          )}
+          <span className="font-mono" style={{ fontSize: 13, color: accentColor }}>
+            {p.stars} Model: {p.model_score}
+          </span>
+        </div>
       </div>
 
       <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
@@ -684,11 +690,6 @@ function PickCard({ p }: { p: CfbPick }) {
       </div>
 
       {isTierRisk && (
-        // FIXED 2026-06-29: this used to read "FADE — betting against the
-        // favorite," which was true under the old (buggy) reversal logic
-        // but is false now -- the bet above IS on the STRONG_FADE-tiered
-        // team, this is a risk note about that team's own history, not a
-        // description of a different bet.
         <Mono s={9} c={accentColor}>⚠ Bet is on a team with a STRONG_FADE historical tier in this situation</Mono>
       )}
 
@@ -768,7 +769,27 @@ function PicksColumn({ season, week }: { season: number; week: number }) {
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
-          {picks.map((p, i) => <PickCard key={`${p.matchup}-${i}`} p={p} />)}
+          {/* Official picks -- meets publish bar (score >= 70, edges >= 4) */}
+          {picks.filter(p => p.meets_publish_bar).map((p, i) => (
+            <PickCard key={`official-${p.matchup}-${i}`} p={p} isOfficial={true} />
+          ))}
+          {/* Watchlist -- scored but below publish threshold */}
+          {picks.filter(p => !p.meets_publish_bar).length > 0 && (
+            <>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, margin: "4px 0 0"
+              }}>
+                <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+                <span style={{ fontSize: 10, color: "#a39d8c", letterSpacing: "0.08em", fontFamily: "monospace", textTransform: "uppercase" }}>
+                  Watch List · Below Publish Bar
+                </span>
+                <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+              </div>
+              {picks.filter(p => !p.meets_publish_bar).map((p, i) => (
+                <PickCard key={`watch-${p.matchup}-${i}`} p={p} isOfficial={false} />
+              ))}
+            </>
+          )}
         </div>
       )}
     </div>
