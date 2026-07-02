@@ -416,6 +416,47 @@ KNOWN_RIVALRIES = [
 # ---------------------------------------------------------------------------
 
 @dlt.resource(
+    name="ppa_games",
+    write_disposition="merge",
+    primary_key=["game_id", "team"],
+)
+def ppa_games_resource(year: int) -> Iterator[dict]:
+    """
+    Per-game PPA (Predicted Points Added) per play, by team.
+    Used by Phase C (live_football_strength) to update team ratings
+    after each week based on actual in-game football performance.
+
+    Key design note: defense.overall is PPA ALLOWED per play -- lower
+    is better defense. Must be sign-reversed before z-scoring, same
+    as the season-level def_ppa treatment in Phase A. Confirmed against
+    raw API response 2026-06-30: Air Force 2023 Wk4 def.overall=0.27
+    means Air Force's defense allowed 0.27 PPA per play that game.
+    """
+    data = cfbd_get("/ppa/games", {"year": year, "seasonType": "regular"})
+    for r in data:
+        off  = r.get("offense")  or {}
+        deff = r.get("defense")  or {}
+        yield {
+            "game_id":          r.get("gameId"),
+            "season":           r.get("season"),
+            "week":             r.get("week"),
+            "season_type":      r.get("seasonType"),
+            "team":             r.get("team"),
+            "conference":       r.get("conference"),
+            "opponent":         r.get("opponent"),
+            # Offensive PPA per play (higher = better offense)
+            "off_ppa":          off.get("overall"),
+            "off_ppa_passing":  off.get("passing"),
+            "off_ppa_rushing":  off.get("rushing"),
+            # Defensive PPA ALLOWED per play (lower = better defense)
+            "def_ppa":          deff.get("overall"),
+            "def_ppa_passing":  deff.get("passing"),
+            "def_ppa_rushing":  deff.get("rushing"),
+        }
+
+
+
+@dlt.resource(
     name="ppa_teams",
     write_disposition="merge",
     primary_key=["season", "team"],
@@ -579,6 +620,7 @@ def run(year: int, skip_usage: bool = False) -> None:
     resources.append(matchup_history_resource(KNOWN_RIVALRIES))
 
     # PPA team metrics
+    resources.append(ppa_games_resource(year=year))
     resources.append(ppa_teams_resource(year=year))
 
     # Advanced season stats (defense/rushing strength)
