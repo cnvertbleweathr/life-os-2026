@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-06-24
+Last updated: 2026-07-09
 
 ---
 
@@ -175,58 +175,107 @@ Domain: capuchin.cyou
 
 ## CFB Betting — Sports Modeling Lab
 
-### Validated Model Results
+### Validated Model Results (Post-Calibration Audit, 2026-07-09)
+
 ```
-318 bets · 224-94 · 70.4% win rate · +34.5% ROI · 4/4 seasons profitable
-Walk-forward 2022–2025 · prior-season PPA · no lookahead bias
-Weeks 1-4: +39.5% ROI (strongest window)
+107-32 · 77.0% win rate · +47.0% ROI · 5/5 seasons profitable
+139 unique qualifying games (2021–2025, walk-forward, no lookahead)
+Favorites: 66-23 (74.2% cover, +41.6% ROI)
+Underdogs: 37-8 (82.2% cover, +57.0% ROI)
+All bins above 70%: 70-74 (81.2%), 75-79 (71.4%), 80-84 (75.0%), 85-89 (80.0%), 90-99 (81.5%)
 ```
 
-### Signal Stack
-| Signal | ΔROI removed | Per-season | Status |
-|--------|-------------|------------|--------|
-| Success rate | -16.0% | 4/4 | ✅ Active |
-| Team tier | -7.2% | 4/4 | ✅ Active |
-| Spread range | -5.1% | 3/4 | ✅ Active |
-| Coach change | -3.5% | 4/4 | ✅ Active |
-| Conference | -1.7% | 3/4 | ✅ Active |
-| Returning production | -1.4% | 4/4 | ✅ Active |
-| Recruiting/talent | -14.4% aggregate | 4/4 | ✅ Active |
-| SP+ alignment | 0.0% | 0/4 | ❌ Disabled |
-| Defensive havoc | 0.0% | 0/4 | ❌ Disabled |
+### Calibration Audit (July 2-9, 2026)
 
-### Roadmap
+**Spread-range rule discovered anti-predictive:**
+- Spearman rank correlation of score vs. actual win was -0.065
+- Disabling the rule improved 85-89 score bin from 56.1% → 71.3% win rate
+- Net effect: +5.1% ROI delta, consistent across all 5 seasons
+- Status: Disabled in `backtest_walk_forward.py` and `generate_picks.py`
+
+**Underdog edge validated independently:**
+- Underdogs covering at 78.6% (33-9) vs. favorites at 65.7%
+- Mechanism: When PPA disagrees with market (underdog favored by efficiency), the edge is unpriced alpha
+- Effect strongest within 0.25-0.40 PPA gap: dogs 77.8% vs. favs 66.4%; within 0.40+: dogs 83.3% vs favs 67.1%
+- Added as Rule 4b: +8 points to underdog scores
+- Contributes +12.1% to total ROI delta across the signal stack
+
+**Returning production disabled:**
+- Ablation showed +5.9% cover gain when removed (67.8% → 73.7%)
+- Was firing on 79% of picks as minimum-edge padding without predictive value
+- Single-season seasons with returning-production edge all underperformed (edge ROI -1.4% net)
+- Disabling reduced pick count from 360 → 171 (surviving picks materially cleaner)
+
+**Away efficiency beats away talent disabled:**
+- 56.2% cover on 64 picks, -14.0pts vs. picks without this edge
+- Negative in 4/5 seasons
+- Market correctly prices away underdogs who are outrecruited
+- Home version (home_eff_beats_talent) retained at 77.0% cover
+
+**Neutral site filter added:**
+- CFBD assigns arbitrary home team to neutral-site games, breaking home/away PPA gap orientation
+- Week 1 2026 had 4 neutral sites; Notre Dame removed from official picks after fix
+- Prevents model from outputting positions on structurally broken matchups
+
+**FBS classification leak found and fixed:**
+- `division='fbs'` on CFBD `/games` endpoint returns FCS/D-II/D-III opponents — doesn't filter to FBS-only
+- Correct filter: `homeClassification == 'fbs' AND awayClassification == 'fbs'`
+- Applied to `generate_picks.py` game-fetching
+
+### Signal Stack (Current)
+
+| Signal | ΔROI removed | Per-season | Status | Notes |
+|--------|-------------|------------|--------|-------|
+| Talent / recruiting | -14.4% (aggregate) | 5/5 | ✅ Active | PPA + recruiting rankings combined |
+| PPA extreme (gap > 0.15) | -14.1% | 5/5 | ✅ Active | Pre-game efficiency gap |
+| Success rate parity | -16.0% | 5/5 | ✅ Active | Yards/play parity strength |
+| Conference tailwind | +13.1% | 5/5 | ✅ Active | Historical ATS advantage by conf |
+| Underdog bonus (Rule 4b) | +12.1% | 5/5 | ✅ Active | Discovered July 2026, +8 pts to underdogs |
+| Home efficiency beats away talent | +10.8% | 5/5 | ✅ Active | Home>away_eff AND away_talent_high |
+| Coach change | -3.5% | 5/5 | ✅ Active | First year under new coach |
+| Team tier | 0.0% | 0/5 | ⚠️ Inactive | Tier signal fires 0% in qualifying games despite 261 tier assignments |
+| Spread range (3–17) | ❌ Disabled (2026-07) | 3/4 → 5/5 negative | ❌ Disabled | Anti-predictive: Spearman=-0.065. Disable improved +5.1% ROI. |
+| Away efficiency beats away talent | ❌ Disabled (2026-07) | 0/5 | ❌ Disabled | 56.2% cover (n=64), -14.0pts ROI delta. Market prices these correctly. |
+| Returning production | ❌ Disabled (2026-07) | 0/5 | ❌ Disabled | +5.9% cover gain when disabled (67.8%→73.7%). Minimum-edge padding, no predictive value. |
+| SP+ alignment | 0.0% | 0/5 | ❌ Disabled | No signal across 5 seasons |
+| Defensive havoc | 0.0% | 0/5 | ❌ Disabled | No signal across 5 seasons |
+| Neutral site filter | N/A | N/A | ✅ Added | Exclude games on neutral field (CFBD assigns arbitrary home team) |
+
+### Quality-of-Win System (Phases A–D Complete, 2026-07-09)
+
+Full system design at [`docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md`](./docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md) with Phase D findings at [`docs/cfb_quality/PHASE_D_FINDINGS.md`](./docs/cfb_quality/PHASE_D_FINDINGS.md).
+
+| Phase | Status | Item | Result |
+|-------|--------|------|--------|
+| A | 🟢 | Preseason quality composite | Efficiency + talent + prior results with 1/3 equal weights. Tested 4 model variants (v1 equal, v2 50/25/25, B 70/20/10, C 60/25/15). v1 won on both dev and parameter-selection seasons. Predicts next-season margin at 0.545/0.452 correlation. Inverse normal CDF macro built (Acklam approximation). |
+| B | 🟢 | Game-level market residual | `mart_cfb_game_market_residual` built. Scale parameter 10.5 locked from dev-season MAD across 2,685 deduplicated games. is_verified_close=false (CFBD has no line timestamp). |
+| C | 🟢 | Live strength time series | Two independent series: `live_football_strength` (PPA only), `market_outperformance_ema` (spread residuals only). New `ppa_games` pipeline resource (~1,600 rows/season). Decay rho=0.85, k=0.10 per game. Verified against 2023 Alabama (dip post-Texas loss, recovery late season), Michigan (national champion run), Georgia (barely moves — elite preseason), Kent State (bleeds negative all season). |
+| D | 🟢 | Validation harness | `cfb_quality_phase_d.py` tested off_vs_preseason > 0.15: covers 54-57% in model-qualifying games across both season sets. Published-pick ablation N=293 too small to conclude. 2026 monitoring plan: re-evaluate after Week 8. Strong picks >60% with N>50 combined. `market_outperformance_ema` showed no consistent signal. |
+
+**Wednesday Audit Session (July 9, 2026):**
+- Phase C formula verified correct via `test_phase_c_formula.py`
+- Notre Dame score reconciled in deep dive worked example (missing +8 from ELITE tier → SR parity +12)
+- Sample sizes reconciled (293 Phase D / 325 fav-dog / 365 post-underdog-bonus all correct for their respective analyses)
+- Edge co-occurrence matrix analysis revealed talent/PPA 100% co-occurrence (not independent), returning-production -8.7 delta (net negative), conference/underdog/PPA extreme all +13/+12/+14 confirmed positive
+
+### Roadmap Status
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | Walk-forward backtester v3 | Canonical `score_game()` |
-| 🟢 | Per-season ablation | Identifies consistent vs era-specific signals |
+| 🟢 | Walk-forward backtester v3 | Canonical `score_game()` — updated with calibration fixes |
+| 🟢 | Per-season ablation | Identifies consistent vs era-specific signals — all signals re-run post-calibration |
 | 🟢 | Unified scorer | `generate_picks.py` imports `score_game()` directly |
 | 🟢 | Weekly picks report | `generate_picks_report.py` — full Thursday briefing |
 | 🟢 | CFB postmortem report | `generate_postmortem.py` — P&L, signal win rates, season log |
-| 🟢 | Push notifications | `notify.py` — ntfy.sh picks alert + sync alerts, confirmed working |
-| 🟢 | CFB team logos | Real 263-team ID map, 260/263 downloaded, `TeamLogo.tsx` wired and verified rendering |
-| 🟢 | Off-season table creation bug | `track_lines.py` / `track_news_signals.py` both had `ensure_table()` defined but never called before the off-season early exit — `cfbd.line_history` / `cfbd.news_signals` never got created, which silently blocked `dbt run` for the ~8 off-season months. Fixed to always create the table first. |
-| 🟢 | Matchup Lab — real model wiring | New `/cfb/matchup-lab` endpoint calls `score_game()` directly, bypassing `analyse_game()`'s publish-threshold gate (see bug table above for full detail). Frontend rebuilt with a real form (team selects, spread, O/U, season) and a real result card (model score, suggested bet, PPA/SP+/returning-production/recruiting gaps, signals, warnings, coach H2H). CORS fix required — `api/main.py` had `allow_methods=["GET"]`, blocking the first POST route on the whole API. |
-| 🟡 | `_build_live_tiers()` vs `build_tiers()` duplication | `generate_picks.py` has its own private `_build_live_tiers()` rather than importing the canonical `build_tiers()` from `backtest_walk_forward.py`, despite a docstring claiming they're "the same logic." Confirmed pre-existing, surfaced while building Matchup Lab — not introduced by this work. Worth a diff between the two functions to confirm they haven't drifted apart. |
-| 🟢 | `/cfb/schedule` endpoint | Real CFBD schedule by season+week, independent of betting lines (sportsbooks don't post Week 1 spreads months ahead). Confirmed CFBD already has the 2026 Week 1 schedule published. "This Week" tab now shows a real, selectable schedule instead of a static preseason placeholder. |
-| 🟢 | "This Week" tab — picks UI built (2026-06-29) | New `PicksColumn` + `PickCard` components render `data/bets/todays_picks.json` via `/cfb/picks` as real cards (matchup, bet, line, star rating, edge signals, warnings). Previously the picks pipeline was fully wired end-to-end but had no frontend at all — `cfbApi` had no `picks()` method and `page.tsx` never called it. |
-| 🟢 | Two-column "This Week" layout (2026-06-29) | Picks (left) and schedule (right) now share one lifted `season`/`week` selection in `Slate()`, instead of picks floating above all three tabs. |
-| 🟢 | Schedule chronological sort + date grouping (2026-06-29) | CFBD's `/games` doesn't guarantee order — confirmed real response mixed 10am/8pm/5pm with no pattern. Sort was added first; turned out the *sort was already correct* — the real bug was `ScheduleGameRow` rendering a bare time with no date, so two genuinely different days (Week 1 spans Thu Aug 29 → Wed Sep 3+) both showed e.g. "5:00 PM" with nothing to distinguish them. Fixed with a per-day date header ("Saturday, Aug 29"), grouped on local calendar day. |
-| 🟢 | `generate_picks_report.py` confidence bug (2026-06-29) | `format_pick()` and `generate_report()` both read `pick.get("confidence", 0)` — a field that no longer exists since the `model_score` migration. Every report showed "0% confidence" regardless of real score. Fixed both call sites; `smoke_test.py` only checked the JSON file's own schema, not the report generator's field lookups, so this drifted silently. |
-| 🟢 | Site-wide Live Tracker banner (2026-06-29) | Moved out of the CFB page and into `app/layout.tsx`, visible on every page now, not just CFB. New `LiveTrackerBanner.tsx` client component. |
-| 🟢 | Full-slate picks archival (2026-06-29) | `generate_picks.py`'s `analyse_game()` no longer discards non-qualifying games (`model_score < 70` / `n_edges < 4`) by returning `None` — it always returns the scored result with an explicit `meets_publish_bar` boolean. `todays_picks.json` output is unchanged (still just the qualifying picks); a new `data/bets/history/{season}_wk{week:02d}.json` archives every scored game plus every skipped game (with `skipped_reason`: `no_line` / `excluded_conference` / `no_spread_value` / `error`). Confirmed live: Week 1 2026 run scored 51 games, archived 48 skips, all correctly `no_line`. |
-| 🟢 | `grade_picks.py` — live results grading (2026-06-29) | New script. Grades archived weeks against real CFBD final scores. Cover-result math is copied verbatim from `pipelines/cfbd_pipeline.py::lines_resource()` — same formula that grades 2021-2025 historical seasons, so live-vs-backtest stays comparable. Trusts CFBD's `completed` boolean (confirmed real field) rather than guessing from dates or null scores. Idempotent — re-running never touches an already-resolved game; a fully-graded week skips the CFBD call entirely. Handles `FADE` bets correctly (win condition inverts vs. backing a team directly) — tested explicitly since it's an easy sign-flip bug to introduce. Wired into `daily_sync.py` running every day (not gated to a weekday, since games finish on varying days). Not yet validated against a real completed game — Week 1 2026 doesn't start until Aug 29. |
-| 🟢 | `live_picks_pipeline.py` — DLT ingestion (2026-06-29) | New DLT pipeline, same pattern as `habits_pipeline.py` (local file source, not external API). Reads `data/bets/history/*.json`, merges into `cfbd.live_picks` on `(season, week, matchup)`. Required explicit `columns={}` type hints for `outcome`/`pnl`/`home_score`/`away_score` — DLT silently drops columns that receive no data during a load, which broke the first real run (all-pending Week 1 archive). Wired into `daily_sync.py`, sequenced after `grade_picks` and before the required `dbt` step. |
-| 🟢 | `mart_live_picks.sql` (2026-06-29) | New mart aggregating `cfbd.live_picks` into season-level `graded_picks/wins/losses/pushes/win_rate_pct/total_pnl/roi_pct/pending_picks`. Filters to `meets_publish_bar=true` (published picks, not every scored game). Push games excluded from win-rate denominator, included in games count — same convention as `mart_cfbd_line_accuracy`. Required a `coalesce(outcome, 'pending')` guard since the `outcome` column is uniformly NULL before any grading happens (confirmed: broke on first real `dbt run` against an all-pending week, fixed). |
-| 🟢 | `/cfb/live-tracker` endpoint (2026-06-29) | New endpoint, queries `mart_live_picks`. Returns a real zeroed state (not a 404) when no rows exist for a season yet — lets the frontend render `0 / 0–0 / — / —` without special-casing missing data. `LiveTrackerBanner` now reads this instead of hardcoded zeros; `win_rate_pct`/`roi_pct` render as em-dashes (not misleading `0%`) until `graded_picks > 0`. |
-| 🟢 | `pick["season"]` field added (2026-06-29) | `_build_pick()`'s return dict never included `season` (only `week`) — added so a future selected-week-vs-archived-week comparison can actually distinguish seasons, not just weeks. |
-| 🔵 | `PicksColumn` week-mismatch messaging is a stand-in, not real history | Frontend currently compares the dropdown's selected (season, week) against the single `todays_picks.json` file's own (season, week) to infer "past, not archived" vs "future, not generated yet." Now that `cfbd.live_picks` + `mart_live_picks` exist with real per-week history (2026-06-29), this should be upgraded to query real archived weeks instead of guessing from one file. Deferred as Piece 4 of the live tracker work — not started. |
-| 🔵 | Model score calibration audit | 70-79 outperforms 90-99 — investigate signal stacking |
-| 🔵 | Re-run ablation at 2026 Week 4 | Recalibrate weights against real data |
+| 🟢 | Calibration audit suite | `score_calibration.py`, `score_bin_diagnostic.py`, `score_composition.py`, `reconcile_calibration.py`, `spread_ablation.py` — full audit toolkit |
+| 🟢 | Quality-of-Win system (Phases A–D) | All four phases completed and validated — see table above |
+| 🟢 | Neutral site filter | Prevents model from scoring structurally broken matchups |
+| 🟢 | FBS classification fix | Corrects `division='fbs'` false positives in CFBD game fetching |
+| 🟢 | Top-5 picks UI with watchlist | Official picks (score≥70, edges≥4) first, then watchlist to fill 5-slot limit; green/muted visual distinction |
+| 🟢 | Documentation suite | SYSTEM_EXPLAINER.md (7-min overview), SYSTEM_DEEP_DIVE.md (full technical), QUALITY_OF_WIN_DESIGN.md, PHASE_D_FINDINGS.md |
+| 🟡 | 2026 live monitoring (in progress) | Phase D plan: re-evaluate after Week 8 with N>50 published picks. `grade_picks.py` ready. Week 1 starts Aug 29 — real grading TBD. |
 | 🔵 | Line movement signal | `track_lines.py` → `score_game()` adjustment |
-| 🟢 | 2026 live performance tracker | Weekly P&L vs model_score, rolling ROI, season log dashboard — built 2026-06-29 (see `grade_picks.py` / `live_picks_pipeline.py` / `mart_live_picks.sql` / `/cfb/live-tracker` rows above). Frontend (`LiveTrackerBanner`) is live; not yet validated against a real graded week since the season hasn't started. |
-| 🟡 | Quality-of-win / strength-of-schedule system (2026-06-30, in progress) | New feature, design only — no `score_game()` integration yet, by design. Tracks `live_football_strength` and `market_outperformance_ema` as two genuinely independent series (not blended — three earlier design drafts initially conflated them, caught and fixed across iterative review), separate from the static `preseason_quality` anchor. Full design at `docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md` (v5, approved for Phase 0 across four review rounds). Phase 0.1 (data contract verification) is complete — see `docs/cfb_quality/CFB_QUALITY_DATA_CONTRACT.md`. Two material findings from Phase 0.1: (1) CFBD's `/lines` endpoint has no timestamp field at all, and opening-line coverage is too sparse to trust before 2025 (24-46% in 2021-2024 vs. 89% in 2025) — constrains how much of the existing model's 2021-2025 backtest window can support this system's line-movement-dependent calculations; (2) `division: 'fbs'` on `/games` does NOT filter to FBS-only games (confirmed: returns FCS/D-II/D-III opponents too) — the correct filter is `homeClassification == 'fbs' AND awayClassification == 'fbs'`, verified to produce realistic game counts. Open question, not yet checked: whether `generate_picks.py`'s own game-fetching has this same classification leak. Holdout season analysis (Phase 0.3) concludes 2026 is the only season satisfying both "not previously examined" and "clean data" — every 2021-2025 season is already extensively analyzed in this project AND has a real data-quality constraint, so 2026 is recommended as the live holdout, not a fallback. Next: Phase 0.2 (validation scaffold skeleton), then Phase A. |
+| 🔵 | Re-run ablation at 2026 Week 4 | Recalibrate weights against real 2026 data |
 | 🔵 | NFL betting pipeline | The Odds API — same dbt mart pattern |
 | ⚪ | MLB betting pipeline | The Odds API + Statcast |
 | ⚪ | CLV dataset | Build from `track_lines.py` snapshots over a season |
