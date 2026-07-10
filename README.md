@@ -315,23 +315,41 @@ No auth required. Confirmed live data shape as of 2026-06-20: 1104 shows, 1001 s
 
 ## CFB Betting System
 
-Cross-season validated edges (2021–2025, walk-forward, no lookahead):
+**Cross-season validated edges (2021–2025, walk-forward, no lookahead):**
 
 ```
-318 bets · 224-94 · 70.4% win rate · +34.5% ROI · 4/4 seasons profitable
+107-32 · 77.0% win rate · +47.0% ROI · 5/5 seasons profitable
+139 unique qualifying games (games reaching 4-edge minimum in official picks)
 ```
 
-| Signal | ΔROI removed | Seasons consistent | Status |
-|---|---|---|---|
-| Success rate parity | -16.0% | 4/4 | ✅ Active |
-| Team tier | -7.2% | 4/4 | ✅ Active |
-| Spread range (3–17) | -5.1% | 3/4 | ✅ Active |
-| Coach change | -3.5% | 4/4 | ✅ Active |
-| Conference | -1.7% | 3/4 | ✅ Active |
-| Returning production | -1.4% | 4/4 | ✅ Active |
-| Recruiting / talent | -14.4% (aggregate) | 4/4 | ✅ Active |
-| SP+ alignment | 0.0% | 0/4 | ❌ Disabled |
-| Defensive havoc | 0.0% | 0/4 | ❌ Disabled |
+**Favorites vs Underdogs:**
+- Favorites: 66-23 (74.2% cover, +41.6% ROI)
+- Underdogs: 37-8 (82.2% cover, +57.0% ROI)
+
+| Signal | ΔROI removed | Seasons consistent | Status | Notes |
+|---|---|---|---|---|
+| Talent / recruiting | -14.4% (aggregate) | 5/5 | ✅ Active | PPA + recruiting rankings combined |
+| PPA extreme (gap > 0.15) | -14.1% | 5/5 | ✅ Active | Pre-game efficiency gap |
+| Success rate parity | -16.0% | 5/5 | ✅ Active | Yards/play parity strength |
+| Conference tailwind | +13.1% | 5/5 | ✅ Active | Historical ATS advantage by conf |
+| Underdog bonus (2026) | +12.1% | 5/5 | ✅ Active | Rule 4b: +8 to underdog scores |
+| Home efficiency beats away talent | +10.8% | 5/5 | ✅ Active | Home>away_eff AND away_talent_high |
+| Coach change | -3.5% | 5/5 | ✅ Active | First year under new coach |
+| Team tier (elite/strong/etc) | 0.0% | 0/5 | ⚠️ Inactive | Tier signal fires 0% in qualifying games despite 261 tier assignments |
+| Spread range (3–17) | ❌ Disabled (2026-07) | 3/4 | ❌ Disabled | Anti-predictive: Spearman=-0.065. Removing improved 85-89 bin from 56.1%→71.3% |
+| Away efficiency beats away talent | ❌ Disabled (2026-07) | 0/5 | ❌ Disabled | 56.2% cover (n=64), -14.0pts ROI delta. Market correctly prices these. |
+| Returning production | ❌ Disabled (2026-07) | 0/5 | ❌ Disabled | +5.9% cover gain when disabled (67.8%→73.7%). Fired on 79% of picks as minimum-edge padding without predictive value. |
+| SP+ alignment | 0.0% | 0/5 | ❌ Disabled | No signal across 5 seasons |
+| Defensive havoc | 0.0% | 0/5 | ❌ Disabled | No signal across 5 seasons |
+| Neutral site filter | N/A | N/A | ✅ Added | Exclude games on neutral field (CFBD assigns arbitrary home team, breaks model) |
+
+**All bins above 70%:** 70-74 (81.2%), 75-79 (71.4%), 80-84 (75.0%), 85-89 (80.0%), 90-99 (81.5%)
+
+**Documentation:**
+- **7-minute overview** (non-technical): [`docs/SYSTEM_EXPLAINER.md`](./docs/SYSTEM_EXPLAINER.md)
+- **Full technical deep dive**: [`docs/SYSTEM_DEEP_DIVE.md`](./docs/SYSTEM_DEEP_DIVE.md) — every scoring rule with exact points, walk-forward architecture, quality system, known limitations, complete backtest numbers
+- **Quality-of-Win system** (Phases A-D): [`docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md`](./docs/cfb_quality/QUALITY_OF_WIN_DESIGN.md)
+- **Phase D validation findings** (2026 monitoring plan): [`docs/cfb_quality/PHASE_D_FINDINGS.md`](./docs/cfb_quality/PHASE_D_FINDINGS.md)
 
 Full team profiles for all 263 FBS teams stored in `cfbd.team_profiles`. Pre-game lookup available via `pregame_lookup.py`. One canonical scorer (`score_game()` in `backtest_walk_forward.py`) is imported directly by `generate_picks.py` — never a second, drifting copy of the scoring logic.
 
