@@ -86,7 +86,7 @@ export function LiveTrackerBanner() {
           />
         </div>
         <span className="font-mono text-faint" style={{ fontSize: 9 }}>
-          MODEL: 224–94 · 70.4% · +34.5% ROI (318 BETS, 4/4 SEASONS){weekLabel}{pendingLabel}
+          MODEL: 107–32 · 77.0% · +47.0% ROI (134 BETS, 5/5 SEASONS){weekLabel}{pendingLabel}
         </span>
       </div>
     </div>
