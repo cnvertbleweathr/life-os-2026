@@ -624,13 +624,150 @@ Domain work proceeds when the required platform foundation exists. Priority cand
 1. ~~KGLW pipeline~~ ✅ Done — pipeline + router + page all built and verified; YouTube channel matching added 2026-06-24 as a replacement for the dead `links/show/{id}` endpoint
 2. Apple Health
 3. Open-Meteo or OpenWeatherMap
-4. Career Impact Ledger
-5. Manual financial tracking
-6. Letterboxd wiring (dry-run confirmed, real run + daily_sync wiring still pending)
-7. Plex viewing analytics
-8. Strava webhooks
-9. Family memory timeline
-10. Home Assistant
+4. Mandarin Study System (see dedicated section below — jumped ahead of Career Impact Ledger / manual financial tracking on 2026-07-03 by explicit request; daily-use habit tool, not a passive tracker)
+5. Artist of the Week (see dedicated section below — added 2026-07-05; lightweight v1, builds on existing Spotify data)
+6. Career Impact Ledger
+7. Manual financial tracking
+8. Letterboxd wiring (dry-run confirmed, real run + daily_sync wiring still pending)
+9. Plex viewing analytics
+10. Strava webhooks
+11. Family memory timeline
+12. Home Assistant
+
+
+## Mandarin Study System
+
+Added 2026-07-03. A daily Mandarin study session, integrated directly into
+the ONS UI — not a link out to Anki or Duolingo. Fits the platform's
+existing shape well: it's a habit (trackable the same way meditation and
+pushups are), it's a goal (HSK-level pacing, same pattern as
+`mart_goal_pacing`), and every session is an event (feeds
+`core__life_events` the same as a run or a finished book).
+
+**Design principle:** habit formation first, curriculum completeness
+second. A trivially-easy, always-completable daily session that protects
+the streak beats a comprehensive one that gets skipped.
+
+### Data model
+
+```
+mandarin.vocab              — hanzi, pinyin, meaning, hsk_level, part_of_speech, source
+mandarin.example_sentences  — sentence_id, hanzi, pinyin, english, vocab_id (fk)
+mandarin.card_state         — card_id, vocab_id, ease_factor, interval_days, due_date, reps, lapses
+mandarin.review_log         — review_id, card_id, reviewed_at, quality_score (0-5), response_time_ms
+mandarin.daily_sessions      — session_date, cards_reviewed, cards_new, accuracy_pct, minutes_spent
+```
+
+`mandarin.review_log` rolls into `core__life_events` as
+`event_type = 'mandarin_session'`, same as every other domain. A future
+`mart_mandarin_progress` follows the same pacing pattern as
+`mart_goal_pacing` once an HSK-level goal exists in `goals/{year}.yaml`.
+
+### Phased build plan
+
+**v1 — Core loop**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | `mandarin_pipeline.py` — one-time ingest | Load HSK1 vocab list + CC-CEDICT definitions into `mandarin.vocab` |
+| ⚪ | SM-2 spaced-repetition engine | Small, well-understood algorithm (ease factor, interval, due date per card) — same "build it once, understand it completely" spirit as the CFB model and CI/CD track |
+| ⚪ | `api/routers/mandarin.py` | `/mandarin/session` (today's due + new cards), `/mandarin/review` (submit a quality score, update card state) |
+| ⚪ | `/mandarin` Next.js page | Flashcard session UI — recognition (Hanzi → pinyin/meaning) and production (English → Hanzi/pinyin) card types, SRS quality buttons (again/hard/good/easy) |
+| ⚪ | Streak + session summary | Cards reviewed, accuracy, streak — same "what happened / why it matters" framing as the rest of ONS |
+| ⚪ | Add to habits domain | "Mandarin session" becomes a trackable habit alongside meditation/pushups |
+
+**v2 — Richer content**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | Audio (TTS-generated) | Listening-recall card type |
+| ⚪ | Tone drills | Isolate the four tones as their own card type |
+| ⚪ | Sentence mining | Pull example sentences from Tatoeba, tied to vocab via `example_sentences.vocab_id` |
+| ⚪ | Radical/component breakdown | Show composition (e.g. 女 + 子) on character cards |
+| ⚪ | "Missed words" shelf | Surface lowest-ease-factor / highest-lapse cards as a standing weak-spot view |
+| ⚪ | "Sentence of the day" on Home | Small card pulling from `mandarin.example_sentences`, same spirit as other Home-page daily cards |
+| ⚪ | Custom cards | Let Karey add his own words/phrases outside the HSK list |
+
+**v3 — Beyond flashcards**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | Handwriting practice | Canvas-based stroke-order input with validation — meaningfully more complex UI, own phase |
+| ⚪ | HSK2+ progression | Extend `mandarin.vocab` ingestion beyond HSK1 |
+| ⚪ | Morning brief integration | "12 cards due, 3-day streak" as an OpenClaw line item once the morning brief is activated |
+
+### Open questions for the Claude Design pass
+
+- Session structure: pure SRS queue vs. SRS + one new daily "lesson" (hybrid recommended)
+- Time/count budget per session (e.g. capped at 10 minutes or 20 cards) vs. uncapped
+- Whether pinyin displays by default or is hidden-until-flip (affects difficulty curve)
+
+
+## Artist of the Week
+
+Added 2026-07-05. A weekly ritual: pick one artist, listen to their entire
+discography (or a defined subset) over the week, and log a structured
+rating at the end. Seeded from a physical "spin the wheel" artist list
+(109 artists transcribed from a photo + 30 similar artists generated to
+round it out) that becomes `music.artist_queue` — spinning becomes a real
+action (pop a random `queued` row to `current`) rather than a manual pick
+every time.
+
+Cross-checks self-reported enjoyment against actual Spotify listening data
+already in the warehouse — a native honesty check on whether a rating
+reflects a fair listen or two skips and a guess.
+
+### Rating template
+
+One mandatory number (for trend-tracking) plus a fixed set of fields so
+every week is directly comparable to every other week — same philosophy as
+Letterboxd's rating model.
+
+| Field | Type | Notes |
+|---|---|---|
+| Artist | text | |
+| Discography scope | select | Full discography / Studio albums only / Excludes live & compilation — pin down up front, since e.g. King Gizzard's ~26 albums vs. Oasis's 7 are very different asks |
+| Overall rating | 1–10 | The one number everything else charts against |
+| Standout album | text | Single pick, forces a decision |
+| Standout tracks | list (3–5) | |
+| Weakest album | text, optional | Keeps the rating honest |
+| Would add to rotation? | Yes / No / Maybe | Distinct from the rating — can respect a 7 without wanting to live with it |
+| Sonic tags | multi-select, fixed vocabulary | e.g. energetic / mellow / experimental / nostalgic / dense / accessible — fixed list matters for cross-week filtering later |
+| Reminds me of | text, optional | Ties into the existing artist graph |
+| One-line verdict | text | The pull-quote for a summary/history view |
+| Reflection notes | freeform, optional | |
+
+### Data model
+
+```
+music.artist_queue          — artist_name, status (queued/current/completed), source (wheel/manual_add/recommendation)
+music.artist_of_week        — week_start, week_end, artist_name, discography_scope, source
+music.artist_of_week_review — week_start, artist_name, overall_rating, standout_album,
+                               standout_tracks, weakest_album, would_rotate, sonic_tags,
+                               reminds_me_of, verdict, notes, reviewed_at
+mart_artist_of_week_history — joined view + actual Spotify minutes listened that week
+```
+
+Every completed week rolls into `core__life_events` as
+`event_type = 'artist_of_week_completed'`.
+
+### Phased build plan
+
+**v1**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | Seed `music.artist_queue` | 109 wheel artists + 30 generated similar artists |
+| ⚪ | Review entry form (API + UI) | Implements the rating template above |
+| ⚪ | History list view | Past weeks, one row each, sortable by rating |
+
+**v2**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | Spotify cross-check | Actual minutes listened that week vs. self-reported rating |
+| ⚪ | Tag-based filtering | Browse history by sonic tag, would-rotate status |
+
+**v3**
+| Status | Item | Notes |
+|--------|------|-------|
+| ⚪ | Visual "spin the wheel" UI | Real spin interaction, not just a queue-pop |
+| ⚪ | Never-played weighting | Bias the spin toward queue entries with zero prior Spotify history |
 
 
 ## Roadmap Scope Rule
