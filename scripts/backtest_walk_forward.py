@@ -180,6 +180,29 @@ def score_game(
         edges.append("PPA_primary")
         model_score += 15
 
+    # Rule 4b: Underdog bonus — disabled key: "underdog"
+    # When PPA edge agrees with market (bet team is favorite), the edge is
+    # partially priced in. When PPA disagrees with market (bet team is
+    # underdog), the edge is NOT priced in -- pure alpha.
+    #
+    # Ablation result (2026-07-02, scripts/underdog_breakdown.py +
+    # fav_dog_analysis.py):
+    #   Same PPA gap range 0.25-0.40:
+    #     Favorites: 66.4% cover (n=211)
+    #     Underdogs: 77.8% cover (n=36)   +11.4 pts
+    #   Same PPA gap range 0.40+:
+    #     Favorites: 67.1% cover (n=73)
+    #     Underdogs: 83.3% cover (n=6)    +16.2 pts
+    #   Overall underdog record: 33-9 (78.6%, ROI +50.0%) vs
+    #   favorites: 186-97 (65.7%, ROI +25.5%) across 2021-2025.
+    #   Effect persists after controlling for PPA gap magnitude:
+    #   market disagreement itself is the signal.
+    if "underdog" not in disabled:
+        betting_fav = (bet_home and spread < 0) or (not bet_home and spread > 0)
+        if not betting_fav:
+            edges.append("underdog_edge")
+            model_score += 8
+
     # Rule 5: Spread range — DISABLED per fixed-cohort ablation 2026-06-30
     # Ablation result: removing this rule caused the worst-performing bin
     # (85-89, original cover 56.1%) to jump to 71.3%, and Spearman rank
@@ -250,19 +273,27 @@ def score_game(
                 edges.append("conf_tailwind")
                 model_score += 3
 
-    # Rule 9a: Returning production — disabled key: "returning"
-    # Returning production: ablation shows +0.5% ΔROI (neutral/slightly harmful)
-    # Reduced further per audit — boosts trimmed, penalties kept as risk filter
-    if "returning" not in disabled and ret_gap is not None:
+    # Rule 9a: Returning production — DISABLED 2026-07-09
+    # Fixed-cohort ablation (returning_ablation.py): disabling improves cover
+    # rate +5.9pts (67.8% → 73.7%) and ROI +11.3pts across 2021-2025.
+    # Positive in all 5 seasons (best: 2022 +12.1pts, worst: 2023 +3.4pts).
+    # Root cause: ret_gap fires on 79% of qualifying picks as an edge toward
+    # the 4-edge minimum, inflating edge counts without adding predictive value.
+    # Note: disabling reduces qualifying picks from 360 to 171 because many
+    # games previously reached 4-edges only via ret_gap. The surviving 171
+    # picks cover at 73.7% -- a materially cleaner set.
+    # Disabled key retained for ablation scripts. ret_low_home/ret_low_away
+    # warnings are also removed (no longer useful without the bonus context).
+    if "returning" not in disabled and False and ret_gap is not None:  # disabled
         if ret_gap > 0.15 and bet_home:
             edges.append("ret_high_home")
-            model_score += 3   # +9 → +6 → +3 — mild confirmation
+            model_score += 3
         elif ret_gap > 0.05 and bet_home:
             edges.append("ret_slight_home")
-            model_score += 2   # +5 → +3 → +2
+            model_score += 2
         elif ret_gap < -0.15 and bet_home:
             warnings.append("ret_low_home")
-            model_score -= 3   # keep penalty — risk filter
+            model_score -= 3
         elif ret_gap < -0.15 and not bet_home:
             edges.append("ret_high_away")
             model_score += 3
@@ -301,9 +332,17 @@ def score_game(
             elif rec_gap < -10 and bet_home:
                 edges.append("home_eff_beats_talent")
                 model_score += 6
-            elif rec_gap > 10 and not bet_home:
-                edges.append("away_eff_beats_talent")
-                model_score += 6
+            # away_eff_beats_talent DISABLED 2026-07-09
+            # Ablation: 56.2% cover (n=64), -14.0pts vs picks without edge.
+            # Negative in 4/5 seasons (2024: 33.3%). The home version
+            # (home_eff_beats_talent) covers at 77.0% -- same signal,
+            # opposite direction, completely different outcome. The market
+            # correctly prices away underdogs who are outrecruited; the
+            # home version reflects a genuine efficiency-over-talent story
+            # the market underweights. Away version removed.
+            # elif rec_gap > 10 and not bet_home:
+            #     edges.append("away_eff_beats_talent")
+            #     model_score += 6
             elif rec_gap > 10 and bet_home:
                 edges.append("talent_confirms_home")
                 model_score += 3
@@ -415,6 +454,7 @@ def run(min_score: int, show_combos: bool) -> None:
             WHERE gc.spread_result IN ('covered','missed','push')
               AND gc.season BETWEEN 2022 AND 2025
               AND gc.spread IS NOT NULL
+              AND (gc.neutral_site IS NULL OR gc.neutral_site = false)
         )
         SELECT * FROM ranked WHERE rn = 1
     """).df()

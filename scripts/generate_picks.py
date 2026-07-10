@@ -379,6 +379,22 @@ def analyse_game(
         bet_type  = "EDGE"
         fade_team = None
 
+    # ── Injury check ──────────────────────────────────────────────────────
+    # Check SportsDataIO for injured players on the bet team.
+    # Only the BET TEAM's injuries affect the pick -- the model's PPA
+    # edge is built on the bet team's prior-season performance.
+    injury_flags = {"critical": [], "warning": [], "summary": "", "suppress_pick": False}
+    try:
+        from cfb_injury_check import get_injury_flags, format_injury_warnings
+        injury_flags = get_injury_flags(bet_team, year, week)
+        injury_warnings = format_injury_warnings(injury_flags)
+        if injury_warnings:
+            warnings = warnings + injury_warnings
+    except ImportError:
+        pass  # cfb_injury_check not available -- skip silently
+    except Exception as e:
+        pass  # don't let injury check failures break pick generation
+
     # ── Build pick ────────────────────────────────────────────────────────
     pick = _build_pick(
         game, line, spread, float(ou) if ou else None,
@@ -398,6 +414,8 @@ def analyse_game(
     pick["warnings"]         = warnings
     pick["season"]           = year
     pick["meets_publish_bar"] = meets_publish_bar
+    pick["injury_summary"]   = injury_flags.get("summary", "")
+    pick["injury_suppress"]  = injury_flags.get("suppress_pick", False)
 
     return pick
 
@@ -515,6 +533,12 @@ def main() -> int:
         g for g in all_games
         if g.get("homeClassification") == "fbs"
         and g.get("awayClassification") == "fbs"
+        and not g.get("neutralSite", False)  # FIXED 2026-07-09: exclude neutral site
+        # Neutral site games have no home field advantage, and CFBD arbitrarily
+        # assigns one team as "home" -- this breaks the model's home/away spread
+        # orientation and home-team PPA gap logic. Examples: Lambeau Field opener
+        # (Wisconsin @ Notre Dame, Week 1 2026), Dublin games, bowl-style openers.
+        # The mart's neutral_site column is populated from this same field.
     ]
     if not games:
         print("No FBS-vs-FBS games found from CFBD API")
