@@ -1,10 +1,7 @@
 # Operating Narcisystem (ONS) 2026
 
-**Because if you're going to be obsessed with yourself, you might as well make it a data pipeline.**
-
 ONS is a personal analytics platform that treats life as a system — observable, measurable, automatable, and continuously improvable. It ingests your entire existence, runs it through a data stack, and tells you whether you're actually getting shit done or just think you are.
 
-Built on the same principles as modern data infrastructure, because your 9am runs and CrossFit PRs deserve the same rigor as production databases.
 
 ---
 
