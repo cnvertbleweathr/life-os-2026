@@ -1,0 +1,41 @@
+name: CFB Picks Validation
+
+# Runs the Thursday picks report against the live warehouse. This targets
+# the self-hosted Mac mini runner (see Phase 1 item 6 / Actions Phase 8 in
+# ROADMAP.md) because it needs the real ons.duckdb warehouse and local
+# .env credentials — a GitHub-hosted runner has neither. Until the Mac mini
+# is registered as a runner (`python scripts/setup_runner.py`), this
+# workflow will queue and never pick up a job; that's expected, not broken.
+
+on:
+  schedule:
+    # Thursdays at 13:00 UTC (~7am Denver during DST, ~6am standard time)
+    - cron: "0 13 * * 4"
+  workflow_dispatch: {}
+
+jobs:
+  generate-picks-report:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stop FastAPI (DuckDB single-writer rule)
+        run: |
+          # FastAPI is run manually via `uvicorn api.main:app ... &`, not launchd
+          # (see README.md). Kill whatever is bound to :8000 so dbt/DLT can get
+          # a write lock on ons.duckdb, then restart it after.
+          lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+
+      - name: Generate picks report
+        run: python3 scripts/generate_picks_report.py
+
+      - name: Restart FastAPI
+        if: always()
+        run: nohup uvicorn api.main:app --port 8000 > /tmp/ons-api.log 2>&1 &
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: picks-report-${{ github.run_id }}
+          path: data/bets/picks_report_*.md
+          if-no-files-found: ignore
