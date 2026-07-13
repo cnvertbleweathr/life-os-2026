@@ -7,6 +7,7 @@ import { OnsIcon } from "@/components/ui/icons";
 
 const CFB_BACKTEST_ROI = "+34.5"; // confirmed 4-season walk-forward backtest, same fact as the CFB page header
 
+
 function CalendarIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
   if (/concert|show|fest/.test(t)) return <OnsIcon name="shows" size={13} stroke={1.6} style={{ color: "#a39d8c" }} />;
@@ -20,6 +21,7 @@ export default function HomePage() {
   const [habitsToday, setHabitsToday] = useState<HabitToday | null>(null);
   const [streams, setStreams] = useState<StreamsToday | null>(null);
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [brief, setBrief] = useState<any>(null);
   const [vote, setVote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [streamsError, setStreamsError] = useState<string | null>(null);
@@ -32,9 +34,13 @@ export default function HomePage() {
         setDone(Object.fromEntries(t.habits.map((x) => [x.key, x.done])));
       })
       .catch((e) => setError(e.message));
-
-    // Separate call/catch — a streams fetch failure shouldn't block the
-    // rest of Home, same pattern as Music News.
+  
+    // Fetch the OpenClaw brief
+    fetch('http://localhost:8000/api/home/brief/latest?brief_type=daily')
+      .then(r => r.json())
+      .then(b => setBrief(b))
+      .catch(e => console.error('Brief fetch error:', e));
+  
     sportsApi.streams()
       .then(setStreams)
       .catch((e) => setStreamsError(e.message));
@@ -161,16 +167,17 @@ export default function HomePage() {
               </div>
               <span className="font-mono text-faint" style={{ fontSize: 9 }}>UPDATED {data.date}</span>
             </div>
-            <p
-              className="font-serif m-0"
-              style={{ fontSize: 21, lineHeight: 1.4, color: "#232a22", maxWidth: 640, marginBottom: 18 }}
-            >
-              You're <b className="text-green">on pace for running</b> and{" "}
-              <b style={{ color: readingOnPace ? "#1d5536" : "#a8473a" }}>
-                {readingOnPace ? "on pace for reading" : "behind on reading"}
-              </b>. {calendar.length === 0 ? "Nothing on the calendar — " : "Light day on the calendar — "}
-              a good window to {doneCount < habitsTotal ? "close the habit gap." : "stay ahead on habits."}
-            </p>
+            {brief ? (
+              <p
+                className="font-serif m-0"
+                style={{ fontSize: 21, lineHeight: 1.4, color: "#232a22", maxWidth: 640, marginBottom: 18 }}
+                dangerouslySetInnerHTML={{ __html: brief.brief_content.replace(/\n/g, '<br/>') }}
+              />
+            ) : (
+              <p className="font-serif m-0 text-muted" style={{ fontSize: 21, lineHeight: 1.4, maxWidth: 640, marginBottom: 18 }}>
+                Loading brief…
+              </p>
+            )}
             <div className="grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid #ebe5d8" }}>
               {[
                 {

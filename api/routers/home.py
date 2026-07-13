@@ -152,6 +152,48 @@ async def home_summary(request: Request):
         "streams":    streams,
     }
 
+@router.get("/briefs")
+async def get_briefs(request: Request, brief_type: str = None):
+    """Get life briefs (daily or weekly)."""
+    db = get_db(request)
+    
+    if brief_type:
+        rows = query(db, """
+            SELECT brief_date, brief_type, brief_content, token_count, generated_at
+            FROM dashboard_life_briefs
+            WHERE brief_type = ?
+            LIMIT 10
+        """, [brief_type])
+    else:
+        rows = query(db, """
+            SELECT brief_date, brief_type, brief_content, token_count, generated_at
+            FROM dashboard_life_briefs
+            LIMIT 10
+        """)
+    
+    return [dict(row) for row in rows]
+
+
+@router.get("/brief/latest")
+async def get_latest_brief(request: Request, brief_type: str = "daily"):
+    """Get the latest brief (daily or weekly)."""
+    db = get_db(request)
+    
+    row = query_one(db, """
+        SELECT brief_date, brief_type, brief_content, token_count, generated_at
+        FROM dashboard_life_briefs
+        WHERE brief_type = ?
+        ORDER BY generated_at DESC
+        LIMIT 1
+    """, [brief_type])
+    
+    return dict(row) if row else None
+
+
+@router.get("/wod")
+async def get_wod():
+    """Today's WOD from CrossFit Park Hill."""
+    return _load_json(WOD_PATH) or {}
 
 @router.get("/wod")
 async def get_wod():
