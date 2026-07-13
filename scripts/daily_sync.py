@@ -17,6 +17,9 @@ Exit codes:
 """
 from __future__ import annotations
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import argparse
 import json
 import os
@@ -25,7 +28,13 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Callable
+from pathlib import Path
+try:
+    from openclaw.orchestrator import run_openclaw_tier1
+except ImportError:
+    run_openclaw_tier1 = None
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -39,11 +48,12 @@ YEAR = datetime.now().year  # single source — no hardcoded 2026 anywhere
 @dataclass
 class Step:
     name:          str
-    cmd:           List[str]
+    cmd:           List[str]      = None
+    run_fn:        Optional[Callable] = None
     required:      bool           = False
-    run_if_exists: Optional[Path] = None   # skip if this path does not exist
+    run_if_exists: Optional[Path] = None
     tags:          List[str]      = field(default_factory=list)
-    run_on_days:   Optional[List[int]] = None  # 0=Mon … 6=Sun; None=every day
+    run_on_days:   Optional[List[int]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -97,63 +107,75 @@ def _write_pipeline_run(name: str, result: dict) -> None:
 
 
 def run_step(step: Step, log_dir: Path) -> dict:
-    """
-    Execute one step. Returns a result dict with status, duration, and log path.
-
-    Status values:
-      ok       — exit code 0
-      failed   — non-zero exit code or exception
-      skipped  — day-of-week gate or run_if_exists check did not pass
-    """
+    """Execute one step. Returns a result dict."""
     started_dt = datetime.now()
     start      = started_dt.isoformat(timespec="seconds")
 
-    # ── Day-of-week gate ─────────────────────────────────────────────────────
+    # Day-of-week gate
     if step.run_on_days is not None:
         if started_dt.weekday() not in step.run_on_days:
             return {
                 "name":     step.name,
                 "status":   "skipped",
-                "reason":   f"not scheduled today (runs on days {step.run_on_days})",
+                "reason":   f"not scheduled today",
                 "required": step.required,
             }
 
-    # ── run_if_exists gate ───────────────────────────────────────────────────
+    # run_if_exists gate
     if step.run_if_exists is not None and not step.run_if_exists.exists():
         return {
             "name":     step.name,
             "status":   "skipped",
-            "reason":   f"run_if_exists path not found: {step.run_if_exists}",
+            "reason":   f"run_if_exists path not found",
             "required": step.required,
         }
 
     log_path = log_dir / f"{step.name}.log"
 
     try:
-        proc = subprocess.run(
-            step.cmd,
-            cwd=str(ROOT),
-            capture_output=True,
-            text=True,
-            check=False,
-            env=os.environ.copy(),
-        )
+        # Handle callable functions (like OpenClaw)
+        if step.run_fn is not None:
+            from openclaw.orchestrator import run_openclaw_tier1
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Running {step.name}...")
+            step.run_fn()
+            proc_returncode = 0
+            stdout_text = f"OpenClaw {step.name} completed"
+            stderr_text = ""
+        else:
+            # Handle subprocess commands
+            proc = subprocess.run(
+                step.cmd,
+                cwd=str(ROOT),
+                capture_output=True,
+                text=True,
+                check=False,
+                env=os.environ.copy(),
+            )
+            proc_returncode = proc.returncode
+            stdout_text = proc.stdout or ""
+            stderr_text = proc.stderr or ""
+
         ended_dt = datetime.now()
         duration = round((ended_dt - started_dt).total_seconds(), 2)
 
         with open(log_path, "w", encoding="utf-8") as f:
-            f.write(f"$ {' '.join(step.cmd)}\n")
-            f.write(f"# started {start}  exit {proc.returncode}  {duration}s\n\n")
-            f.write(proc.stdout or "")
-            if proc.stderr:
+            if step.cmd:
+                f.write(f"$ {' '.join(step.cmd)}\n")
+            else:
+                f.write(f"# {step.name} (Python function)\n")
+            f.write(f"# started {start}  exit {proc_returncode}  {duration}s\n\n")
+            f.write(stdout_text)
+            if stderr_text:
                 f.write("\n--- STDERR ---\n")
-                f.write(proc.stderr)
+                f.write(stderr_text)
 
-        status = "ok" if proc.returncode == 0 else "failed"
+        status = "ok" if proc_returncode == 0 else "failed"
         result = {
             "name":       step.name,
             "status":     status,
-            "returncode": proc.returncode,
+            "returncode": proc_returncode,
             "started_at": start,
             "ended_at":   ended_dt.isoformat(timespec="seconds"),
             "duration_s": duration,
@@ -161,8 +183,7 @@ def run_step(step: Step, log_dir: Path) -> dict:
             "log":        str(log_path),
         }
         if status == "failed":
-            # Include last 10 lines of stderr in the summary for quick diagnosis
-            stderr_tail = (proc.stderr or "").strip().splitlines()[-10:]
+            stderr_tail = (stderr_text or "").strip().splitlines()[-10:]
             result["stderr_tail"] = stderr_tail
         _write_pipeline_run(step.name, result)
         return result
@@ -183,6 +204,7 @@ def run_step(step: Step, log_dir: Path) -> dict:
             "error":      repr(e),
             "log":        str(log_path),
         }
+
 
 
 # ---------------------------------------------------------------------------
@@ -344,33 +366,6 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
-        # CFB — grade archived picks against real results (every day)
-        # ------------------------------------------------------------------
-        # No run_on_days gate, unlike the two steps above -- games finish
-        # on varying weekdays (Thu/Fri/Sat/occasional Tue), so this needs
-        # to check daily, not on a fixed schedule. Idempotent and cheap:
-        # already-fully-graded weeks are skipped before any CFBD call.
-        Step(
-            name="grade_picks",
-            cmd=["python3", "scripts/grade_picks.py"],
-            run_if_exists=ROOT / "scripts/grade_picks.py",
-            tags=["betting", "cfb"],
-        ),
-
-        # ------------------------------------------------------------------
-        # CFB — load picks archive into DuckDB (every day, after grading)
-        # ------------------------------------------------------------------
-        # Runs after grade_picks so cfbd.live_picks reflects same-day
-        # outcome updates, not yesterday's. Merge write_disposition means
-        # this is cheap even when nothing changed.
-        Step(
-            name="live_picks_pipeline",
-            cmd=["python3", "pipelines/live_picks_pipeline.py"],
-            run_if_exists=ROOT / "pipelines/live_picks_pipeline.py",
-            tags=["betting", "cfb", "pipelines"],
-        ),
-
-        # ------------------------------------------------------------------
         # Shows — playlist artist cross-reference
         # ------------------------------------------------------------------
         Step(
@@ -408,15 +403,18 @@ def build_steps(year: int) -> List[Step]:
             run_if_exists=ROOT / "scripts/load_goal_progress.py",
             tags=["dbt"],
         ),
-
-        # ------------------------------------------------------------------
-        # DuckDB backup — always last, after all writes complete
-        # ------------------------------------------------------------------
+        Step(
+            name="openclaw_generation",
+            cmd=None,
+            run_fn=run_openclaw_tier1,
+            required=False,
+            tags=["ai"],
+        ),
         Step(
             name="backup_duckdb",
             cmd=["python3", "scripts/backup_duckdb.py", "--retention", "7"],
             run_if_exists=ROOT / "scripts/backup_duckdb.py",
-            required=False,  # backup failure does not fail the sync
+            required=False,
             tags=["infra"],
         ),
     ]
