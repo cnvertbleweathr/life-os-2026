@@ -17,7 +17,7 @@ jobs:
   generate-picks-report:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Stop FastAPI (DuckDB single-writer rule)
         run: |
