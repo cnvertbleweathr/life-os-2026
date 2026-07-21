@@ -30,13 +30,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Callable
 from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+import sys; sys.path.insert(0, str(ROOT))
 try:
     from openclaw.orchestrator import run_openclaw_tier1
 except ImportError:
     run_openclaw_tier1 = None
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 YEAR = datetime.now().year  # single source — no hardcoded 2026 anywhere
 

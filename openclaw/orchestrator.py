@@ -37,3 +37,5 @@ def run_openclaw_tier1():
             log_openclaw_execution("weekly_recap", "generate_text", [], [], 0, 0, 0, "error", str(e))
     
     logger.info("OpenClaw Tier 1 complete")
+    return {"status": "ok"}
+
