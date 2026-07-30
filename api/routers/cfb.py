@@ -676,4 +676,6 @@ async def cfb_schedule(
             "away_conference": g.get("awayConference"),
         }
         for g in games
+        if g.get("homeClassification") == "fbs"
+        and g.get("awayClassification") == "fbs"
     ]
