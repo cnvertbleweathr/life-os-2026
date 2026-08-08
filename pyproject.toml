@@ -3,7 +3,7 @@ name = "ons-2026"
 version = "0.1.0"
 requires-python = ">=3.12,<3.15"
 dependencies = [
-    "dbt-core>=1.11.8",
+    "dbt-core>=1.11.12",
     "dbt-duckdb>=1.10.1",
     "dlt[duckdb]>=1.4.0",
     "duckdb>=1.5.2",
