@@ -651,6 +651,106 @@ function ScheduleColumn({
 // This is a deliberately honest stand-in for the real archive/grading
 // system, not a feature in itself — see ROADMAP.md.
 
+
+function ScoreBar({ score }) {
+  const pct = Math.max(0, Math.min(100, (score / 99) * 100));
+  const color = score >= 70 ? "#1d5536" : score >= 50 ? "#a39d8c" : "#d4cfc5";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ width: 64, height: 3, background: "#e8e4dc", borderRadius: 2, overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2 }} />
+      </div>
+      <span style={{ fontFamily: "monospace", fontSize: 11, color, fontWeight: score >= 70 ? 600 : 400, minWidth: 20 }}>
+        {score > 0 ? score : "—"}
+      </span>
+    </div>
+  );
+}
+
+function SlateRow({ p }) {
+  const isOfficial = p.meets_publish_bar;
+  const hasSignal = (p.model_score || 0) > 0;
+  const parts = (p.matchup || "").split(" @ ");
+  const away = parts[0] || "";
+  const home = parts[1] || "";
+  return (
+    <div style={{ padding: "9px 0", borderBottom: "1px solid #eeebe3", opacity: hasSignal ? 1 : 0.4 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: hasSignal ? 3 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden" }}>
+          <Crest name={away} size={15} />
+          <span style={{ fontSize: 12, fontFamily: "var(--font-serif, Georgia, serif)", fontWeight: isOfficial ? 700 : 500, color: isOfficial ? "#1a2617" : "#4a4840", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.matchup}</span>
+          <Crest name={home} size={15} />
+        </div>
+        <ScoreBar score={p.model_score || 0} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 11, color: isOfficial ? "#1d5536" : hasSignal ? "#736e5f" : "#c4bfb5", fontWeight: isOfficial ? 600 : 400 }}>
+            {p.bet || ""}
+            {isOfficial && <span style={{ marginLeft: 6, fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff", background: "#1d5536", borderRadius: 3, padding: "1px 5px" }}>PICK</span>}
+          </span>
+          <span style={{ fontSize: 10, fontFamily: "monospace", color: hasSignal ? "#a39d8c" : "#d4cfc5" }}>{p.line || ""}</span>
+        </div>
+      {isOfficial && p.edge && <p style={{ fontSize: 10, color: "#736e5f", margin: "3px 0 0", lineHeight: 1.4 }}>{p.edge}</p>}
+    </div>
+  );
+}
+
+
+function NoSignalSection({ games }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button
+        onClick={() => setOpen(prev => !prev)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
+        <div style={{ flex: 1, height: 1, background: '#e5e0d4' }} />
+        <span style={{ fontSize: 9, fontFamily: 'monospace', textTransform: 'uppercase',
+          letterSpacing: '0.08em', color: '#c4bfb5' }}>
+          {open ? 'Hide' : 'Show'} no signal ({games.length})
+        </span>
+        <div style={{ flex: 1, height: 1, background: '#e5e0d4' }} />
+      </button>
+      {open && games.map((p, i) => <SlateRow key={'ns-' + i} p={p} />)}
+    </div>
+  );
+}
+
+function SlateColumn({ season, week }) {
+  const [slate, setSlate] = useState(null);
+  useEffect(() => {
+    cfbApi.slate(season, week).then(setSlate).catch(() => setSlate([]));
+  }, [season, week]);
+
+  const official  = (slate || []).filter(p => p.meets_publish_bar);
+  const watchlist = (slate || []).filter(p => !p.meets_publish_bar && (p.model_score || 0) > 0);
+  const noSignal  = (slate || []).filter(p => !p.meets_publish_bar && !(p.model_score || 0));
+
+  const Divider = ({ label }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 4px" }}>
+      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+      <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a39d8c" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+    </div>
+  );
+
+  if (slate === null) return <div style={{ padding: "32px 0", textAlign: "center", color: "#a39d8c", fontSize: 12 }}>Loading slate…</div>;
+  if (slate.length === 0) return (
+    <div style={{ padding: "24px 16px", textAlign: "center", background: "#f7f5f0", borderRadius: 6, border: "1px solid #e8e4dc" }}>
+      <p style={{ fontSize: 13, color: "#736e5f", margin: "0 0 6px" }}>No scored games yet.</p>
+      <p style={{ fontSize: 11, color: "#a39d8c", margin: 0, lineHeight: 1.5 }}>Lines haven’t posted or generate_picks.py hasn’t run yet.</p>
+    </div>
+  );
+
+  return (
+    <div>
+      {official.length > 0 && <><Divider label={`Official picks (${official.length})`} />{official.map((p, i) => <SlateRow key={`off-${i}`} p={p} />)}</>}
+      {watchlist.length > 0 && <><Divider label={`Signal below bar (${watchlist.length})`} />{watchlist.map((p, i) => <SlateRow key={`w-${i}`} p={p} />)}</>}
+      {noSignal.length > 0 && <NoSignalSection games={noSignal} />}
+    </div>
+  );
+}
+
 function PickCard({ p, isOfficial = true }: { p: CfbPick; isOfficial?: boolean }) {
   const isTierRisk = p.bet_type === "FADE_TIER_RISK";
   const accentColor = !isOfficial ? "#a39d8c" : isTierRisk ? "#9a6a1e" : "#1d5536";
@@ -819,7 +919,7 @@ function Slate() {
 
   return (
     <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1fr 1fr" }}>
-      <PicksColumn season={season} week={week} />
+      <SlateColumn season={season} week={week} />
       <ScheduleColumn
         season={season}
         week={week}

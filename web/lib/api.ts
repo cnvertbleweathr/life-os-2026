@@ -525,6 +525,10 @@ export const cfbApi = {
   // min_score defaults to 70 server-side too (api/routers/cfb.py) --
   // passed explicitly here so the client's default is self-documenting
   // and doesn't silently drift from the server's if either changes.
+  slate: (season: number, week: number) =>
+    get<CfbPick[]>(`/cfb/slate?season=${season}&week=${week}`),
+  slate: (season: number, week: number) =>
+    get<CfbPick[]>(`/cfb/slate?season=${season}&week=${week}`),
   picks: () =>
     get<CfbPick[]>(`/cfb/picks`),
   picksSummary: () => get<CfbPicksSummary>("/cfb/picks/summary"),

@@ -46,6 +46,35 @@ async def cfb_picks(
     except Exception:
         return []
 
+@router.get("/slate")
+async def cfb_slate(
+    season: int = Query(None),
+    week:   int = Query(None),
+):
+    """Full scored slate for a given week, ranked by model_score."""
+    BETS_DIR = Path(__file__).resolve().parents[2] / "data" / "bets" / "history"
+    from datetime import datetime as _dt
+    if season is None: season = _dt.now().year
+    if week is None:
+        # Simple week estimator: CFB season runs ~late Aug to Jan
+        today = _dt.now()
+        if today.month >= 8:
+            week = max(1, (today.isocalendar()[1] - 34))
+        else:
+            week = 1
+    fname = BETS_DIR / f"{season}_wk{week:02d}.json"
+    if not fname.exists(): return []
+    try:
+        games = json.loads(fname.read_text())
+        if isinstance(games, dict): games = games.get("games", [])
+    except Exception: return []
+    games.sort(key=lambda g: (
+        0 if g.get("meets_publish_bar") else (1 if (g.get("model_score") or 0) > 0 else 2),
+        -(g.get("model_score") or 0),
+        abs(float(g.get("spread") or 99))
+    ))
+    return games
+
 
 @router.get("/picks/summary")
 async def cfb_picks_summary():
