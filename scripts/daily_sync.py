@@ -345,14 +345,42 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
-        # CFB — picks (Tue + Wed)
+        # CFB — grade picks (daily during season Thu-Mon when games played)
+        # ------------------------------------------------------------------
+        Step(
+            name="grade_picks",
+            cmd=["python3", "scripts/grade_picks.py"],
+            run_if_exists=ROOT / "scripts/grade_picks.py",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],  # Mon + Thu-Sun
+        ),
+        # --------------------------------------------------------------
+        # CFB — sync graded picks to DuckDB + refresh mart
+        # ------------------------------------------------------------------
+        Step(
+            name="live_picks_pipeline",
+            cmd=["python3", "pipelines/live_picks_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/live_picks_pipeline.py",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],  # Mon + Thu-Sun, after grade_picks
+        ),
+        Step(
+            name="mart_live_picks",
+            cmd=["python3", "-m", "dbt", "run", "--profiles-dir", "dbt/profiles",
+                 "--project-dir", "dbt", "--select", "mart_live_picks"],
+            run_if_exists=ROOT / "dbt/models/marts/mart_live_picks.sql",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],  # Mon + Thu-Sun, after live_picks_pipeline
+        ),
+        # --------------------------------------------------------------
+        # CFB — picks (Mon-Wed to cover full weekly cycle)
         # ------------------------------------------------------------------
         Step(
             name="generate_picks",
             cmd=["python3", "scripts/generate_picks.py"],
             run_if_exists=ROOT / "scripts/generate_picks.py",
             tags=["betting", "cfb"],
-            run_on_days=[1, 2],  # Tuesday + Wednesday
+            run_on_days=[0, 1, 2],  # Monday + Tuesday + Wednesday
         ),
 
         # ------------------------------------------------------------------
