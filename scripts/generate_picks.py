@@ -106,9 +106,15 @@ def current_cfb_week(year: int) -> int | None:
     # went unnoticed across every manual run in this project so far).
     if 2 <= today.month <= 7:
         return None  # off-season
-    # Rough: Week 1 starts ~Aug 24
+    # Anchor on actual first game Saturday of the season.
+    # Week 1 typically starts the last Saturday of August or first of September.
+    # Use Aug 29 as the anchor for 2026 (confirmed first game date).
+    # Each week runs Saturday-to-Friday, so week rolls over on Saturday.
     from datetime import timedelta
-    season_start = date(year, 8, 24)
+    # Find the last Saturday of August as the season anchor
+    aug31 = date(year, 8, 31)
+    days_since_sat = (aug31.weekday() - 5) % 7  # 5 = Saturday
+    season_start = aug31 - timedelta(days=days_since_sat)
     delta = (today - season_start).days
     if delta < 0:
         return None
