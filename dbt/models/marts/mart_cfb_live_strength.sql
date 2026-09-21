@@ -100,7 +100,7 @@ game_sequence as (
     ) season_mr on season_mr.season = p.season
 
     where p.season_type = 'regular'
-      and p.season between 2021 and 2025
+      and p.season between 2021 and 2026
 ),
 
 -- Pre-aggregate the exponential decay contributions.
