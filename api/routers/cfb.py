@@ -691,7 +691,7 @@ async def cfb_schedule(
         "division": "fbs",
     })
 
-    return [
+    result = [
         {
             "game_id":         g.get("id"),
             "season":          season,
@@ -703,8 +703,36 @@ async def cfb_schedule(
             "home_conference": g.get("homeConference"),
             "away_team":       g.get("awayTeam"),
             "away_conference": g.get("awayConference"),
+            "home_score":      None,
+            "away_score":      None,
+            "is_final":        False,
         }
         for g in games
         if g.get("homeClassification") == "fbs"
         and g.get("awayClassification") == "fbs"
     ]
+
+    # Enrich with scores from the mart
+    try:
+        import duckdb as _duckdb
+        from pathlib import Path as _Path
+        _db = str(_Path(__file__).resolve().parents[2] / "data" / "warehouse" / "ons.duckdb")
+        _con = _duckdb.connect(_db, read_only=True)
+        _scores = _con.execute("""
+            SELECT game_id, home_score, away_score
+            FROM main_marts.mart_cfbd_game_context
+            WHERE season = ? AND week = ? AND home_score IS NOT NULL
+        """, [season, week]).df()
+        _con.close()
+        _score_map = {int(r.game_id): (int(r.home_score), int(r.away_score))
+                      for _, r in _scores.iterrows()}
+        for g in result:
+            scores = _score_map.get(g["game_id"])
+            if scores:
+                g["home_score"] = scores[0]
+                g["away_score"] = scores[1]
+                g["is_final"] = True
+    except Exception:
+        pass
+
+    return result

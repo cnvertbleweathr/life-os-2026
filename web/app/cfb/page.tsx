@@ -494,11 +494,15 @@ function ScheduleGameRow({ g, showDateHeader }: { g: CfbScheduleGame; showDateHe
         </div>
       )}
       <div className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "11px 6px", margin: "0 -6px" }}>
-        <span className="font-mono text-faint shrink-0" style={{ fontSize: 10, width: 56 }}>{time}</span>
+        <span className="font-mono text-faint shrink-0" style={{ fontSize: 10, width: 56 }}>{(g as any).is_final ? "Final" : time}</span>
         <div className="flex-1 flex items-center gap-2 min-w-0">
           <Crest name={g.away_team} size={20} />
           <span className="truncate" style={{ fontSize: 13.5 }}>{g.away_team}</span>
-          <span className="text-faint shrink-0" style={{ fontSize: 13.5 }}>@</span>
+          {(g as any).is_final ? (
+            <span className="font-mono shrink-0" style={{ fontSize: 13, fontWeight: 700, color: "#1a2617" }}>{(g as any).away_score} – {(g as any).home_score}</span>
+          ) : (
+            <span className="text-faint shrink-0" style={{ fontSize: 13.5 }}>@</span>
+          )}
           <Crest name={g.home_team} size={20} />
           <span className="truncate" style={{ fontSize: 13.5 }}>{g.home_team}</span>
         </div>

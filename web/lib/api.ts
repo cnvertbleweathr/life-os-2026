@@ -447,6 +447,9 @@ export interface CfbScheduleGame {
   home_conference: string | null;
   away_team: string;
   away_conference: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  is_final: boolean;
 }
 
 /** Confirmed real shape written by scripts/generate_picks.py into
