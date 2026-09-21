@@ -345,6 +345,24 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB — ingest extended CFBD data (per-game PPA, recruiting, etc.)
+        # Runs Mon+Thu so live_strength mart stays current through the week
+        # ------------------------------------------------------------------
+        Step(
+            name="cfbd_extended_pipeline",
+            cmd=["python3", "pipelines/cfbd_extended_pipeline.py", "--year", "2026"],
+            run_if_exists=ROOT / "pipelines/cfbd_extended_pipeline.py",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],  # Mon + Thu-Sun
+        ),
+        Step(
+            name="mart_cfb_live_strength",
+            cmd=["python3", "-m", "dbt", "run", "--profiles-dir", "dbt/profiles",
+             "--project-dir", "dbt", "--select", "mart_cfb_live_strength"],
+            run_if_exists=ROOT / "dbt/models/marts/mart_cfb_live_strength.sql",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],
+        ),
         # CFB — grade picks (daily during season Thu-Mon when games played)
         # ------------------------------------------------------------------
         Step(
