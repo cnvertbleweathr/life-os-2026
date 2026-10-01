@@ -6,6 +6,33 @@ import {
   Card, PageHead, K, Pill, Watermark, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { Sparkline } from "@/components/ui/viz";
+
+// ── Strength data types ───────────────────────────────────────────────────────
+
+interface StrengthRow {
+  team: string;
+  season: number;
+  week: number;
+  off_raw: number;
+  def_raw: number;
+}
+
+async function fetchStrength(season: number, teams: string[]): Promise<StrengthRow[]> {
+  const params = new URLSearchParams({ season: String(season), teams: teams.join(",") });
+  const base = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
+  const res = await fetch(`${base}/cfb/strength?${params}`);
+  if (!res.ok) throw new Error(`strength fetch failed: ${res.status}`);
+  return res.json();
+}
+
+interface StrengthSummary {
+  offPct: number | null;
+  defPct: number | null;
+  offScore: number | null;
+  defScore: number | null;
+  wkTrend: number | null;
+}
 
 const TIER_COLORS: Record<string, string> = {
   ELITE: "#1d5536", STRONG: "#2f6b43", NEUTRAL: "#736e5f", FADE: "#9a6a1e", STRONG_FADE: "#a8473a",
@@ -49,34 +76,232 @@ function MetricBar({ label, value, lo, hi, fmt, invert }: {
   );
 }
 
-function TeamProfile({ team }: { team: CfbTeam }) {
+function StrengthTile({ label, value, delta, isGoodHigh = true }: {
+  label: string; value: number | null; delta?: number | null; isGoodHigh?: boolean;
+}) {
+  const hasVal = value != null;
+  const good = hasVal && (isGoodHigh ? (value as number) >= 0 : (value as number) <= 0);
+  const color = !hasVal ? "#a39d8c" : good ? "#1d5536" : "#9a6a1e";
+  return (
+    <div style={{ background: "#faf8f4", border: "1px solid #ebe5d8", borderRadius: 8, padding: "10px 12px", marginBottom: 8 }}>
+      <Mono s={8.5} c="#a39d8c">{label}</Mono>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4 }}>
+        <span className="font-mono" style={{ fontSize: 18, fontWeight: 700, color }}>
+          {hasVal ? (value as number).toFixed(3) : "—"}
+        </span>
+        {delta != null && Math.abs(delta) > 0.001 && (
+          <Mono s={9} c={delta >= 0 ? "#1d5536" : "#a8473a"}>
+            {delta >= 0 ? "▲" : "▼"}{Math.abs(delta).toFixed(3)}
+          </Mono>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniBar({ pct, color = "#1d5536" }: { pct: number; color?: string }) {
+  const w = Math.max(4, Math.min(100, pct));
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <div style={{ width: 40, height: 4, background: "#efebe1", borderRadius: 2, overflow: "hidden", flexShrink: 0 }}>
+        <div style={{ width: `${w}%`, height: "100%", background: color, borderRadius: 2 }} />
+      </div>
+    </div>
+  );
+}
+
+function GameDrill({ g, season, onClose }: { g: CfbScheduleGame; season: number; onClose: () => void }) {
+  const [rows, setRows] = useState<StrengthRow[] | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRows(null);
+    setLoadErr(null);
+    fetchStrength(season, [g.away_team, g.home_team])
+      .then(setRows)
+      .catch((e: Error) => setLoadErr(e.message));
+  }, [g.away_team, g.home_team, season]);
+
+  const awayRows = (rows ?? []).filter(r => r.team === g.away_team).sort((a, b) => a.week - b.week);
+  const homeRows = (rows ?? []).filter(r => r.team === g.home_team).sort((a, b) => a.week - b.week);
+
+  const awayLast  = awayRows[awayRows.length - 1] ?? null;
+  const awayFirst = awayRows[0] ?? null;
+  const homeLast  = homeRows[homeRows.length - 1] ?? null;
+  const homeFirst = homeRows[0] ?? null;
+
+  const allOff = (rows ?? []).map(r => r.off_raw);
+  const allDef = (rows ?? []).map(r => r.def_raw);
+  const pctile = (v: number | null, arr: number[]) => {
+    if (v == null || arr.length === 0) return null;
+    return Math.round((arr.filter(x => x <= v).length / arr.length) * 100);
+  };
+
+  const awayOffPct   = pctile(awayLast?.off_raw ?? null, allOff);
+  const awayDefPct   = pctile(awayLast?.def_raw ?? null, allDef);
+  const awayOffDelta = (awayLast && awayFirst) ? awayLast.off_raw - awayFirst.off_raw : null;
+  const awayDefDelta = (awayLast && awayFirst) ? awayLast.def_raw - awayFirst.def_raw : null;
+  const homeOffPct   = pctile(homeLast?.off_raw ?? null, allOff);
+  const homeDefPct   = pctile(homeLast?.def_raw ?? null, allDef);
+  const homeOffDelta = (homeLast && homeFirst) ? homeLast.off_raw - homeFirst.off_raw : null;
+  const homeDefDelta = (homeLast && homeFirst) ? homeLast.def_raw - homeFirst.def_raw : null;
+
+  const awayOff = awayRows.map(r => r.off_raw);
+  const awayDef = awayRows.map(r => r.def_raw);
+  const homeOff = homeRows.map(r => r.off_raw);
+  const homeDef = homeRows.map(r => r.def_raw);
+
+  const time = g.start_date
+    ? new Date(g.start_date).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : "TBD";
+
+  return (
+    <div style={{ background: "#ffffff", border: "1px solid #e6e3dc", borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Crest name={g.away_team} size={20} />
+          <span className="font-serif" style={{ fontSize: 14, fontWeight: 700 }}>{g.away_team} @ {g.home_team}</span>
+          <Crest name={g.home_team} size={20} />
+          {(g as any).conference_game && <Mono s={8.5} c="#a39d8c">CONF</Mono>}
+          {(g as any).neutral_site && <Mono s={8.5} c="#a39d8c">NEUTRAL</Mono>}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Mono s={10} c="#a39d8c">{time}</Mono>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#a39d8c", lineHeight: 1, padding: "2px 4px" }}>✕</button>
+        </div>
+      </div>
+
+      {loadErr ? (
+        <ErrorState message={loadErr} />
+      ) : !rows ? (
+        <Loading label="Loading strength data…" />
+      ) : (
+        <>
+          <div style={{ display: "flex", borderTop: "1px solid #ebe5d8", borderBottom: "1px solid #ebe5d8", paddingTop: 14, paddingBottom: 14, marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Crest name={g.away_team} size={26} />
+                <div>
+                  <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "#1a2420" }}>{g.away_team}</div>
+                  <Mono s={9} c="#a39d8c">AWAY</Mono>
+                </div>
+              </div>
+              <StrengthTile label="OFF %ILE" value={awayOffPct} isGoodHigh />
+              <StrengthTile label="DEF %ILE" value={awayDefPct} isGoodHigh />
+              <StrengthTile label="OFF SCORE" value={awayLast?.off_raw ?? null} delta={awayOffDelta} isGoodHigh />
+              <StrengthTile label="DEF SCORE" value={awayLast?.def_raw ?? null} delta={awayDefDelta} isGoodHigh />
+            </div>
+            <div style={{ width: 1, background: "#ebe5d8", flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0, paddingLeft: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Crest name={g.home_team} size={26} />
+                <div>
+                  <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "#1a2420" }}>{g.home_team}</div>
+                  <Mono s={9} c="#a39d8c">HOME</Mono>
+                </div>
+              </div>
+              <StrengthTile label="OFF %ILE" value={homeOffPct} isGoodHigh />
+              <StrengthTile label="DEF %ILE" value={homeDefPct} isGoodHigh />
+              <StrengthTile label="OFF SCORE" value={homeLast?.off_raw ?? null} delta={homeOffDelta} isGoodHigh />
+              <StrengthTile label="DEF SCORE" value={homeLast?.def_raw ?? null} delta={homeDefDelta} isGoodHigh />
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <K>Season Efficiency Trend · {season}</K>
+              <div style={{ display: "flex", gap: 14 }}>
+                {[{ color: "#1d5536", label: "Off PPA" }, { color: "#a8473a", label: "Def PPA" }].map(({ color, label }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 14, height: 2, background: color, borderRadius: 1 }} />
+                    <Mono s={9} c="#a39d8c">{label}</Mono>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 16 }}>
+              {[
+                { team: g.away_team, off: awayOff, def: awayDef },
+                { team: g.home_team, off: homeOff, def: homeDef },
+              ].map(({ team, off, def }) => (
+                <div key={team} style={{ flex: 1, minWidth: 0 }}>
+                  <Mono s={9} c="#a39d8c">{team.toUpperCase()}</Mono>
+                  <div style={{ position: "relative", marginTop: 4, height: 60 }}>
+                    {off.length > 0 && <Sparkline data={off} w={200} h={60} stroke="#1d5536" fill="#1d5536" sw={1.8} dot />}
+                    {def.length > 0 && (
+                      <div style={{ position: "absolute", top: 0, left: 0 }}>
+                        <Sparkline data={def} w={200} h={60} stroke="#a8473a" fill="#a8473a" sw={1.8} dot />
+                      </div>
+                    )}
+                    {off.length === 0 && def.length === 0 && <div style={{ paddingTop: 20 }}><Mono s={9} c="#a39d8c">no data</Mono></div>}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
+                    <Mono s={8.5} c="#a39d8c">Wk 1</Mono>
+                    <Mono s={8.5} c="#a39d8c">Wk {Math.max(awayRows.length, homeRows.length)}</Mono>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── TeamProfile — full detail panel ──────────────────────────────────────────
+
+function TeamProfile({ team, onClose }: { team: CfbTeam; onClose: () => void }) {
   const [detail, setDetail] = useState<CfbTeamDetail | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [strengthRows, setStrengthRows] = useState<StrengthRow[] | null>(null);
 
   useEffect(() => {
     setDetail(null);
     setLoadError(null);
+    setStrengthRows(null);
     cfbApi.team(team.team).then(setDetail).catch((e) => setLoadError(e.message));
+    const curSeason = new Date().getFullYear();
+    fetchStrength(curSeason, [team.team]).then(setStrengthRows).catch(() => setStrengthRows([]));
   }, [team.team]);
 
-  const tierColor = TIER_COLORS[team.tier] ?? "#736e5f";
+  const curSeason = new Date().getFullYear();
 
-  if (loadError) {
-    return (
-      <Card accent>
-        <ErrorState message={loadError} />
-      </Card>
-    );
-  }
+  if (loadError) return <Card accent><ErrorState message={loadError} /></Card>;
 
   const seasonRois = detail?.profile?.season_rois_json
     ? parseSeasonRois(detail.profile.season_rois_json as string)
     : [];
-  const maxAbsRoi = seasonRois.length
-    ? Math.max(...seasonRois.map((r) => Math.abs(r.roi ?? 0)), 10)
+
+  const allSeasonRois = (() => {
+    if (!detail) return seasonRois;
+    const hasCurrent = seasonRois.some(r => r.season === curSeason);
+    if (hasCurrent) return seasonRois;
+    return [...seasonRois, { season: curSeason, roi: null as any }];
+  })();
+
+  const maxAbsRoi = allSeasonRois.length
+    ? Math.max(...allSeasonRois.map((r) => Math.abs(r.roi ?? 0)), 10)
     : 10;
 
   const adv = detail?.advanced_stats;
+
+  const curRows = (strengthRows ?? []).filter(r => r.team === team.team).sort((a, b) => a.week - b.week);
+  const latestStr = curRows[curRows.length - 1] ?? null;
+  const offTrend = curRows.map(r => r.off_raw);
+  const defTrend = curRows.map(r => r.def_raw);
+
+  // Deduplicate recent games, limit to 10, include current season
+  const recentGames = (() => {
+    if (!detail) return [];
+    const seen = new Set<string>();
+    const unique: typeof detail.recent_games = [];
+    for (const g of detail.recent_games) {
+      const key = `${g.away_team}@${g.home_team}:${g.week}:${(g as any).season ?? ""}`;
+      if (!seen.has(key)) { seen.add(key); unique.push(g); }
+    }
+    return unique.slice(0, 10);
+  })();
 
   return (
     <Card accent style={{ position: "relative", overflow: "hidden" }}>
@@ -87,17 +312,15 @@ function TeamProfile({ team }: { team: CfbTeam }) {
           <div className="flex-1 min-w-0">
             <div className="font-serif font-bold text-ink leading-tight" style={{ fontSize: 23 }}>{team.team}</div>
             <div className="flex items-center gap-2 mt-1">
-              <span
-                className="font-mono text-white rounded-full"
-                style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", background: tierColor, padding: "2px 9px" }}
-              >
-                {team.tier}
-              </span>
-              {team.seasons_profitable >= 3 && (
-                <Mono s={9.5} c="#1d5536">● CONSISTENTLY PROFITABLE</Mono>
-              )}
+              {team.seasons_profitable >= 3 && <Mono s={9.5} c="#1d5536">● CONSISTENTLY PROFITABLE</Mono>}
             </div>
           </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#a39d8c", lineHeight: 1, padding: "4px 6px", alignSelf: "flex-start" }}
+          >
+            ✕
+          </button>
         </div>
 
         <div className="grid grid-cols-4 border-t border-b border-border-2 mb-[18px]">
@@ -114,20 +337,71 @@ function TeamProfile({ team }: { team: CfbTeam }) {
           ))}
         </div>
 
-        <div className="flex justify-between items-baseline mb-3">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <K>{curSeason} Season Efficiency</K>
+          <span className="font-mono text-faint" style={{ fontSize: 8.5 }}>CFBD PPA · current season</span>
+        </div>
+        {strengthRows === null ? (
+          <div style={{ padding: "16px 0" }}><Loading label="Loading current season data…" /></div>
+        ) : curRows.length === 0 ? (
+          <Empty message={`No ${curSeason} season strength data yet.`} />
+        ) : (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+              {[
+                { label: `Off PPA · Wk ${latestStr?.week ?? "—"}`, value: latestStr?.off_raw ?? null },
+                { label: `Def PPA · Wk ${latestStr?.week ?? "—"}`, value: latestStr?.def_raw ?? null },
+              ].map(({ label, value }) => {
+                const isGood = value != null && value >= 0;
+                const color = value == null ? "#a39d8c" : isGood ? "#1d5536" : "#9a6a1e";
+                return (
+                  <div key={label} style={{ background: "#faf8f4", border: "1px solid #ebe5d8", borderRadius: 7, padding: "9px 11px" }}>
+                    <Mono s={8.5} c="#a39d8c">{label}</Mono>
+                    <div className="font-mono" style={{ fontSize: 16, fontWeight: 700, marginTop: 4, color }}>
+                      {value != null ? (value >= 0 ? "+" : "") + value.toFixed(3) : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <Mono s={8.5} c="#a39d8c">SEASON TREND</Mono>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {[{ color: "#1d5536", label: "Offense" }, { color: "#a8473a", label: "Defense" }].map(({ color, label }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <div style={{ width: 12, height: 2, background: color, borderRadius: 1 }} />
+                      <Mono s={8.5} c="#a39d8c">{label}</Mono>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ position: "relative", height: 52 }}>
+                {offTrend.length > 0 && <Sparkline data={offTrend} w={280} h={52} stroke="#1d5536" fill="#1d5536" sw={1.8} dot />}
+                {defTrend.length > 0 && (
+                  <div style={{ position: "absolute", top: 0, left: 0 }}>
+                    <Sparkline data={defTrend} w={280} h={52} stroke="#a8473a" fill="#a8473a" sw={1.8} dot />
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
           <K>Prior-Season Efficiency</K>
-          <span className="font-mono text-faint" style={{ fontSize: 8.5 }}>cfbd.advanced_stats</span>
+          <span className="font-mono text-faint" style={{ fontSize: 8.5 }}>cfbd.advanced_stats · {curSeason - 1}</span>
         </div>
         {!detail ? (
-          <div className="py-4"><Loading label="Loading team detail..." /></div>
+          <div style={{ padding: "16px 0" }}><Loading label="Loading team detail…" /></div>
         ) : !adv ? (
-          <Empty message="No advanced stats found for this team's prior season." />
+          <Empty message="No advanced stats found for prior season." />
         ) : (
           <>
             <MetricBar label="Offensive PPA" value={adv.off_ppa} lo={-0.1} hi={0.5} fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3)} />
             <MetricBar label="Defensive PPA (lower is better)" value={adv.def_ppa} lo={-0.1} hi={0.5} invert fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3)} />
             <MetricBar label="Offensive success rate" value={adv.off_success_rate} lo={0.3} hi={0.55} fmt={(v) => (v * 100).toFixed(1) + "%"} />
-            <MetricBar label="Defensive success rate (lower is better)" value={adv.def_success_rate} lo={0.3} hi={0.55} invert fmt={(v) => (v * 100).toFixed(1) + "%"} />
+            <MetricBar label="Def success rate (lower better)" value={adv.def_success_rate} lo={0.3} hi={0.55} invert fmt={(v) => (v * 100).toFixed(1) + "%"} />
             <MetricBar label="Defensive havoc rate" value={adv.def_havoc_total} lo={0.1} hi={0.25} fmt={(v) => (v * 100).toFixed(1) + "%"} />
             <MetricBar label="Rush offense PPA" value={adv.off_rush_ppa} lo={-0.1} hi={0.3} fmt={(v) => (v >= 0 ? "+" : "") + v.toFixed(3)} />
           </>
@@ -136,53 +410,49 @@ function TeamProfile({ team }: { team: CfbTeam }) {
         <K style={{ margin: "18px 0 10px" }}>Backtested ROI by season</K>
         {!detail ? (
           <div className="py-2" />
-        ) : seasonRois.length === 0 ? (
+        ) : allSeasonRois.length === 0 ? (
           <Empty message="No season-by-season ROI breakdown available." />
         ) : (
           <div className="flex items-end gap-[10px]" style={{ height: 56 }}>
-            {seasonRois.map((r) => {
+            {allSeasonRois.map((r) => {
               const roi = r.roi;
               const h = roi != null ? (Math.abs(roi) / maxAbsRoi) * 46 : 0;
               const pos = roi != null && roi >= 0;
+              const isCurrent = r.season === curSeason;
               return (
                 <div key={r.season} className="flex-1 flex flex-col items-center justify-end" style={{ height: "100%" }}>
                   <Mono s={8.5} c={roi == null ? "#a39d8c" : pos ? "#1d5536" : "#a8473a"}>
-                    {roi == null ? "—" : `${pos ? "+" : ""}${roi.toFixed(1)}`}
+                    {roi == null ? (isCurrent ? "YTD" : "—") : `${pos ? "+" : ""}${roi.toFixed(1)}`}
                   </Mono>
                   <div
                     className="w-full rounded-sm mt-[3px]"
                     style={{
                       height: Math.max(3, h),
                       background: roi == null ? "#e6e3dc" : pos ? "#1d5536" : "#a8473a",
-                      opacity: 0.85,
+                      opacity: isCurrent ? 0.6 : 0.85,
+                      border: isCurrent ? "1px dashed #a39d8c" : "none",
                     }}
                   />
-                  <Mono s={8.5} c="#a39d8c">'{String(r.season).slice(2)}</Mono>
+                  <Mono s={8.5} c={isCurrent ? "#1d5536" : "#a39d8c"}>'{String(r.season).slice(2)}</Mono>
                 </div>
               );
             })}
           </div>
         )}
 
-        <K style={{ margin: "18px 0 10px" }}>Recent Games · prior season</K>
+        <K style={{ margin: "18px 0 10px" }}>Recent Games · last 10</K>
         {!detail ? (
           <div className="py-2" />
-        ) : detail.recent_games.length === 0 ? (
+        ) : recentGames.length === 0 ? (
           <Empty message="No recent game context found." />
         ) : (
           <div className="flex flex-col gap-2">
-            {detail.recent_games.slice(0, 6).map((g, i) => (
+            {recentGames.map((g, i) => (
               <div key={i} className="flex items-center justify-between" style={{ fontSize: 11.5 }}>
                 <span className="text-muted">
-                  {g.away_team} @ {g.home_team} · Wk {g.week}
+                  {g.away_team} @ {g.home_team} · Wk {g.week}{(g as any).season ? ` · ${(g as any).season}` : ""}
                 </span>
-                <span
-                  className="font-mono"
-                  style={{
-                    fontSize: 10,
-                    color: g.spread_result === "covered" ? "#1d5536" : g.spread_result === "missed" ? "#a8473a" : "#a39d8c",
-                  }}
-                >
+                <span className="font-mono" style={{ fontSize: 10, color: g.spread_result === "covered" ? "#1d5536" : g.spread_result === "missed" ? "#a8473a" : "#a39d8c" }}>
                   {g.spread != null ? (g.spread > 0 ? `+${g.spread}` : g.spread) : "—"} · {g.spread_result ?? "—"}
                 </span>
               </div>
@@ -198,58 +468,202 @@ function TeamProfile({ team }: { team: CfbTeam }) {
   );
 }
 
+// ── TeamsView ──────────────────────────────────────────────────────────────────
+
+type TeamSort = "roi" | "win" | "off_pct" | "def_pct" | "off_score" | "def_score" | "wk_trend";
+
 function TeamsView({ teams }: { teams: CfbTeam[] }) {
-  const [sort, setSort] = useState<"roi" | "win">("roi");
-  const sorted = [...teams].sort((a, b) =>
-    sort === "roi" ? b.roi_pct - a.roi_pct : b.win_rate - a.win_rate
-  );
-  const [selName, setSelName] = useState(sorted[0]?.team ?? "");
-  const sel = teams.find((t) => t.team === selName) || sorted[0];
+  const [sort, setSort] = useState<TeamSort>("roi");
+  const [selName, setSelName] = useState<string | null>(null);
+  const [strengthMap, setStrengthMap] = useState<Map<string, StrengthSummary>>(new Map());
+  const [strengthLoading, setStrengthLoading] = useState(false);
+  const [strengthLoaded, setStrengthLoaded] = useState(false);
+
+  const curSeason = new Date().getFullYear();
+  const needsStrength = ["off_pct", "def_pct", "off_score", "def_score", "wk_trend"].includes(sort);
+
+  useEffect(() => {
+    if (strengthLoaded || strengthLoading) return;
+    if (!needsStrength) return;
+
+    setStrengthLoading(true);
+    const allTeams = teams.map(t => t.team);
+    const CHUNK = 10;
+    const chunks: string[][] = [];
+    for (let i = 0; i < allTeams.length; i += CHUNK) chunks.push(allTeams.slice(i, i + CHUNK));
+
+    Promise.all(chunks.map(ch => fetchStrength(curSeason, ch).catch(() => [] as StrengthRow[])))
+      .then(results => {
+        const all: StrengthRow[] = results.flat();
+        const allOff = all.map(r => r.off_raw);
+        const allDef = all.map(r => r.def_raw);
+        const pctile = (v: number, arr: number[]) =>
+          arr.length === 0 ? null : Math.round((arr.filter(x => x <= v).length / arr.length) * 100);
+
+        const map = new Map<string, StrengthSummary>();
+        for (const team of allTeams) {
+          const rows = all.filter(r => r.team === team).sort((a, b) => a.week - b.week);
+          const last = rows[rows.length - 1] ?? null;
+          const prev = rows.length >= 2 ? rows[rows.length - 2] : null;
+          map.set(team, {
+            offPct:   last ? pctile(last.off_raw, allOff) : null,
+            defPct:   last ? pctile(last.def_raw, allDef) : null,
+            offScore: last?.off_raw ?? null,
+            defScore: last?.def_raw ?? null,
+            wkTrend:  (last && prev) ? last.off_raw - prev.off_raw : null,
+          });
+        }
+        setStrengthMap(map);
+        setStrengthLoaded(true);
+      })
+      .finally(() => setStrengthLoading(false));
+  }, [sort, strengthLoaded, strengthLoading, teams, curSeason, needsStrength]);
+
+  const getStr = (team: string): StrengthSummary =>
+    strengthMap.get(team) ?? { offPct: null, defPct: null, offScore: null, defScore: null, wkTrend: null };
+
+  const sorted = [...teams].sort((a, b) => {
+    switch (sort) {
+      case "roi":       return b.roi_pct - a.roi_pct;
+      case "win":       return b.win_rate - a.win_rate;
+      case "off_pct":   return (getStr(b.team).offPct ?? -1) - (getStr(a.team).offPct ?? -1);
+      case "def_pct":   return (getStr(b.team).defPct ?? -1) - (getStr(a.team).defPct ?? -1);
+      case "off_score": return (getStr(b.team).offScore ?? -999) - (getStr(a.team).offScore ?? -999);
+      case "def_score": return (getStr(b.team).defScore ?? -999) - (getStr(a.team).defScore ?? -999);
+      case "wk_trend":  return (getStr(b.team).wkTrend ?? -999) - (getStr(a.team).wkTrend ?? -999);
+      default:          return 0;
+    }
+  });
+
+  const sel = selName ? teams.find(t => t.team === selName) ?? null : null;
+
+  const SORT_OPTS: [TeamSort, string][] = [
+    ["roi",       "ROI %"],
+    ["win",       "Win %"],
+    ["off_pct",   "OFF %ILE"],
+    ["def_pct",   "DEF %ILE"],
+    ["off_score", "OFF Score"],
+    ["def_score", "DEF Score"],
+    ["wk_trend",  "Wk Trend"],
+  ];
 
   return (
-    <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.55fr 1fr" }}>
+    <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: sel ? "1.3fr 1fr" : "1fr" }}>
       <Card pad={0}>
-        <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
-          <K>Team Performance · {teams.length} profiled</K>
-          <div className="flex gap-[7px]">
-            <Pill active={sort === "roi"} onClick={() => setSort("roi")}>ROI</Pill>
-            <Pill active={sort === "win"} onClick={() => setSort("win")}>Win %</Pill>
+        <div style={{ padding: "16px 18px 10px" }}>
+          <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
+            <K>Team Performance · {teams.length} profiled</K>
+            {needsStrength && strengthLoading && <Mono s={9} c="#a39d8c">Loading efficiency data…</Mono>}
+          </div>
+          <div className="flex gap-[5px] flex-wrap">
+            {SORT_OPTS.map(([k, l]) => (
+              <Pill key={k} active={sort === k} onClick={() => setSort(k as TeamSort)}>{l}</Pill>
+            ))}
           </div>
         </div>
-        <div className="ons-scroll" style={{ padding: "0 18px 14px", maxHeight: 640, overflowY: "auto" }}>
+
+        {/* Column headers */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "20px 24px 1fr 56px 50px 52px 52px 68px",
+          gap: 6,
+          padding: "6px 26px 6px 18px",
+          borderTop: "1px solid #ebe5d8",
+          borderBottom: "2px solid #ebe5d8",
+        }}>
+          <span />
+          <span />
+          <Mono s={8} c="#a39d8c">TEAM</Mono>
+          <div style={{ textAlign: "right" }}><Mono s={8} c={sort === "roi" ? "#1d5536" : "#a39d8c"}>ROI%</Mono></div>
+          <div style={{ textAlign: "right" }}><Mono s={8} c={sort === "win" ? "#1d5536" : "#a39d8c"}>WIN%</Mono></div>
+          <div style={{ textAlign: "right" }}><Mono s={8} c={["off_pct","off_score"].includes(sort) ? "#1d5536" : "#a39d8c"}>OFF</Mono></div>
+          <div style={{ textAlign: "right" }}><Mono s={8} c={["def_pct","def_score"].includes(sort) ? "#1d5536" : "#a39d8c"}>DEF</Mono></div>
+          <div style={{ textAlign: "right" }}><Mono s={8} c={sort === "wk_trend" ? "#1d5536" : "#a39d8c"}>WK TREND</Mono></div>
+        </div>
+
+        <div style={{ padding: "0 18px 14px", maxHeight: 680, overflowY: "auto" }}>
           {sorted.map((t, i) => {
             const on = t.team === selName;
+            const str = getStr(t.team);
+            const wkTrend = str.wkTrend;
             return (
               <button
                 key={t.team}
-                className="ons-tap w-full text-left flex items-center gap-[11px] border-none cursor-pointer border-t border-border-2"
-                onClick={() => setSelName(t.team)}
+                onClick={() => setSelName(prev => prev === t.team ? null : t.team)}
                 style={{
-                  padding: "9px 8px", margin: "0 -8px", borderRadius: 6,
+                  display: "grid",
+                  alignItems: "center",
+                  gridTemplateColumns: "20px 24px 1fr 56px 50px 52px 52px 68px",
+                  gap: 6,
+                  width: "100%", textAlign: "left",
+                  padding: "8px 8px", margin: "0 -8px",
+                  borderRadius: 6,
                   background: on ? "#e9efe7" : "transparent",
                   boxShadow: on ? "inset 2px 0 0 #1d5536" : "none",
                   borderTop: "1px solid #ebe5d8",
+                  border: "none", cursor: "pointer",
                 }}
               >
-                <span className="font-mono text-faint" style={{ fontSize: 10, width: 16 }}>{i + 1}</span>
+                <span className="font-mono text-faint" style={{ fontSize: 9 }}>{i + 1}</span>
                 <Crest name={t.team} size={20} />
-                <span className="flex-1" style={{ fontSize: 13, fontWeight: on ? 600 : 400 }}>{t.team}</span>
-                <span className="font-mono uppercase" style={{ fontSize: 9, color: TIER_COLORS[t.tier] ?? "#736e5f", width: 70 }}>{t.tier}</span>
-                <span className="font-mono text-muted" style={{ fontSize: 11.5, width: 50, textAlign: "right" }}>{t.win_rate.toFixed(0)}%</span>
-                <span className="font-mono font-semibold" style={{ fontSize: 11.5, color: t.roi_pct >= 0 ? "#1d5536" : "#a8473a", width: 58, textAlign: "right" }}>
-                  {t.roi_pct >= 0 ? "+" : ""}{t.roi_pct.toFixed(1)}%
-                </span>
+                <span style={{ fontSize: 13, fontWeight: on ? 600 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.team}</span>
+
+                {/* ROI% */}
+                <div style={{ textAlign: "right" }}>
+                  <span className="font-mono font-semibold" style={{ fontSize: 11, color: t.roi_pct >= 0 ? "#1d5536" : "#a8473a" }}>
+                    {t.roi_pct >= 0 ? "+" : ""}{t.roi_pct.toFixed(1)}%
+                  </span>
+                </div>
+
+                {/* Win% */}
+                <div style={{ textAlign: "right" }}>
+                  <span className="font-mono text-muted" style={{ fontSize: 11 }}>{t.win_rate.toFixed(0)}%</span>
+                </div>
+
+                {/* OFF %ILE + bar */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  {str.offPct != null ? (
+                    <>
+                      <span className="font-mono" style={{ fontSize: 10, color: str.offPct >= 50 ? "#1d5536" : "#9a6a1e" }}>{str.offPct}</span>
+                      <MiniBar pct={str.offPct} color={str.offPct >= 50 ? "#1d5536" : "#9a6a1e"} />
+                    </>
+                  ) : <span className="font-mono" style={{ fontSize: 10, color: "#d4cfc5" }}>—</span>}
+                </div>
+
+                {/* DEF %ILE + bar */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  {str.defPct != null ? (
+                    <>
+                      <span className="font-mono" style={{ fontSize: 10, color: str.defPct >= 50 ? "#1d5536" : "#9a6a1e" }}>{str.defPct}</span>
+                      <MiniBar pct={str.defPct} color={str.defPct >= 50 ? "#1d5536" : "#9a6a1e"} />
+                    </>
+                  ) : <span className="font-mono" style={{ fontSize: 10, color: "#d4cfc5" }}>—</span>}
+                </div>
+
+                {/* WK TREND */}
+                <div style={{ textAlign: "right" }}>
+                  {wkTrend != null ? (
+                    <span className="font-mono" style={{ fontSize: 10, color: wkTrend >= 0 ? "#1d5536" : "#a8473a" }}>
+                      {wkTrend >= 0 ? "▲" : "▼"}{Math.abs(wkTrend).toFixed(3)}
+                    </span>
+                  ) : <span className="font-mono" style={{ fontSize: 10, color: "#d4cfc5" }}>—</span>}
+                </div>
               </button>
             );
           })}
         </div>
       </Card>
-      <div className="sticky top-0">
-        {sel && <TeamProfile team={sel} />}
-      </div>
+
+      {sel && (
+        <div style={{ position: "sticky", top: 0 }}>
+          <TeamProfile team={sel} onClose={() => setSelName(null)} />
+        </div>
+      )}
     </div>
   );
 }
+
+// ── Matchup Lab support components ────────────────────────────────────────────
 
 function EdgeList({ items, color, label }: { items: string[]; color: string; label: string }) {
   if (items.length === 0) return null;
@@ -280,37 +694,25 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             <span className="font-serif font-bold" style={{ fontSize: 17 }}>{result.matchup}</span>
             <Crest name={result.matchup.split(" @ ")[1]} size={28} />
           </div>
-          <span
-            className="font-mono rounded-full"
-            style={{
-              fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase",
-              padding: "3px 10px",
-              background: result.meets_publish_bar ? "#1d5536" : "#efebe1",
-              color: result.meets_publish_bar ? "#fff" : "#736e5f",
-            }}
-          >
+          <span className="font-mono rounded-full" style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", padding: "3px 10px", background: result.meets_publish_bar ? "#1d5536" : "#efebe1", color: result.meets_publish_bar ? "#fff" : "#736e5f" }}>
             {result.meets_publish_bar ? "would publish" : "below publish bar"}
           </span>
         </div>
-
         <div className="flex items-baseline gap-4 mb-4">
           <div>
             <Mono s={9}>MODEL SCORE</Mono>
-            <div className="font-serif font-bold leading-none mt-1" style={{ fontSize: 34, color: scoreColor }}>
-              {result.model_score}
-            </div>
+            <div className="font-serif font-bold leading-none mt-1" style={{ fontSize: 34, color: scoreColor }}>{result.model_score}</div>
           </div>
           <div>
             <Mono s={9}>SUGGESTED BET</Mono>
             <div className="font-serif font-semibold mt-1" style={{ fontSize: 16 }}>{result.bet}</div>
           </div>
         </div>
-
         <div className="grid grid-cols-4 border-t border-b border-border-2 mb-4">
           {[
-            ["PPA GAP", result.ppa_gap != null ? `${result.ppa_gap >= 0 ? "+" : ""}${result.ppa_gap.toFixed(3)}` : "—"],
-            ["SP+ GAP", result.sp_gap != null ? `${result.sp_gap >= 0 ? "+" : ""}${result.sp_gap.toFixed(1)}` : "—"],
-            ["RET GAP", result.ret_gap != null ? `${result.ret_gap >= 0 ? "+" : ""}${result.ret_gap.toFixed(3)}` : "—"],
+            ["PPA GAP",     result.ppa_gap     != null ? `${result.ppa_gap >= 0 ? "+" : ""}${result.ppa_gap.toFixed(3)}` : "—"],
+            ["SP+ GAP",     result.sp_gap      != null ? `${result.sp_gap >= 0 ? "+" : ""}${result.sp_gap.toFixed(1)}` : "—"],
+            ["RET GAP",     result.ret_gap     != null ? `${result.ret_gap >= 0 ? "+" : ""}${result.ret_gap.toFixed(3)}` : "—"],
             ["RECRUIT GAP", result.recruiting_gap != null ? `${result.recruiting_gap >= 0 ? "+" : ""}${result.recruiting_gap.toFixed(1)}` : "—"],
           ].map(([l, v], i) => (
             <div key={i} style={{ padding: "10px 0", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 12 : 0 }}>
@@ -319,32 +721,19 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             </div>
           ))}
         </div>
-
         <EdgeList items={result.edges} color="#1d5536" label={`SIGNALS (${result.n_edges})`} />
         <EdgeList items={result.warnings} color="#9a6a1e" label="WARNINGS" />
-        {result.edges.length === 0 && result.warnings.length === 0 && (
-          <Empty message="No qualifying signals for this matchup — model requires a PPA edge above 0.15 as a baseline." />
-        )}
-
+        {result.edges.length === 0 && result.warnings.length === 0 && <Empty message="No qualifying signals for this matchup." />}
         {(result.home_coach || result.away_coach) && (
           <div className="mt-4 pt-4 border-t border-border-2">
             <Mono s={9} c="#a39d8c">COACHES</Mono>
             <div className="flex justify-between items-baseline mt-1.5" style={{ fontSize: 12.5 }}>
               <span>{result.home_coach ?? "—"} vs {result.away_coach ?? "—"}</span>
-              {result.coach_h2h && (
-                <Mono s={10.5} c="#736e5f">
-                  H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)
-                </Mono>
-              )}
+              {result.coach_h2h && <Mono s={10.5} c="#736e5f">H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)</Mono>}
             </div>
           </div>
         )}
-
-        <div className="mt-4">
-          <Mono s={8.5} c="#a39d8c">
-            score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only
-          </Mono>
-        </div>
+        <div className="mt-4"><Mono s={8.5} c="#a39d8c">score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only</Mono></div>
       </div>
     </Card>
   );
@@ -362,23 +751,12 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
   const [error, setError] = useState<string | null>(null);
 
   const run = async () => {
-    setLoading(true);
-    setError(null);
-    setResult(null);
+    setLoading(true); setError(null); setResult(null);
     try {
-      const r = await cfbApi.matchupLab({
-        home_team: home,
-        away_team: away,
-        spread: parseFloat(spread),
-        over_under: overUnder ? parseFloat(overUnder) : undefined,
-        season: season ? parseInt(season, 10) : undefined,
-      });
+      const r = await cfbApi.matchupLab({ home_team: home, away_team: away, spread: parseFloat(spread), over_under: overUnder ? parseFloat(overUnder) : undefined, season: season ? parseInt(season, 10) : undefined });
       setResult(r);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -386,90 +764,40 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
       <Card style={{ maxWidth: 420 }}>
         <K style={{ marginBottom: 14 }}>Matchup Simulator</K>
         <div className="flex flex-col gap-3">
-          <div>
-            <Mono s={9} c="#a39d8c">HOME TEAM</Mono>
-            <select
-              className="ons-input w-full mt-1"
-              value={home}
-              onChange={(e) => setHome(e.target.value)}
-              style={{ width: "100%", padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}
-            >
-              {names.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div>
-            <Mono s={9} c="#a39d8c">AWAY TEAM</Mono>
-            <select
-              className="ons-input w-full mt-1"
-              value={away}
-              onChange={(e) => setAway(e.target.value)}
-              style={{ width: "100%", padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}
-            >
-              {names.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
+          {[["HOME TEAM", home, setHome], ["AWAY TEAM", away, setAway]].map(([lbl, val, setter]) => (
+            <div key={lbl as string}>
+              <Mono s={9} c="#a39d8c">{lbl as string}</Mono>
+              <select value={val as string} onChange={(e) => (setter as any)(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}>
+                {names.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          ))}
           <div className="flex gap-3">
             <div className="flex-1">
               <Mono s={9} c="#a39d8c">SPREAD (NEG = HOME FAV)</Mono>
-              <input
-                className="ons-input w-full mt-1"
-                value={spread}
-                onChange={(e) => setSpread(e.target.value)}
-                style={{ width: "100%", padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}
-              />
+              <input value={spread} onChange={(e) => setSpread(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
             </div>
             <div className="flex-1">
               <Mono s={9} c="#a39d8c">OVER/UNDER</Mono>
-              <input
-                className="ons-input w-full mt-1"
-                value={overUnder}
-                onChange={(e) => setOverUnder(e.target.value)}
-                style={{ width: "100%", padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}
-              />
+              <input value={overUnder} onChange={(e) => setOverUnder(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
             </div>
           </div>
           <div>
             <Mono s={9} c="#a39d8c">SEASON</Mono>
-            <input
-              className="ons-input w-full mt-1"
-              value={season}
-              onChange={(e) => setSeason(e.target.value)}
-              style={{ width: "100%", padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}
-            />
-            <p className="text-faint mt-1.5 mb-0" style={{ fontSize: 10.5, lineHeight: 1.4 }}>
-              Model uses prior-season stats (season − 1) — walk-forward, no lookahead.
-            </p>
+            <input value={season} onChange={(e) => setSeason(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+            <p className="text-faint mt-1.5 mb-0" style={{ fontSize: 10.5, lineHeight: 1.4 }}>Model uses prior-season stats (season − 1) — walk-forward, no lookahead.</p>
           </div>
-          <button
-            className="ons-tap cursor-pointer mt-1"
-            onClick={run}
-            disabled={loading || !home || !away}
-            style={{
-              padding: "10px 0", borderRadius: 8, border: "none",
-              background: loading ? "#a39d8c" : "#1d5536", color: "#fff",
-              fontSize: 13, fontWeight: 600,
-            }}
-          >
+          <button onClick={run} disabled={loading || !home || !away} style={{ marginTop: 4, padding: "10px 0", borderRadius: 8, border: "none", background: loading ? "#a39d8c" : "#1d5536", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Scoring…" : "Run Model"}
           </button>
         </div>
       </Card>
-
       <div>
         {error && <ErrorState message={error} />}
-        {!error && !result && (
-          <Card>
-            <Empty
-              message="Pick two teams and run the model."
-              detail="Calls the real score_game() walk-forward model directly — no simplified approximation."
-            />
-          </Card>
-        )}
+        {!error && !result && <Card><Empty message="Pick two teams and run the model." detail="Calls the real score_game() walk-forward model directly." /></Card>}
         {result && "error" in result && (
           <Card accent>
-            <K color="#a8473a" style={{ marginBottom: 8 }}>
-              {result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}
-            </K>
+            <K color="#a8473a" style={{ marginBottom: 8 }}>{result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}</K>
             <p style={{ fontSize: 13, lineHeight: 1.5 }}>{result.message}</p>
           </Card>
         )}
@@ -479,352 +807,90 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
   );
 }
 
-function ScheduleGameRow({ g, showDateHeader }: { g: CfbScheduleGame; showDateHeader?: string }) {
-  const time = g.start_date
-    ? new Date(g.start_date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-    : "TBD";
-  return (
-    <>
-      {showDateHeader && (
-        <div
-          className="font-mono uppercase text-faint"
-          style={{ fontSize: 8.5, letterSpacing: "1px", padding: "12px 6px 4px" }}
-        >
-          {showDateHeader}
-        </div>
-      )}
-      <div className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "11px 6px", margin: "0 -6px" }}>
-        <span className="font-mono text-faint shrink-0" style={{ fontSize: 10, width: 56 }}>{(g as any).is_final ? "Final" : time}</span>
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <Crest name={g.away_team} size={20} />
-          <span className="truncate" style={{ fontSize: 13.5 }}>{g.away_team}</span>
-          {(g as any).is_final ? (
-            <span className="font-mono shrink-0" style={{ fontSize: 13, fontWeight: 700, color: "#1a2617" }}>{(g as any).away_score} – {(g as any).home_score}</span>
-          ) : (
-            <span className="text-faint shrink-0" style={{ fontSize: 13.5 }}>@</span>
-          )}
-          <Crest name={g.home_team} size={20} />
-          <span className="truncate" style={{ fontSize: 13.5 }}>{g.home_team}</span>
-        </div>
-        {g.conference_game && (
-          <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>CONF</span>
-        )}
-        {g.neutral_site && (
-          <span className="font-mono text-faint shrink-0" style={{ fontSize: 8.5 }}>NEUTRAL</span>
-        )}
-      </div>
-    </>
-  );
-}
+// ── This Week: picks-only with inline GameDrill ───────────────────────────────
 
-// ── ScheduleColumn — right column of "This Week" ─────────────────────────────
-// Same schedule-fetching logic that used to live inside Slate(), now a
-// standalone column that receives season/week as props instead of owning
-// that state itself, so PicksColumn (left column) can share the exact same
-// selection and the two stay in sync.
-
-function ScheduleColumn({
-  season, week, onWeekChange, onSeasonChange,
-}: {
-  season: number; week: number;
-  onWeekChange: (w: number) => void;
-  onSeasonChange: (s: number) => void;
-}) {
-  const now = new Date();
-  const [games, setGames] = useState<CfbScheduleGame[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    cfbApi.schedule(season, week)
-      .then(setGames)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [season, week]);
-
-  // CFBD's /games endpoint doesn't guarantee chronological order — confirmed
-  // 2026-06-29, the raw response mixes 10am/1pm/5pm/6pm/8pm games with no
-  // consistent pattern. Sort ascending by kickoff time for display; games
-  // with no start_date (TBD) sort last rather than colliding with real
-  // times at an arbitrary position.
-  const sortedGames = games
-    ? [...games].sort((a, b) => {
-        if (!a.start_date && !b.start_date) return 0;
-        if (!a.start_date) return 1;
-        if (!b.start_date) return -1;
-        return new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
-      })
-    : null;
-
-  return (
-    <Card pad={0}>
-      <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
-        <K>Schedule · {season} Week {week}</K>
-        <div className="flex items-center gap-2">
-          <select
-            value={week}
-            onChange={(e) => onWeekChange(parseInt(e.target.value, 10))}
-            style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 12 }}
-          >
-            {Array.from({ length: 15 }, (_, i) => i + 1).map((w) => (
-              <option key={w} value={w}>Week {w}</option>
-            ))}
-          </select>
-          <select
-            value={season}
-            onChange={(e) => onSeasonChange(parseInt(e.target.value, 10))}
-            style={{ padding: "5px 8px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 12 }}
-          >
-            {[now.getFullYear(), now.getFullYear() + 1].map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div style={{ padding: "0 18px 14px" }}>
-        {loading ? (
-          <Loading label="Fetching schedule from CFBD…" />
-        ) : error ? (
-          <ErrorState message={error} />
-        ) : !sortedGames || sortedGames.length === 0 ? (
-          <Empty
-            message={`No games found for ${season} Week ${week}.`}
-            detail="Either CFBD hasn't published this far-out week yet, or CFBD_API_TOKEN isn't set in .env — both are normal, not errors. Schedule is independent of betting lines, so it can populate before sportsbooks post Week 1 spreads."
-          />
-        ) : (
-          sortedGames.map((g, i) => {
-            // Show a date header before the first game of each new calendar
-            // day (in the viewer's local time, matching how `time` itself is
-            // displayed) -- otherwise two correctly-sorted games on different
-            // days both show a bare time like "5:00 PM" with nothing to tell
-            // them apart, which looks shuffled even though it isn't. CFBD's
-            // "Week 1" genuinely spans multiple days (Thu-Wed), so this isn't
-            // an edge case -- it's the normal shape of the data.
-            const dayKey = g.start_date
-              ? new Date(g.start_date).toDateString()
-              : "tbd";
-            const prevDayKey = i > 0
-              ? (sortedGames[i - 1].start_date
-                  ? new Date(sortedGames[i - 1].start_date as string).toDateString()
-                  : "tbd")
-              : null;
-            const isNewDay = dayKey !== prevDayKey;
-            const dateLabel = g.start_date
-              ? new Date(g.start_date).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
-              : "Date TBD";
-            return (
-              <ScheduleGameRow
-                key={g.game_id}
-                g={g}
-                showDateHeader={isNewDay ? dateLabel : undefined}
-              />
-            );
-          })
-        )}
-      </div>
-      <div style={{ padding: "0 18px 14px" }}>
-        <p className="font-mono text-faint m-0" style={{ fontSize: 8.5, lineHeight: 1.5 }}>
-          SCHEDULE ONLY — NO BETTING LINES YET. USE MATCHUP LAB TO SCORE ANY OF THESE GAMES ONCE YOU HAVE A REAL SPREAD.
-        </p>
-      </div>
-    </Card>
-  );
-}
-
-// ── PicksColumn — left column of "This Week" ─────────────────────────────────
-//
-// Renders data/bets/todays_picks.json via GET /cfb/picks. Takes the SAME
-// season/week selection as ScheduleColumn so the two columns always agree
-// on which week is being viewed.
-//
-// IMPORTANT, real constraint (confirmed 2026-06-29): todays_picks.json
-// holds exactly ONE week's picks at a time — it's overwritten every run,
-// with no history directory and no results-grading step anywhere in the
-// codebase yet. So "show me last week's picks" or "show me what the model
-// said 3 weeks ago" isn't something this can honestly do right now — that
-// data doesn't exist on disk. What this CAN honestly do is compare the
-// fetched picks' own (season, week) against what's selected in the
-// dropdowns, and say clearly which of three states we're in:
-//   1. selected week matches the picks file → show the real picks
-//   2. selected week is earlier than the picks file's week → past week,
-//      not archived (archival is planned, not yet built)
-//   3. selected week is later than the picks file's week → future week,
-//      picks haven't been generated yet
-// This is a deliberately honest stand-in for the real archive/grading
-// system, not a feature in itself — see ROADMAP.md.
-
-
-function ScoreBar({ score }) {
-  const pct = Math.max(0, Math.min(100, (score / 99) * 100));
-  const color = score >= 70 ? "#1d5536" : score >= 50 ? "#a39d8c" : "#d4cfc5";
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <div style={{ width: 64, height: 3, background: "#e8e4dc", borderRadius: 2, overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 2 }} />
-      </div>
-      <span style={{ fontFamily: "monospace", fontSize: 11, color, fontWeight: score >= 70 ? 600 : 400, minWidth: 20 }}>
-        {score > 0 ? score : "—"}
-      </span>
-    </div>
-  );
-}
-
-function SlateRow({ p }) {
-  const isOfficial = p.meets_publish_bar;
-  const hasSignal = (p.model_score || 0) > 0;
-  const parts = (p.matchup || "").split(" @ ");
-  const away = parts[0] || "";
-  const home = parts[1] || "";
-  return (
-    <div style={{ padding: "9px 0", borderBottom: "1px solid #eeebe3", opacity: hasSignal ? 1 : 0.4 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: hasSignal ? 3 : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, overflow: "hidden" }}>
-          <Crest name={away} size={15} />
-          <span style={{ fontSize: 12, fontFamily: "var(--font-serif, Georgia, serif)", fontWeight: isOfficial ? 700 : 500, color: isOfficial ? "#1a2617" : "#4a4840", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.matchup}</span>
-          <Crest name={home} size={15} />
-        </div>
-        <ScoreBar score={p.model_score || 0} />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 11, color: isOfficial ? "#1d5536" : hasSignal ? "#736e5f" : "#c4bfb5", fontWeight: isOfficial ? 600 : 400 }}>
-            {p.bet || ""}
-            {isOfficial && <span style={{ marginLeft: 6, fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: "#fff", background: "#1d5536", borderRadius: 3, padding: "1px 5px" }}>PICK</span>}
-          </span>
-          <span style={{ fontSize: 10, fontFamily: "monospace", color: hasSignal ? "#a39d8c" : "#d4cfc5" }}>{p.line || ""}</span>
-        </div>
-      {isOfficial && p.edge && <p style={{ fontSize: 10, color: "#736e5f", margin: "3px 0 0", lineHeight: 1.4 }}>{p.edge}</p>}
-    </div>
-  );
-}
-
-
-function NoSignalSection({ games }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(prev => !prev)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0' }}>
-        <div style={{ flex: 1, height: 1, background: '#e5e0d4' }} />
-        <span style={{ fontSize: 9, fontFamily: 'monospace', textTransform: 'uppercase',
-          letterSpacing: '0.08em', color: '#c4bfb5' }}>
-          {open ? 'Hide' : 'Show'} no signal ({games.length})
-        </span>
-        <div style={{ flex: 1, height: 1, background: '#e5e0d4' }} />
-      </button>
-      {open && games.map((p, i) => <SlateRow key={'ns-' + i} p={p} />)}
-    </div>
-  );
-}
-
-function SlateColumn({ season, week }) {
-  const [slate, setSlate] = useState(null);
-  useEffect(() => {
-    cfbApi.slate(season, week).then(setSlate).catch(() => setSlate([]));
-  }, [season, week]);
-
-  const official  = (slate || []).filter(p => p.meets_publish_bar);
-  const watchlist = (slate || []).filter(p => !p.meets_publish_bar && (p.model_score || 0) > 0);
-  const noSignal  = (slate || []).filter(p => !p.meets_publish_bar && !(p.model_score || 0));
-
-  const Divider = ({ label }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 4px" }}>
-      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-      <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a39d8c" }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-    </div>
-  );
-
-  if (slate === null) return <div style={{ padding: "32px 0", textAlign: "center", color: "#a39d8c", fontSize: 12 }}>Loading slate…</div>;
-  if (slate.length === 0) return (
-    <div style={{ padding: "24px 16px", textAlign: "center", background: "#f7f5f0", borderRadius: 6, border: "1px solid #e8e4dc" }}>
-      <p style={{ fontSize: 13, color: "#736e5f", margin: "0 0 6px" }}>No scored games yet.</p>
-      <p style={{ fontSize: 11, color: "#a39d8c", margin: 0, lineHeight: 1.5 }}>Lines haven’t posted or generate_picks.py hasn’t run yet.</p>
-    </div>
-  );
-
-  return (
-    <div>
-      {official.length > 0 && <><Divider label={`Official picks (${official.length})`} />{official.map((p, i) => <SlateRow key={`off-${i}`} p={p} />)}</>}
-      {watchlist.length > 0 && <><Divider label={`Signal below bar (${watchlist.length})`} />{watchlist.map((p, i) => <SlateRow key={`w-${i}`} p={p} />)}</>}
-      {noSignal.length > 0 && <NoSignalSection games={noSignal} />}
-    </div>
-  );
-}
-
-function PickCard({ p, isOfficial = true }: { p: CfbPick; isOfficial?: boolean }) {
+function PickCardDrillable({ p, isOfficial = true, season }: { p: CfbPick; isOfficial?: boolean; season: number }) {
+  const [expanded, setExpanded] = useState(false);
   const isTierRisk = p.bet_type === "FADE_TIER_RISK";
   const accentColor = !isOfficial ? "#a39d8c" : isTierRisk ? "#9a6a1e" : "#1d5536";
   const [awayName, homeName] = p.matchup.split(" @ ");
 
+  const fakeGame: CfbScheduleGame = {
+    game_id: 0,
+    season,
+    week: p.week ?? 1,
+    away_team: awayName,
+    home_team: homeName,
+    start_date: null,
+  } as any;
+
+  const WARNING_LABELS: Record<string, string> = {
+    "ret_low_home": "Low returning production for home team",
+    "ret_low_away": "Low returning production for away team",
+    "coach_change": "Head coach change this offseason",
+    "coach_change+low_ret": "Coach change + low returning production",
+    "SP+_disagrees": "SP+ rating disagrees with this bet",
+    "tier_FADE": "Bet team has a FADE historical tier",
+    "tier_STRONG_FADE": "Bet team has a STRONG FADE historical tier",
+    "home_havoc_vs_bet": "Home defense havoc rate works against this bet",
+    "away_havoc_vs_bet": "Away defense havoc rate works against this bet",
+  };
+
   return (
-    <Card accent={isOfficial} accentColor={accentColor} style={{
-      position: "relative", overflow: "hidden",
-      opacity: isOfficial ? 1 : 0.82,
-      background: isOfficial ? undefined : "#faf8f4",
-    }}>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Crest name={awayName} size={20} />
-          <span className="truncate font-serif font-bold" style={{ fontSize: 15 }}>{p.matchup}</span>
-          <Crest name={homeName} size={20} />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {!isOfficial && (
-            <span style={{
-              fontSize: 9, fontFamily: "monospace", textTransform: "uppercase",
-              letterSpacing: "0.06em", color: "#a39d8c",
-              border: "1px solid #d4cfc5", borderRadius: 3, padding: "1px 5px"
-            }}>watch</span>
-          )}
-          <span className="font-mono" style={{ fontSize: 13, color: accentColor }}>
-            {p.stars} Model: {p.model_score}
-          </span>
-        </div>
-      </div>
+    <div>
+      <Card accent={isOfficial} accentColor={accentColor} style={{ position: "relative", overflow: "hidden", opacity: isOfficial ? 1 : 0.82, background: isOfficial ? undefined : "#faf8f4" }}>
+        <button
+          onClick={() => setExpanded(prev => !prev)}
+          style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Crest name={awayName} size={20} />
+              <span className="truncate font-serif font-bold" style={{ fontSize: 15 }}>{p.matchup}</span>
+              <Crest name={homeName} size={20} />
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {!isOfficial && (
+                <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: "#a39d8c", border: "1px solid #d4cfc5", borderRadius: 3, padding: "1px 5px" }}>watch</span>
+              )}
+              <span className="font-mono" style={{ fontSize: 13, color: accentColor }}>{p.stars} Model: {p.model_score}</span>
+              <span style={{ fontSize: 14, color: expanded ? accentColor : "#c4bfb5" }}>{expanded ? "▾" : "▸"}</span>
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
+            <span style={{ fontSize: 14, fontWeight: 600 }}>{p.bet}</span>
+            <Mono s={10.5}>{p.line}{p.ou && p.ou !== "N/A" ? ` · O/U ${p.ou}` : ""}</Mono>
+          </div>
+        </button>
 
-      <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{p.bet}</span>
-        <Mono s={10.5}>
-          {p.line}{p.ou && p.ou !== "N/A" ? ` · O/U ${p.ou}` : ""}
-        </Mono>
-      </div>
+        {isTierRisk && <Mono s={9} c={accentColor}>⚠ Bet is on a team with a STRONG_FADE historical tier in this situation</Mono>}
+        <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }}>{p.edge}</p>
 
-      {isTierRisk && (
-        <Mono s={9} c={accentColor}>⚠ Bet is on a team with a STRONG_FADE historical tier in this situation</Mono>
-      )}
+        {p.warnings.length > 0 && (
+          <div className="flex flex-col gap-1 mt-2">
+            {p.warnings.map((w, i) => <Mono key={i} s={10} c="#9a6a1e">⚠️ {WARNING_LABELS[w] ?? w}</Mono>)}
+          </div>
+        )}
 
-      <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }}>
-        {p.edge}
-      </p>
+        {!expanded && (
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #ebe5d8" }}>
+            <Mono s={8.5} c="#c4bfb5">▸ CLICK TO SEE STRENGTH COMPARISON</Mono>
+          </div>
+        )}
+      </Card>
 
-      {p.warnings.length > 0 && (
-        <div className="flex flex-col gap-1 mt-2">
-          {p.warnings.map((w, i) => {
-            const WARNING_LABELS: Record<string, string> = {
-              "ret_low_home":      "Low returning production for home team",
-              "ret_low_away":      "Low returning production for away team",
-              "coach_change":      "Head coach change this offseason",
-              "coach_change+low_ret": "Coach change + low returning production",
-              "SP+_disagrees":     "SP+ rating disagrees with this bet",
-              "tier_FADE":         "Bet team has a FADE historical tier",
-              "tier_STRONG_FADE":  "Bet team has a STRONG FADE historical tier",
-              "home_havoc_vs_bet": "Home defense havoc rate works against this bet",
-              "away_havoc_vs_bet": "Away defense havoc rate works against this bet",
-            };
-            const label = WARNING_LABELS[w] ?? w;
-            return <Mono key={i} s={10} c="#9a6a1e">⚠️ {label}</Mono>;
-          })}
+      {expanded && (
+        <div style={{ marginTop: -6 }}>
+          <GameDrill g={fakeGame} season={season} onClose={() => setExpanded(false)} />
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
-function PicksColumn({ season, week }: { season: number; week: number }) {
+function SlateView() {
+  const now = new Date();
+  const [season] = useState(now.getFullYear());
   const [picks, setPicks] = useState<CfbPick[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -832,111 +898,64 @@ function PicksColumn({ season, week }: { season: number; week: number }) {
     cfbApi.picks().then(setPicks).catch((e) => setError(e.message));
   }, []);
 
-  // Picks file has no season/week selector server-side — it's always
-  // "whatever generate_picks.py last wrote." So we fetch once and compare
-  // client-side against the selected (season, week) rather than refetching
-  // per-selection — there's only ever one version to fetch anyway.
   const picksWeek = picks?.[0]?.week;
   const picksSeason = picks?.[0]?.season;
-  const matchesSelection =
-    picks && picks.length > 0 &&
-    picksWeek === week &&
-    (picksSeason == null || picksSeason === season); // tolerate older files with no season field
 
-  let mismatchReason: "past" | "future" | null = null;
-  if (picks && picks.length > 0 && !matchesSelection && picksWeek != null) {
-    mismatchReason = week < (picksWeek as number) ? "past" : "future";
-  }
+  if (error) return <ErrorState message={error} />;
+  if (!picks) return <Loading label="Loading picks…" />;
+  if (picks.length === 0) return (
+    <Card>
+      <Empty
+        message="No qualifying picks yet."
+        detail="Either lines haven't posted for this week, or nothing clears the model's publish threshold — that's the model correctly saying 'no strong signal,' not missing data."
+      />
+    </Card>
+  );
+
+  const official  = picks.filter(p => p.meets_publish_bar);
+  const watchlist = picks.filter(p => !p.meets_publish_bar);
+
+  const Divider = ({ label }: { label: string }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 6px" }}>
+      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+      <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", color: "#a39d8c" }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+    </div>
+  );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-3">
-        <K color="#1d5536">
-          {picks && picks.length > 0
-            ? `Picks · ${picksSeason ?? season} Week ${picksWeek}`
-            : "This Week's Picks"}
-          {" "}· model v3 walk-forward
-        </K>
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      <div className="flex justify-between items-center mb-4">
+        <K color="#1d5536">{picksSeason ?? season} Week {picksWeek} · model v3 walk-forward</K>
+        <Mono s={9} c="#a39d8c">CLICK ANY PICK TO SEE STRENGTH COMPARISON</Mono>
       </div>
-      {error ? (
-        <ErrorState message={error} />
-      ) : !picks ? (
-        <Loading label="Loading picks…" />
-      ) : picks.length === 0 ? (
-        <Card>
-          <Empty
-            message="No qualifying picks yet."
-            detail="Either lines haven't posted for this week, or nothing clears the model's publish threshold (model_score ≥ 70, n_edges ≥ 4) — that's the model correctly saying 'no strong signal,' not missing data."
-          />
-        </Card>
-      ) : mismatchReason === "past" ? (
-        <Card>
-          <Empty
-            message={`No archived picks for ${season} Week ${week}.`}
-            detail="Picks aren't archived per-week yet — only the current week's picks are kept on disk, and they get overwritten each time the model re-runs. A real history/grading system is planned but not built (see ROADMAP.md)."
-          />
-        </Card>
-      ) : mismatchReason === "future" ? (
-        <Card>
-          <Empty
-            message={`${season} Week ${week} is too far out — no picks yet.`}
-            detail={`The model hasn't run for this week. Current picks on file are for ${picksSeason ?? season} Week ${picksWeek}.`}
-          />
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {/* Official picks -- meets publish bar (score >= 70, edges >= 4) */}
-          {picks.filter(p => p.meets_publish_bar).map((p, i) => (
-            <PickCard key={`official-${p.matchup}-${i}`} p={p} isOfficial={true} />
-          ))}
-          {/* Watchlist -- scored but below publish threshold */}
-          {picks.filter(p => !p.meets_publish_bar).length > 0 && (
-            <>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 8, margin: "4px 0 0"
-              }}>
-                <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-                <span style={{ fontSize: 10, color: "#a39d8c", letterSpacing: "0.08em", fontFamily: "monospace", textTransform: "uppercase" }}>
-                  Watch List · Below Publish Bar
-                </span>
-                <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-              </div>
-              {picks.filter(p => !p.meets_publish_bar).map((p, i) => (
-                <PickCard key={`watch-${p.matchup}-${i}`} p={p} isOfficial={false} />
-              ))}
-            </>
-          )}
-        </div>
+
+      {official.length > 0 && (
+        <>
+          <Divider label={`Official Picks (${official.length})`} />
+          <div className="flex flex-col gap-3">
+            {official.map((p, i) => <PickCardDrillable key={`off-${i}`} p={p} isOfficial={true} season={picksSeason ?? season} />)}
+          </div>
+        </>
+      )}
+
+      {watchlist.length > 0 && (
+        <>
+          <Divider label={`Watch List · Below Publish Bar (${watchlist.length})`} />
+          <div className="flex flex-col gap-3">
+            {watchlist.map((p, i) => <PickCardDrillable key={`watch-${i}`} p={p} isOfficial={false} season={picksSeason ?? season} />)}
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function Slate() {
-  const now = new Date();
-  // CFB season runs Aug-Jan; if we're in the Jan-July off-season window,
-  // default to the upcoming season's year rather than the current
-  // calendar year, since "this year's season" hasn't started yet.
-  const defaultSeason = now.getMonth() < 7 ? now.getFullYear() : now.getFullYear();
-  const [season, setSeason] = useState(defaultSeason);
-  const [week, setWeek] = useState(1);
-
-  return (
-    <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1fr 1fr" }}>
-      <SlateColumn season={season} week={week} />
-      <ScheduleColumn
-        season={season}
-        week={week}
-        onWeekChange={setWeek}
-        onSeasonChange={setSeason}
-      />
-    </div>
-  );
-}
+// ── Page root ─────────────────────────────────────────────────────────────────
 
 export default function CfbPage() {
   const [teams, setTeams] = useState<CfbTeam[] | null>(null);
-  const [tab, setTab] = useState<"slate" | "lab" | "teams">("teams");
+  const [tab, setTab] = useState<"slate" | "lab" | "teams">("slate");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -948,12 +967,12 @@ export default function CfbPage() {
 
   const TABS: Array<[string, string]> = [
     ["slate", "This Week"],
-    ["lab", "Matchup Lab"],
+    ["lab",   "Matchup Lab"],
     ["teams", "Teams"],
   ];
 
   return (
-    <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
+    <div style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
         title="CFB Betting"
         kicker="The Degenerates' Corner · walk-forward validated"
@@ -962,13 +981,8 @@ export default function CfbPage() {
             {TABS.map(([k, l]) => (
               <button
                 key={k}
-                className="ons-tap border-none cursor-pointer rounded-full"
                 onClick={() => setTab(k as any)}
-                style={{
-                  fontSize: 12, fontWeight: 500, padding: "7px 15px",
-                  background: tab === k ? "#1d5536" : "transparent",
-                  color: tab === k ? "#fff" : "#736e5f",
-                }}
+                style={{ fontSize: 12, fontWeight: 500, padding: "7px 15px", background: tab === k ? "#1d5536" : "transparent", color: tab === k ? "#fff" : "#736e5f", border: "none", cursor: "pointer", borderRadius: "9999px" }}
               >
                 {l}
               </button>
@@ -977,8 +991,8 @@ export default function CfbPage() {
         }
       />
 
-      {tab === "slate" && <Slate />}
-      {tab === "lab" && <MatchupLab teams={teams} />}
+      {tab === "slate" && <SlateView />}
+      {tab === "lab"   && <MatchupLab teams={teams} />}
       {tab === "teams" && <TeamsView teams={teams} />}
     </div>
   );

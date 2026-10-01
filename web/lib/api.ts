@@ -450,6 +450,19 @@ export interface CfbScheduleGame {
   home_score: number | null;
   away_score: number | null;
   is_final: boolean;
+  /** Formatted spread string e.g. "Alabama -7.0" or "PK"; null if not yet available */
+  spread_line: string | null;
+}
+
+export interface CfbStrengthSummary {
+  team: string;
+  season: number;
+  off_avg: number;
+  def_avg: number;
+  off_pct: number;
+  def_pct: number;
+  wk_trend: number | null;
+  n_weeks: number;
 }
 
 /** Confirmed real shape written by scripts/generate_picks.py into
@@ -524,6 +537,14 @@ export interface CfbLiveTracker {
   pending_picks: number;
 }
 
+export interface CfbStrengthRow {
+  team: string;
+  season: number;
+  week: number;
+  off_raw: number;
+  def_raw: number;
+}
+
 export const cfbApi = {
   // min_score defaults to 70 server-side too (api/routers/cfb.py) --
   // passed explicitly here so the client's default is self-documenting
@@ -548,6 +569,10 @@ export const cfbApi = {
   lineAccuracy: () => get<Record<string, unknown>[]>("/cfb/line-accuracy"),
   schedule: (season: number, week: number) =>
     get<CfbScheduleGame[]>(`/cfb/schedule?season=${season}&week=${week}`),
+  strength: (season: number, teams: string[]) =>
+    get<CfbStrengthRow[]>(`/cfb/strength?season=${season}&teams=${teams.join(",")}`),
+  strengthSummary: (season: number, teams?: string[]) =>
+    get<CfbStrengthSummary[]>(`/cfb/strength/summary?season=${season}${teams && teams.length ? `&teams=${teams.join(",")}` : ""}`),
   matchupLab: async (
     req: CfbMatchupRequest
   ): Promise<CfbMatchupResult | CfbMatchupError> => {
