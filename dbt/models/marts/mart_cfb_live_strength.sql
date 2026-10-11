@@ -36,19 +36,18 @@ market_residual_dedup as (
 ),
 
 game_sequence as (
-    -- Ordered game sequence per team-season with residuals attached
+    -- Drive from games table to ensure all scheduled matchups exist
     select
-        p.team,
-        p.season,
-        p.week,
-        p.game_id,
+        g.home_team as team,
+        g.season,
+        g.week,
+        g.game_id,
         row_number() over (
-            partition by p.team, p.season
-            order by p.week
+            partition by g.home_team, g.season
+            order by g.week
         ) as game_num,
 
         -- Football residual: game PPA vs prior-season baseline (z-scored)
-        -- Positive = outperformed prior-season average this game
         case when s.season_off_std > 0 then
             (coalesce(p.off_ppa, 0) - coalesce(a_prior.off_ppa, 0))
             / s.season_off_std
@@ -64,12 +63,17 @@ game_sequence as (
         coalesce(mr.spread_residual, 0)
             / nullif(season_mr.season_spread_std, 0) as market_residual_z
 
-    from cfbd.ppa_games p
+    from cfbd_staging.games g
+
+    -- Left join PPA stats so future/unplayed games keep the schedule row
+    left join cfbd.ppa_games p
+        on p.game_id = g.game_id
+        and p.team = g.home_team
 
     -- Prior-season baseline for football residual
     left join cfbd.advanced_stats a_prior
-        on a_prior.team   = p.team
-        and a_prior.season = p.season - 1
+        on a_prior.team   = g.home_team
+        and a_prior.season = g.season - 1
 
     -- Season-level standardization for football residuals
     left join (
@@ -82,25 +86,89 @@ game_sequence as (
           and off_ppa is not null
           and def_ppa is not null
         group by season
-    ) s on s.season = p.season
+    ) s on s.season = g.season
 
     -- Market residual from Phase B (deduplicated to one row per team/game)
     left join market_residual_dedup mr
-        on mr.team   = p.team
-        and mr.season = p.season
-        and mr.week   = p.week
+        on mr.team   = g.home_team
+        and mr.season = g.season
+        and mr.week   = g.week
 
-    -- Season-level standardization for market residuals (from dedup CTE)
+    -- Season-level standardization for market residuals
     left join (
         select
             season,
             stddev(spread_residual) as season_spread_std
         from market_residual_dedup
         group by season
-    ) season_mr on season_mr.season = p.season
+    ) season_mr on season_mr.season = g.season
 
-    where p.season_type = 'regular'
-      and p.season between 2021 and 2026
+    where g.season_type = 'regular'
+      and g.season between 2021 and 2026
+
+    union all
+
+    -- Repeat for away teams
+    select
+        g.away_team as team,
+        g.season,
+        g.week,
+        g.game_id,
+        row_number() over (
+            partition by g.away_team, g.season
+            order by g.week
+        ) as game_num,
+
+        case when s.season_off_std > 0 then
+            (coalesce(p.off_ppa, 0) - coalesce(a_prior.off_ppa, 0))
+            / s.season_off_std
+        else 0 end as off_residual_z,
+
+        case when s.season_def_std > 0 then
+            (coalesce(a_prior.def_ppa, 0) - coalesce(p.def_ppa, 0))
+            / s.season_def_std
+        else 0 end as def_residual_z,
+
+        coalesce(mr.spread_residual, 0)
+            / nullif(season_mr.season_spread_std, 0) as market_residual_z
+
+    from cfbd_staging.games g
+
+    left join cfbd.ppa_games p
+        on p.game_id = g.game_id
+        and p.team = g.away_team
+
+    left join cfbd.advanced_stats a_prior
+        on a_prior.team   = g.away_team
+        and a_prior.season = g.season - 1
+
+    left join (
+        select
+            season,
+            stddev(off_ppa) as season_off_std,
+            stddev(def_ppa) as season_def_std
+        from cfbd.ppa_games
+        where season_type = 'regular'
+          and off_ppa is not null
+          and def_ppa is not null
+        group by season
+    ) s on s.season = g.season
+
+    left join market_residual_dedup mr
+        on mr.team   = g.away_team
+        and mr.season = g.season
+        and mr.week   = g.week
+
+    left join (
+        select
+            season,
+            stddev(spread_residual) as season_spread_std
+        from market_residual_dedup
+        group by season
+    ) season_mr on season_mr.season = g.season
+
+    where g.season_type = 'regular'
+      and g.season between 2021 and 2026
 ),
 
 -- Pre-aggregate the exponential decay contributions.

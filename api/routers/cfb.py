@@ -712,27 +712,174 @@ async def cfb_schedule(
         and g.get("awayClassification") == "fbs"
     ]
 
-    # Enrich with scores from the mart
+    # Enrich with scores + spread from the mart tables
     try:
         import duckdb as _duckdb
         from pathlib import Path as _Path
         _db = str(_Path(__file__).resolve().parents[2] / "data" / "warehouse" / "ons.duckdb")
         _con = _duckdb.connect(_db, read_only=True)
+
+        # Scores from game context
         _scores = _con.execute("""
             SELECT game_id, home_score, away_score
             FROM main_marts.mart_cfbd_game_context
             WHERE season = ? AND week = ? AND home_score IS NOT NULL
         """, [season, week]).df()
-        _con.close()
         _score_map = {int(r.game_id): (int(r.home_score), int(r.away_score))
                       for _, r in _scores.iterrows()}
+
+        # Spread/line from line_accuracy mart (most complete source)
+        _lines = _con.execute("""
+            SELECT game_id, spread, home_team, away_team
+            FROM main_marts.mart_cfbd_line_accuracy
+            WHERE season = ? AND week = ?
+        """, [season, week]).df()
+        # Also try game context for games not in line_accuracy
+        _ctx_lines = _con.execute("""
+            SELECT game_id, spread, home_team, away_team
+            FROM main_marts.mart_cfbd_game_context
+            WHERE season = ? AND week = ? AND spread IS NOT NULL
+        """, [season, week]).df()
+
+        _con.close()
+
+        # Build spread map: game_id → formatted spread string
+        _spread_map: dict[int, str] = {}
+        for df in [_lines, _ctx_lines]:
+            for _, r in df.iterrows():
+                gid = int(r.game_id)
+                if gid in _spread_map:
+                    continue
+                s = r.spread
+                if s is None or (hasattr(s, '__class__') and s != s):  # NaN check
+                    continue
+                try:
+                    sv = float(s)
+                except (TypeError, ValueError):
+                    continue
+                # Convention: negative spread = home favored
+                # Format as "Team -X.X" (the favorite and by how much)
+                if sv < 0:
+                    line_str = f"{r.home_team} {sv:+.1f}"
+                elif sv > 0:
+                    line_str = f"{r.away_team} -{sv:.1f}"
+                else:
+                    line_str = "PK"
+                _spread_map[gid] = line_str
+
         for g in result:
             scores = _score_map.get(g["game_id"])
             if scores:
                 g["home_score"] = scores[0]
                 g["away_score"] = scores[1]
                 g["is_final"] = True
+            g["spread_line"] = _spread_map.get(g["game_id"])  # None if not available
     except Exception:
         pass
 
     return result
+
+
+# ── Strength / Efficiency ─────────────────────────────────────────────────────
+
+@router.get("/strength")
+async def cfb_strength(
+    request: Request,
+    season: int = Query(..., description="Season year, e.g. 2025"),
+    teams: str = Query("", description="Comma-separated team names; empty = all teams"),
+    week: int = Query(None, description="Most recent week to include (default = all weeks)"),
+):
+    """
+    Per-team PPA efficiency summary from cfbd.ppa_games — populated weekly
+    by pipelines/cfbd_extended_pipeline.py, NOT from live CFBD API calls.
+
+    Returns a list of StrengthRow objects:
+      { team, season, week, off_raw, def_raw }
+
+    The frontend aggregates these into StrengthSummary (offPct, defPct, wkTrend).
+    Pass teams=A,B,C to filter; omit for all teams.
+    Pass week=N to get rows up through week N; omit for all available weeks.
+    """
+    db = get_db(request)
+    team_list = [t.strip() for t in teams.split(",") if t.strip()] if teams else []
+
+    wheres = ["season = ?"]
+    params: list[Any] = [season]
+
+    if team_list:
+        placeholders = ", ".join("?" for _ in team_list)
+        wheres.append(f"team IN ({placeholders})")
+        params.extend(team_list)
+
+    if week is not None:
+        wheres.append("week <= ?")
+        params.append(week)
+
+    where_clause = " AND ".join(wheres)
+
+    rows = query(db, f"""
+        SELECT team, season, week, off_ppa AS off_raw, def_ppa AS def_raw
+        FROM cfbd.ppa_games
+        WHERE {where_clause}
+        ORDER BY team, week
+    """, params)
+
+    return rows
+
+
+@router.get("/strength/summary")
+async def cfb_strength_summary(
+    request: Request,
+    season: int = Query(..., description="Season year, e.g. 2025"),
+    teams: str = Query("", description="Comma-separated team names; empty = all teams"),
+):
+    """
+    Pre-aggregated per-team efficiency summary from cfbd.ppa_games.
+    Returns one row per team with:
+      { team, off_avg, def_avg, off_pct, def_pct, wk_trend }
+
+    off_pct / def_pct are percentile ranks (0-100) across all teams in the season.
+    wk_trend is the change in off_ppa from the first half of weeks to the second half.
+    No live API calls — reads only from DuckDB.
+    """
+    db = get_db(request)
+    team_list = [t.strip() for t in teams.split(",") if t.strip()] if teams else []
+
+    team_filter = ""
+    params: list[Any] = [season]
+    if team_list:
+        placeholders = ", ".join("?" for _ in team_list)
+        team_filter = f"AND team IN ({placeholders})"
+        params.extend(team_list)
+
+    rows = query(db, f"""
+        WITH base AS (
+            SELECT team, season, week, off_ppa, def_ppa
+            FROM cfbd.ppa_games
+            WHERE season = ? {team_filter}
+        ),
+        team_agg AS (
+            SELECT
+                team,
+                season,
+                AVG(off_ppa) AS off_avg,
+                AVG(def_ppa) AS def_avg,
+                COUNT(*) AS n_weeks,
+                -- Trend: avg off_ppa in later weeks minus earlier weeks
+                AVG(CASE WHEN week > (SELECT MAX(week)/2 FROM base b2 WHERE b2.team = base.team) THEN off_ppa END)
+                - AVG(CASE WHEN week <= (SELECT MAX(week)/2 FROM base b2 WHERE b2.team = base.team) THEN off_ppa END) AS wk_trend
+            FROM base
+            GROUP BY team, season
+        ),
+        ranked AS (
+            SELECT *,
+                PERCENT_RANK() OVER (ORDER BY off_avg) * 100 AS off_pct,
+                PERCENT_RANK() OVER (ORDER BY def_avg DESC) * 100 AS def_pct
+            FROM team_agg
+        )
+        SELECT team, season, off_avg, def_avg, off_pct, def_pct, wk_trend, n_weeks
+        FROM ranked
+        ORDER BY off_pct DESC
+    """, params)
+
+    return rows
