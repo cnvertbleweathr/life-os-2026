@@ -16,14 +16,14 @@ Your Life → DLT Pipelines → DuckDB → dbt → FastAPI → Next.js
 
 The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin read-only query layer over DuckDB/dbt marts; Next.js is the actual UI. OpenClaw is the AI intelligence layer that generates daily briefs, weekly reviews, and game analysis.
 
-Full architecture diagrams, dbt lineage, and the daily sync sequence live in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+The CFB betting system is documented in [`docs/SYSTEM_EXPLAINER.md`](./docs/SYSTEM_EXPLAINER.md) and [`docs/SYSTEM_DEEP_DIVE.md`](./docs/SYSTEM_DEEP_DIVE.md); deployment notes live in [`DEPLOYMENT_NOTES.md`](./DEPLOYMENT_NOTES.md).
 
 ---
 
 ## Repository Structure
 
 ```
-ons-2026/
+life-os-2026/
 ├── goals/
 │   └── 2026.yaml                      # What you said you'd do. No judgment.
 │
@@ -43,17 +43,20 @@ ons-2026/
 │   ├── hardcover_pipeline.py
 │   ├── habits_pipeline.py
 │   ├── cfbd_pipeline.py
-│   ├── cfbd_extended_pipeline.py
+│   ├── cfbd_extended_pipeline.py      # Per-game PPA (current season), recruiting, etc.
+│   ├── live_picks_pipeline.py         # Graded picks → cfbd.live_picks
 │   ├── letterboxd_pipeline.py
-│   └── kglw_pipeline.py
+│   ├── kglw_pipeline.py
+│   └── kglw_youtube_pipeline.py
 │
 ├── scripts/                           # Orchestration + auxiliary scripts
 │   ├── daily_sync.py                  # ← The one command to rule them all
 │   ├── backup_duckdb.py
 │   ├── notify.py                      # ntfy.sh push notifications
 │   ├── tz_utils.py                    # Denver-timezone-correct date helpers
-│   ├── generate_picks.py
-│   ├── generate_picks_report.py
+│   ├── generate_picks.py              # Weekly picks (Mon–Wed)
+│   ├── generate_picks_report.py       # Thursday briefing
+│   ├── grade_picks.py                 # Grades results (Mon + Thu–Sun)
 │   ├── generate_postmortem.py
 │   └── [20+ other utilities]
 │
@@ -82,7 +85,7 @@ ons-2026/
 │   │   ├── music/page.tsx
 │   │   ├── shows/page.tsx
 │   │   ├── sports/page.tsx
-│   │   ├── cfb/page.tsx
+│   │   ├── cfb/page.tsx               # This Week · Matchup Lab · Teams
 │   │   ├── kglw/page.tsx
 │   │   └── checkin/page.tsx
 │   ├── components/
@@ -95,10 +98,10 @@ ons-2026/
 │
 ├── dbt/
 │   ├── models/
-│   │   ├── core/core__life_events.sql
 │   │   ├── staging/
-│   │   └── marts/
-│   └── profiles/
+│   │   └── marts/                     # incl. core__life_events, mart_cfb_live_strength,
+│   │                                  #      mart_live_picks, mart_goal_pacing
+│   └── profiles.yml                   # profile: ons → data/warehouse/ons.duckdb
 │
 ├── data/
 │   ├── warehouse/ons.duckdb           # DuckDB warehouse (gitignored)
@@ -109,16 +112,11 @@ ons-2026/
 │   ├── bets/todays_picks.json
 │   └── [other domains]
 │
-├── reports/
-│   ├── daily/                         # OpenClaw morning briefs (YYYY-MM-DD.md)
-│   └── weekly/                        # OpenClaw weekly reviews (YYYY-Www.md)
-│
 ├── tests/
 │   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups
 │   └── fixtures/load_fixtures.py
 │
-├── .github/workflows/                 # ci.yml, ci-analytics.yml, picks-validation.yml,
-│                                      # motherduck-sync.yml, mac-mini-refresh.yml
+├── .github/workflows/                 # ci.yml, picks-validation.yml
 ├── launchd/
 │   ├── com.ons.daily-sync.plist       # 9am daily
 │   └── com.ons.backup-duckdb.plist    # 2am nightly
@@ -129,7 +127,16 @@ ons-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`). Backup at 2am. OpenClaw runs at 9:25am as Step 16 (after dbt, before backup).
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 28 steps in order. Some steps only run on certain days:
+
+| Stage | Steps | When |
+|---|---|---|
+| Life data | strava, hardcover, habits, calendar, shows, spotify, Daily 10, streams, WOD | Daily (calendar export Mon/Thu) |
+| CFB lines + news | `track_lines`, `track_news_signals` | Daily · Wed/Thu |
+| CFB in-season | `cfbd_extended_pipeline` → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
+| CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
+| Goals + transform | `sync_playlist_artists`, `sync_goal_progress`, `dbt`, `load_goals`, `load_goal_progress` | Daily |
+| AI + backup | `openclaw_generation`, `backup_duckdb` | Daily, last |
 
 ```bash
 source .venv/bin/activate
@@ -206,7 +213,7 @@ cp .env.example .env
 | **Music** | Top artists, Daily 10 playlist, news |
 | **Shows** | Upcoming Denver concerts, artist matching |
 | **Sports** | Streams, AI-ranked top 5, news |
-| **CFB Betting** | Validated model, sortable team table, weekly picks |
+| **CFB Betting** | **This Week:** full ranked slate with final scores, official picks, below-bar signals, collapsible no-signal games, game drill-down · **Matchup Lab:** head-to-head model run · **Teams:** profiles with live in-season strength |
 | **King Gizzard** | Upcoming shows, on-this-day, song catalog, jam chart |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log |
 
@@ -214,7 +221,7 @@ cp .env.example .env
 
 ## OpenClaw — AI Intelligence Layer
 
-OpenClaw sits above the marts and generates daily insights. It runs at 9:25am as Step 16 in `daily_sync.py` (after dbt, before backup), uses Claude Sonnet 4.6 with prompt caching (~$0.80/month), and logs every execution.
+OpenClaw sits above the marts and generates daily insights. It runs as the `openclaw_generation` step near the end of `daily_sync.py` (after dbt, before backup), uses Claude Sonnet 4.6 with prompt caching (~$0.80/month), and logs every execution.
 
 **Live (Days 1-5, completed 2026-07-13):**
 - Morning brief — displayed on Home page, stored in `raw.ai_life_briefs`
@@ -248,6 +255,12 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 Active signals: talent/recruiting, PPA gap > 0.15, success rate parity, conference tailwind, underdog bonus, home efficiency vs away talent, coach change.
 
 Disabled (July 2026): spread range (anti-predictive), away efficiency beats talent (market prices correctly), returning production (padding without signal).
+
+**In-season tracking (2026):**
+- **Live strength:** `mart_cfb_live_strength` scores each team's 2026 per-game PPA against its prior-season baseline (z-scored), plus a market residual, so ratings drift with real performance instead of sitting on 2025 numbers. Built from the games table, so unplayed games keep their schedule rows.
+- **Grading loop:** `grade_picks` → `live_picks_pipeline` → `mart_live_picks` keeps the record and header stats current through the week.
+- **Week anchoring:** `current_cfb_week` anchors on the last Saturday of August, so Week 1 runs through the following Friday.
+- **API:** `/api/cfb/slate` (weekly ranked slate), `/api/cfb/strength` and `/api/cfb/strength/summary` (live strength), `/api/cfb/schedule` (FBS-only, with final scores), `/api/cfb/live-tracker`, `/api/cfb/matchup-lab`.
 
 **Documentation:**
 - 7-minute overview: [`docs/SYSTEM_EXPLAINER.md`](./docs/SYSTEM_EXPLAINER.md)
