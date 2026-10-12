@@ -161,3 +161,9 @@ secrets/.spotify_cache
 web/node_modules/
 web/.next/
 web/.env.local
+
+# ONS — generated / local-only
+data/spotify/processed/daily10_latest.json
+web/tsconfig.tsbuildinfo
+.DS_Store
+__MACOSX/
