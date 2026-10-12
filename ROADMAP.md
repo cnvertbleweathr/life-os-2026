@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-07-13
+Last updated: 2026-10-11
 
 ---
 
@@ -32,67 +32,53 @@ The platform has matured past "collect more data." The next phase focuses on hel
 
 ---
 
-## OpenClaw — AI Intelligence Layer [COMPLETED DAYS 1-5, 2026-07-13]
+## Agentic Layer — Replaces OpenClaw [NEW TRACK, 2026-10-11]
 
-OpenClaw is the AI layer that sits above the data and answers all three questions. It is only possible because ONS built the data foundation to support it.
+OpenClaw is being retired. Its analyzers were single-shot prompts: pull a mart, send one prompt, store the text. With no tools, no state and no way to check its own work, the output stayed generic and the Tier 2 analyzers never shipped. It also had no evals, so "did it work?" was answered by feel.
 
-### What's Live (Days 1-5)
+The replacement is a set of **LangGraph agents**: tool-calling, stateful, able to query, check and retry. Each agent has one narrow job and an eval suite before it ships.
 
-| Day | Component | Status | Notes |
-|-----|-----------|--------|-------|
-| 1 | RBAC + DuckDB layer + audit | 🟢 | Zero-trust read-only connection, 5 writable tables, immutable audit log |
-| 2-3 | Morning Brief + Weekly Recap | 🟢 | Claude Sonnet 4.6, prompt caching, $0.80/month cost |
-| 4 | Daily Sync integration | 🟢 | Non-blocking Step 16 in daily_sync.py, AFTER dbt, BEFORE backup |
-| 5 | Dashboard live | 🟢 | Next.js Home page displays live morning brief, FastAPI endpoints working |
+### What carries over from OpenClaw
 
-### Tier 1 Analyzers (Live)
+| Keep | Why |
+|------|-----|
+| `openclaw/rbac/policy.py` → read-only mart access | Becomes the permission layer for agent tools |
+| `openclaw/db.py` → read-only DuckDB connection | Agents never get a writer |
+| `openclaw/audit.py` + `data/ai/generations.jsonl` | Every agent run logged with tokens + cost |
+| `raw.ai_*` output tables | Agent outputs land in the same place |
 
-| Analyzer | Cadence | Output | Status |
-|----------|---------|--------|--------|
-| Morning Brief | Daily (9:25am) | `raw.ai_life_briefs` | 🟢 On Home page, 3-4 sentence daily summary |
-| Weekly Recap | Sundays | `raw.ai_life_briefs` | 🟢 400-word narrative (ready, not yet on dashboard) |
-| CFB Narratives | As games complete | `raw.ai_cfb_narratives` | 🟡 Built, disabled (no live games until Aug 29) |
+Retired: `openclaw/analyzers/*`, `openclaw/orchestrator.py`, the `openclaw_generation` sync step (once each replacement is live).
 
-### Tier 2 Analyzers (Planned, Starting Now)
+### Learning Path (deeplearning.ai)
 
-| Analyzer | Cadence | Purpose | Status |
-|----------|---------|---------|--------|
-| CFB Picks Analysis | Weekly (Thursdays) | Game previews, signal breakdown, "why this pick" | 🔵 Planned |
-| Habit Insights | Bi-weekly | Trend analysis, streak patterns, motivation | 🔵 Planned |
-| [More to come] | TBD | To be defined | ⚪ Idea |
+| # | Course | Length | Why | Status |
+|---|--------|--------|-----|--------|
+| 1 | Agentic AI (Andrew Ng) | 8.2h | Design patterns: reflection, planning, tool use, multi-agent | 🟡 20% |
+| 2 | AI Agents in LangGraph | 1.5h | Core build skill: stateful graphs + tool-calling nodes | 🔵 |
+| 3 | Evaluating AI Agents | 2.5h | Moved earlier: evals gate every agent before it ships | 🔵 |
+| 4 | Multi AI Agent Systems with crewAI | 3h | **Optional.** LangGraph covers supervisor/sub-agent patterns; only if a real multi-agent need appears | ⚪ |
 
-**Tier 2 approach:** Start with CFB picks (leverages existing validated model) and habit insights (existing habit data rich enough). Additional analyzers added as use cases emerge and prove valuable. No internal pressure to fill every possible domain.
+Note: the LangGraph course predates LangGraph 1.x — port examples to the current API rather than pinning old versions.
 
-### Infrastructure (All Complete)
+### Phases
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Module structure | 🟢 | `openclaw/{config,db,audit,rbac,orchestrator,analyzers}/` |
-| DuckDB tables | 🟢 | 5 writable `raw.ai_*` tables created |
-| Read-only RBAC | 🟢 | 12 readable marts, zero-trust enforcement |
-| Audit trail | 🟢 | Every generation logged to `data/ai/generations.jsonl` |
-| FastAPI endpoints | 🟢 | `/api/home/brief/latest`, `/api/home/briefs` |
-| Dashboard integration | 🟢 | Home page displays morning brief with markdown |
-| Cost tracking | 🟢 | ~$0.80/month with 90% prompt-cache discount |
+| Phase | Deliverable | Depends on | Status |
+|-------|-------------|------------|--------|
+| A0 | Retire OpenClaw analyzers; extract RBAC/db/audit into `agents/core/` | — | 🔵 |
+| A1 | **Ask ONS** — natural-language Q&A over DuckDB (inspect schema → write SQL → run read-only → check → retry) | Courses 1–2 | 🔵 |
+| A2 | **Eval harness** — golden question set, SQL correctness, groundedness, cost/latency per run, scores tracked over time in `ai.evaluations` | Course 3, A1 | 🔵 |
+| A3 | **CFB weekly agent** — reads live picks, live strength, line movement, news signals; writes the Thursday "why this pick" brief; graded against real results | A2 | 🔵 |
+| A4 | **Morning brief v2** — rebuilt as an agent using A1's tools; replaces the OpenClaw brief on Home | A2 | 🔵 |
+| A5 | Habit/goal coach — trends, streak recovery, pacing risk → proposes items for `core.actions` | A2, Unified Action System | ⚪ |
+| A6 | Multi-agent supervisor (only if A1–A5 show a need) | Course 4 (optional) | ⚪ |
 
-### Next Steps for Tier 2
+### Agent Rules
 
-1. **CFB Picks Analysis (Week 1 of 2026 season, ~Aug 29)**
-   - Weekly Thursday report: why each pick was made
-   - Game preview: teams, spreads, edge signals
-   - Signal breakdown: which signals drove the score
-   - Output: `raw.ai_cfb_picks_analysis` or extend `raw.ai_cfb_narratives`
-
-2. **Habit Insights (Bi-weekly)**
-   - Trend analysis: improving, stable, declining
-   - Streak patterns: current streak, longest, recovery from lapse
-   - Motivation: "you're at your longest streak in 6 months" 
-   - Output: `raw.ai_habit_insights`
-
-3. **More use cases (Later)**
-   - Proposed by OpenClaw analysis or user request
-   - Validated against real data before shipping
-   - No internal pressure to fill the matrix
+- **Agents explain and orchestrate; they don't decide.** CFB picks stay in the deterministic scorer. Agents never change model rules or bet logic.
+- **Read-only by default.** Tools query marts through the RBAC layer; writes only to `raw.ai_*`.
+- **No eval, no ship.** Every agent has a golden set and a pass bar before it goes into `daily_sync.py` or the UI.
+- **Bounded runs.** Max tool calls and a cost ceiling per run; failures are non-blocking for the sync.
+- **One job per agent.** Vague mandates ("summarize my life") are what sank OpenClaw.
 
 ---
 
@@ -102,7 +88,7 @@ OpenClaw is the AI layer that sits above the data and answers all three question
 |---|-----------|------|--------|
 | 1 | **Stabilize Daily Operations** | Daily sync runs unattended with clear logs, health, backups | 🟢 |
 | 2 | **Productize the Dashboard** | FastAPI + Next.js replacing Streamlit | 🟢 |
-| 3 | **Activate OpenClaw** | AI layer answers all three questions | 🟢 Days 1-5 ✓ |
+| 3 | **Agentic Layer** | LangGraph agents answer the three questions, with evals | 🔵 Replaces OpenClaw |
 | 4 | **Expand Warehouse Discipline** | dbt tests, mart documentation, data contracts | 🔵 |
 | 5 | **Snowflake/MotherDuck** | Mirror selected marts to cloud | 🔵 |
 
@@ -122,7 +108,7 @@ OpenClaw is the AI layer that sits above the data and answers all three question
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
 | 🟢 | GitHub Actions CI | 5 jobs: syntax, CFB, hardcode, schema, TypeScript |
-| 🟢 | OpenClaw integrated | Non-blocking Step 16 in daily_sync.py |
+| 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale |
@@ -147,11 +133,10 @@ Domain: capuchin.cyou
 | 🟢 | FastAPI layer — all 10 routers | Real data debugged, confirmed response shapes |
 | 🟢 | All 11 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in |
 | 🟢 | CFB team logos | 260/263 downloaded |
-| 🟢 | OpenClaw morning brief | Displayed on Home page |
+| 🟢 | OpenClaw morning brief | On Home page until Agentic Layer A4 replaces it |
 | 🔵 | Tailscale setup | 15 min |
 | 🔵 | capuchin.cyou DNS | Point to production app |
 | 🔵 | Decommission Streamlit | After parity confirmed |
-| 🔵 | OpenClaw weekly review page | Display Sunday narratives |
 
 ---
 
@@ -197,7 +182,7 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | 🟢 | CFB postmortem + grading |
 | 🟢 | Calibration audit suite |
 | 🟢 | Quality-of-Win system (Phases A-D) |
-| 🟡 | 2026 live monitoring | Week 8 re-evaluation pending |
+| 🟡 | 2026 live monitoring | Live strength, grading loop, full slate UI shipped; Week 8 re-evaluation pending |
 | 🔵 | Line movement signal |
 | 🔵 | Re-run ablation at 2026 Week 4 |
 
@@ -286,16 +271,9 @@ Monitor infrastructure, pipelines, FastAPI, Next.js, and AI operations.
 | 🔵 | Create system health API endpoint |
 | 🔵 | Create observability dashboard |
 
-### AI Evaluation Harness (P1)
+### AI Evaluation Harness
 
-Create `ai.evaluations` — measure OpenClaw output quality.
-
-| Status | Item |
-|--------|------|
-| 🔵 | Create evaluation tables |
-| 🔵 | Create golden question set |
-| 🔵 | Add groundedness + freshness checks |
-| 🔵 | Track scores over time |
+Moved into the Agentic Layer as Phase A2.
 
 ### Personal Knowledge Layer (P1)
 
