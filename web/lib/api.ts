@@ -709,6 +709,20 @@ export interface KglwYoutubeMatch {
   match_confidence: "high" | "medium" | "low";
 }
 
+export interface KglwMusicVideo {
+  video_id: string;
+  title: string;
+  song_title: string;
+  release_date: string; // YYYY-MM-DD
+  view_count: number | null;
+  duration: string | null; // ISO-8601, e.g. PT4M10S
+}
+
+// Local (Denver) calendar date as YYYY-MM-DD — used to flag upcoming shows.
+function todayLocalIso(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Denver" });
+}
+
 export const kglwApi = {
   summary: () => get<KglwSummary>("/kglw/summary"),
   shows: async (
@@ -720,15 +734,19 @@ export const kglwApi = {
     if (opts?.limit != null) params.set("limit", String(opts.limit));
     const qs = params.toString();
     const shows = await get<KglwShow[]>(`/kglw/shows${qs ? `?${qs}` : ""}`);
-    const mapped = shows.map((s) => ({
-      ...s,
-      id: s.show_id,
-      date: s.show_date,
-      venue: s.venue_name,
-      tour: s.tour_name,
-      upcoming: false, // no reliable upcoming flag from API
-      videoId: null as string | null,
-    }));
+    const today = todayLocalIso();
+    const mapped = shows.map((s) => {
+      const d = String(s.show_date ?? "").slice(0, 10);
+      return {
+        ...s,
+        id: s.show_id,
+        date: d,
+        venue: s.venue_name,
+        tour: s.tour_name,
+        upcoming: d >= today, // kglw.net lists announced future dates in /shows
+        videoId: null as string | null,
+      };
+    });
 
     // Populate real videoId from mart_kglw_youtube_matches — built by
     // matching the official YouTube channel's uploads against kglw.shows
@@ -741,9 +759,9 @@ export const kglwApi = {
     // endpoint or empty mart isn't an error, it's the same honest "no
     // recording" state the page has always shown.
     try {
-      const ids = mapped.map((s) => s.show_id).filter(Boolean);
-      if (ids.length > 0) {
-        const matches = await get<KglwYoutubeMatch[]>(`/kglw/youtube-matches?show_ids=${ids.join(",")}`);
+      if (mapped.length > 0) {
+        // No show_ids → the API returns every match in one call.
+        const matches = await get<KglwYoutubeMatch[]>(`/kglw/youtube-matches`);
         const byShowId = new Map(matches.map((m) => [m.show_id, m.video_id]));
         for (const s of mapped) {
           s.videoId = byShowId.get(s.show_id) ?? null;
@@ -756,6 +774,8 @@ export const kglwApi = {
     return mapped;
   },
   show: (showId: number) => get<KglwShow | null>(`/kglw/shows/${showId}`),
+  // Official music videos — degrades to [] if the mart isn't built yet.
+  musicVideos: () => get<KglwMusicVideo[]>("/kglw/music-videos").catch(() => [] as KglwMusicVideo[]),
   onThisDay: () => get<KglwShow[]>("/kglw/shows/on-this-day"),
   // Per-show YouTube match — used by the show detail panel as a
   // fallback/refresh if the bulk fetch in shows() didn't have this show.

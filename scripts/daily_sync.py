@@ -429,6 +429,27 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # King Gizzard — kglw.net catalog + official YouTube channel.
+        # Neither was scheduled before, so shows/recordings went stale.
+        # --shows-only skips per-show links (kglw.net links endpoint is
+        # broken server-side) and setlists (~150 rate-limited calls).
+        # Must run before dbt so mart_kglw_youtube_matches and
+        # mart_kglw_music_videos rebuild against fresh data.
+        # ------------------------------------------------------------------
+        Step(
+            name="kglw",
+            cmd=["python3", "pipelines/kglw_pipeline.py", "--shows-only"],
+            run_if_exists=ROOT / "pipelines/kglw_pipeline.py",
+            tags=["kglw", "music"],
+        ),
+        Step(
+            name="kglw_youtube",
+            cmd=["python3", "pipelines/kglw_youtube_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/kglw_youtube_pipeline.py",
+            tags=["kglw", "music"],
+        ),
+
+        # ------------------------------------------------------------------
         # Goals + dbt — always run, required
         # ------------------------------------------------------------------
         Step(

@@ -288,20 +288,49 @@ async def kglw_jamchart(
         """, [limit])
 
     return rows
-# YouTube matches
+# ── YouTube: live-show recordings ────────────────────────────────────────────
+
 @router.get("/youtube-matches")
-async def kglw_youtube_matches(request: Request, show_ids: str = Query(...)):
+async def kglw_youtube_matches(request: Request, show_ids: str | None = Query(None)):
+    """
+    Show -> YouTube recording matches from mart_kglw_youtube_matches.
+
+    show_ids is optional: omit it to get every match in one call (the
+    page needs all ~1100 shows, and a 1100-id querystring is fragile).
+    """
     db = get_db(request)
+    cols = (
+        "video_id, title, published_at, show_id, show_date, venue_name, "
+        "city, country, tour_year, night_number, match_confidence"
+    )
+    if show_ids is None:
+        return query(db, f"SELECT {cols} FROM main_marts.mart_kglw_youtube_matches ORDER BY show_id")
+
     ids = [int(x) for x in show_ids.split(",") if x.strip().isdigit()]
     if not ids:
         return []
     ph = ",".join("?" * len(ids))
-    cols = "video_id, title, published_at, show_id, "
-    cols += "show_date, venue_name, city, country, "
-    cols += "tour_year, night_number, match_confidence"
-    sql = "SELECT " + cols + " "
-    sql += "FROM main_marts.mart_kglw_youtube_matches "
-    sql += "WHERE show_id IN (" + ph + ") "
-    sql += "ORDER BY show_id"
-    return query(db, sql, ids)
+    return query(
+        db,
+        f"SELECT {cols} FROM main_marts.mart_kglw_youtube_matches "
+        f"WHERE show_id IN ({ph}) ORDER BY show_id",
+        ids,
+    )
 
+
+# ── YouTube: official music videos ───────────────────────────────────────────
+
+@router.get("/music-videos")
+async def kglw_music_videos(request: Request):
+    """
+    Official music videos from the KGLW channel, newest release first.
+    Backed by main_marts.mart_kglw_music_videos.
+    """
+    db = get_db(request)
+    return query(db, """
+        SELECT video_id, title, song_title,
+               CAST(release_date AS VARCHAR) AS release_date,
+               view_count, duration
+        FROM main_marts.mart_kglw_music_videos
+        ORDER BY release_date DESC
+    """)
