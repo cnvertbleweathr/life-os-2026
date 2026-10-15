@@ -19,7 +19,6 @@ const NAV: NavItem[] = [
   { kind: "section", label: "Entertainment" },
   { kind: "link", href: "/music",   label: "Music",        icon: "music" },
   { kind: "link", href: "/kglw",    label: "King Gizzard", icon: "kglw" },
-  { kind: "link", href: "/shows",   label: "Shows",        icon: "shows" },
   { kind: "link", href: "/sports",  label: "Sports",       icon: "sports" },
   { kind: "section", label: "Edge" },
   { kind: "link", href: "/cfb",     label: "CFB Betting",  icon: "cfb" },

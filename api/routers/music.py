@@ -1,11 +1,11 @@
 """
-/api/music — Daily 10 playlist, streaming stats, YTD summary, music news.
+/api/music — Daily 10 playlist, streaming stats, YTD summary, this day in music.
 """
 
 from __future__ import annotations
 
 import json
-import os
+import re
 from datetime import date
 from pathlib import Path
 
@@ -101,40 +101,109 @@ async def top_tracks(limit: int = 20):
         return []
 
 
-@router.get("/news")
-async def music_news():
-    """Recent music news via NewsAPI."""
-    api_key = os.getenv("NEWS_API_KEY")
-    if not api_key:
-        return []
-    import httpx
+ON_THIS_DAY_CACHE = ROOT / "data" / "music" / "onthisday"
+
+# Wikipedia page descriptions are short and consistent ("American rock band",
+# "English singer-songwriter"), so a keyword match on them is a reliable
+# music filter. Matched against the page description, not the event text.
+_MUSIC_WORDS = (
+    "musician", "singer", "songwriter", "rapper", "band", "guitarist",
+    "drummer", "bassist", "pianist", "composer", "keyboardist", "vocalist",
+    "album", "song", "single by", "record producer", "dj", "conductor",
+    "music", "opera", "jazz", "hip hop", "punk", "metal", "rock",
+)
+
+
+_MUSIC_RE = re.compile(r"\b(" + "|".join(re.escape(w) for w in _MUSIC_WORDS) + r")s?\b")
+
+
+def _is_music_page(page: dict) -> bool:
+    # Word-boundary match so "husband", "operator", "metallurgist" don't hit
+    return bool(_MUSIC_RE.search((page.get("description") or "").lower()))
+
+
+def _my_artist_names() -> set[str]:
+    if not STREAMS_CLEAN.exists():
+        return set()
     try:
-        async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(
-                "https://newsapi.org/v2/everything",
-                params={
-                    "q":        "music OR album OR concert OR tour",
-                    "language": "en",
-                    "sortBy":   "publishedAt",
-                    "pageSize": 10,
-                    "apiKey":   api_key,
-                }
-            )
-            if r.status_code == 200:
-                articles = r.json().get("articles", [])
-                return [
-                    {
-                        "title":       a.get("title"),
-                        "source":      a.get("source", {}).get("name"),
-                        "url":         a.get("url"),
-                        "published":   a.get("publishedAt"),
-                        "description": a.get("description"),
-                    }
-                    for a in articles if a.get("title")
-                ]
+        names = pd.read_csv(STREAMS_CLEAN, usecols=["artist_name"])["artist_name"].dropna()
+        return {n.strip().lower() for n in names.unique() if len(n.strip()) >= 4}
     except Exception:
-        pass
-    return []
+        return set()
+
+
+async def _fetch_wiki_onthisday(today: date) -> dict:
+    """Wikipedia's On This Day feed, cached to disk once per calendar day."""
+    ON_THIS_DAY_CACHE.mkdir(parents=True, exist_ok=True)
+    cache = ON_THIS_DAY_CACHE / f"{today:%m-%d}.json"
+    if cache.exists():
+        return json.loads(cache.read_text())
+    import httpx
+    url = f"https://en.wikipedia.org/api/rest_v1/feed/onthisday/all/{today:%m}/{today:%d}"
+    async with httpx.AsyncClient(timeout=10, headers={
+        "User-Agent": "ONS-personal-dashboard/1.0 (github.com/cnvertbleweathr/life-os-2026)",
+    }) as client:
+        r = await client.get(url)
+        r.raise_for_status()
+        data = r.json()
+    cache.write_text(json.dumps(data))
+    return data
+
+
+@router.get("/on-this-day")
+async def on_this_day(limit: int = 8):
+    """Music events, births and deaths on today's date (Wikipedia), plus what
+    you were listening to on this date in previous years (streams_clean)."""
+    today = date.today()
+    out: dict = {"date": today.isoformat(), "events": [], "history": [], "error": None}
+
+    try:
+        data = await _fetch_wiki_onthisday(today)
+        mine = _my_artist_names()
+        seen: set[str] = set()
+        kinds = {"selected": "event", "events": "event", "births": "born", "deaths": "died"}
+        for key, kind in kinds.items():
+            for item in data.get(key, []):
+                pages = [p for p in item.get("pages", []) if _is_music_page(p)]
+                if not pages or item.get("text") in seen:
+                    continue
+                seen.add(item.get("text"))
+                page = pages[0]
+                title = page.get("normalizedtitle") or page.get("title", "").replace("_", " ")
+                base = title.split(" (")[0].strip().lower()
+                out["events"].append({
+                    "year": item.get("year"),
+                    "kind": kind,
+                    "text": item.get("text"),
+                    "subject": title,
+                    "url": (page.get("content_urls") or {}).get("desktop", {}).get("page"),
+                    "is_my_artist": base in mine,
+                })
+        # Your artists first, then a spread across eras (newest first)
+        out["events"].sort(key=lambda e: (not e["is_my_artist"], -(e["year"] or 0)))
+        out["events"] = out["events"][:limit]
+    except Exception as e:
+        out["error"] = str(e)
+
+    if STREAMS_CLEAN.exists():
+        try:
+            df = pd.read_csv(STREAMS_CLEAN, usecols=["artist_name", "ms_played", "played_at"])
+            df["played_at"] = pd.to_datetime(df["played_at"], errors="coerce")
+            df = df[(df["played_at"].dt.month == today.month)
+                    & (df["played_at"].dt.day == today.day)
+                    & (df["played_at"].dt.year < today.year)]
+            for yr, g in df.groupby(df["played_at"].dt.year):
+                top = g.groupby("artist_name")["ms_played"].sum().sort_values(ascending=False).head(3)
+                out["history"].append({
+                    "year": int(yr),
+                    "minutes": round(g["ms_played"].sum() / 60000),
+                    "top_artists": top.index.tolist(),
+                })
+            out["history"].sort(key=lambda h: -h["year"])
+        except Exception:
+            pass
+
+    return out
 
 
 @router.get("/daily10/cover")

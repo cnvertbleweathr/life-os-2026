@@ -240,6 +240,23 @@ export interface TopTrack {
   minutes: number;
 }
 
+export interface OnThisDayEvent {
+  year: number | null;
+  kind: "event" | "born" | "died";
+  text: string;
+  subject: string;
+  url: string | null;
+  is_my_artist: boolean;
+}
+
+export interface OnThisDay {
+  date: string;
+  events: OnThisDayEvent[];
+  // What you played on this date in previous years (empty until history spans >1 year)
+  history: { year: number; minutes: number; top_artists: string[] }[];
+  error: string | null;
+}
+
 export const musicApi = {
   summary: () => get<MusicSummary>("/music/summary"),
   daily10: () => get<MusicDaily10>("/music/daily10"),
@@ -250,11 +267,7 @@ export const musicApi = {
   // Not a data gap — verified real artists/tracks return correctly now.
   topArtists: (limit = 20) => get<TopArtist[]>(`/music/top-artists?limit=${limit}`),
   topTracks: (limit = 20) => get<TopTrack[]>(`/music/top-tracks?limit=${limit}`),
-  // Real shape confirmed from api/routers/music.py — same NewsAPI
-  // pattern as sportsApi.news(), just a different query
-  // ("music OR album OR concert OR tour"). [] means NEWS_API_KEY isn't
-  // set, not a bug.
-  news: () => get<NewsArticle[]>("/music/news"),
+  onThisDay: () => get<OnThisDay>("/music/on-this-day"),
 };
 
 // ── Shows ────────────────────────────────────────────────────────────────────
