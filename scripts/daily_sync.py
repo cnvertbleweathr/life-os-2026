@@ -584,6 +584,10 @@ def main() -> int:
     sync_start   = datetime.now()
     results      = []
     aborted_at   = None
+    import subprocess as _sp
+    import time as _time
+    _sp.run(["launchctl", "unload", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
+    _time.sleep(3)
 
     for step in steps:
         # If a required step already failed, skip all remaining steps
@@ -616,6 +620,9 @@ def main() -> int:
             if step.required:
                 aborted_at = step.name
                 print(f"\n  ⛔ Required step '{step.name}' failed — aborting.\n")
+
+    import subprocess as _sp
+    _sp.run(["launchctl", "load", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
 
     total_s = (datetime.now() - sync_start).total_seconds()
 
