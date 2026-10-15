@@ -23,8 +23,12 @@ videos should cost well under 100 units total — a tiny fraction of the
 10,000/day free quota.
 
 Tables created:
-  kglw_youtube.videos — video_id, title, published_at, description,
-                        duration, view_count, channel_id
+  kglw_youtube.videos               — every channel upload: video_id, title,
+                                      published_at, description, duration,
+                                      view_count, channel_id
+  kglw_youtube.music_video_playlist — the band's music-videos playlist
+                                      (same columns + playlist_position);
+                                      source for mart_kglw_music_videos
 
 Usage:
   python pipelines/kglw_youtube_pipeline.py                # full ingest
@@ -60,6 +64,12 @@ API_BASE = "https://www.googleapis.com/youtube/v3"
 # Resolved to a channel ID once at runtime (see _resolve_channel_id) rather
 # than hardcoded, since handles can be re-pointed but channel IDs are stable.
 CHANNEL_HANDLE = "KingGizzardAndTheLizardWizard"
+
+# The band's own "music videos" playlist — the source of truth for the
+# King Gizzard page's MUSIC VIDEOS tab. Anything in this playlist counts
+# as a music video; nothing outside it does. (Supplied by Karey
+# 2026-10-15 after title-regex classification missed entries.)
+MUSIC_VIDEO_PLAYLIST_ID = "PLjEpdah_kOgfhdncO5YfjdQY9hFzPq-2r"
 
 SLEEP_S = 0.3  # polite pacing between paginated calls
 
@@ -120,6 +130,71 @@ def _get_uploads_playlist_id(channel_item: dict) -> str | None:
         return None
 
 
+def _iter_playlist(playlist_id: str, limit: int | None = None) -> Iterator[dict]:
+    """
+    Yield one normalized row per video in a playlist: snippet fields from
+    playlistItems.list plus duration/view_count from a batched videos.list
+    (1 unit per 50 IDs). Skips deleted/private placeholders, which show
+    up in playlists with no videoPublishedAt.
+    """
+    fetched = 0
+    next_page_token: str | None = None
+
+    while True:
+        params = {
+            "part": "snippet,contentDetails",
+            "playlistId": playlist_id,
+            "maxResults": 50,
+        }
+        if next_page_token:
+            params["pageToken"] = next_page_token
+
+        data = _api_get("playlistItems", params)
+        if not data:
+            return
+
+        items = data.get("items", [])
+        if not items:
+            return
+
+        video_ids = [it["contentDetails"]["videoId"] for it in items]
+        details = _api_get("videos", {
+            "part": "contentDetails,statistics",
+            "id": ",".join(video_ids),
+        })
+        details_by_id = {d["id"]: d for d in (details.get("items", []) if details else [])}
+
+        for it in items:
+            vid = it["contentDetails"]["videoId"]
+            snippet = it["snippet"]
+            title = snippet.get("title") or ""
+            if title in ("Deleted video", "Private video"):
+                continue
+            detail = details_by_id.get(vid, {})
+
+            yield {
+                "video_id":     vid,
+                "title":        title,
+                "description":  snippet.get("description"),
+                # videoPublishedAt = when the video went public (the
+                # release date). snippet.publishedAt is when it was added
+                # to THIS playlist — only used as a fallback.
+                "published_at": it["contentDetails"].get("videoPublishedAt") or snippet.get("publishedAt"),
+                "channel_id":   snippet.get("videoOwnerChannelId") or snippet.get("channelId"),
+                "duration":     detail.get("contentDetails", {}).get("duration"),
+                "view_count":   detail.get("statistics", {}).get("viewCount"),
+                "playlist_position": snippet.get("position"),
+            }
+            fetched += 1
+            if limit and fetched >= limit:
+                return
+
+        next_page_token = data.get("nextPageToken")
+        if not next_page_token:
+            return
+        time.sleep(SLEEP_S)
+
+
 @dlt.resource(
     name="videos",
     write_disposition="merge",
@@ -146,63 +221,28 @@ def kglw_youtube_videos(limit: int | None = None) -> Iterator[dict]:
         return
 
     total_fetched = 0
-    next_page_token: str | None = None
-
-    while True:
-        params = {
-            "part": "snippet,contentDetails",
-            "playlistId": uploads_playlist_id,
-            "maxResults": 50,
-        }
-        if next_page_token:
-            params["pageToken"] = next_page_token
-
-        data = _api_get("playlistItems", params)
-        if not data:
-            break
-
-        items = data.get("items", [])
-        if not items:
-            break
-
-        # playlistItems gives title/description/publishedAt but not
-        # duration/view_count — those need a separate videos.list call.
-        # Batch up to 50 video IDs per call (1 unit per call regardless
-        # of how many IDs, up to 50) rather than one call per video.
-        video_ids = [it["contentDetails"]["videoId"] for it in items]
-        details = _api_get("videos", {
-            "part": "contentDetails,statistics",
-            "id": ",".join(video_ids),
-        })
-        details_by_id = {d["id"]: d for d in (details.get("items", []) if details else [])}
-
-        for it in items:
-            vid = it["contentDetails"]["videoId"]
-            snippet = it["snippet"]
-            detail = details_by_id.get(vid, {})
-
-            yield {
-                "video_id":     vid,
-                "title":        snippet.get("title"),
-                "description":  snippet.get("description"),
-                "published_at": it["contentDetails"].get("videoPublishedAt") or snippet.get("publishedAt"),
-                "channel_id":   snippet.get("channelId"),
-                "duration":     detail.get("contentDetails", {}).get("duration"),
-                "view_count":   detail.get("statistics", {}).get("viewCount"),
-            }
-            total_fetched += 1
-
-            if limit and total_fetched >= limit:
-                print(f"  videos: hit --limit {limit}, stopping")
-                return
-
-        next_page_token = data.get("nextPageToken")
-        if not next_page_token:
-            break
-
-        time.sleep(SLEEP_S)
+    for row in _iter_playlist(uploads_playlist_id, limit=limit):
+        row.pop("playlist_position", None)
+        total_fetched += 1
+        yield row
 
     print(f"  videos: {total_fetched} ingested")
+
+
+@dlt.resource(
+    name="music_video_playlist",
+    # replace, not merge: if the band pulls a video from the playlist,
+    # it should drop off the page too.
+    write_disposition="replace",
+    primary_key="video_id",
+)
+def kglw_music_video_playlist(limit: int | None = None) -> Iterator[dict]:
+    """Every video in the band's music-videos playlist."""
+    n = 0
+    for row in _iter_playlist(MUSIC_VIDEO_PLAYLIST_ID, limit=limit):
+        n += 1
+        yield row
+    print(f"  music_video_playlist: {n} ingested")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -220,6 +260,7 @@ def main() -> int:
         print(f"  Resolve @{CHANNEL_HANDLE} to a channel ID")
         print("  Fetch the channel's uploads playlist (all videos, paginated)")
         print("  For each video: title, description, publish date, duration, view count")
+        print(f"  Music-videos playlist {MUSIC_VIDEO_PLAYLIST_ID} (replaces kglw_youtube.music_video_playlist)")
         if args.limit:
             print(f"  (limited to first {args.limit} videos)")
         return 0
@@ -234,7 +275,10 @@ def main() -> int:
         dataset_name="kglw_youtube",
     )
 
-    info = pipeline.run(kglw_youtube_videos(limit=args.limit))
+    info = pipeline.run([
+        kglw_youtube_videos(limit=args.limit),
+        kglw_music_video_playlist(limit=args.limit),
+    ])
     print(f"\n✅ KGLW YouTube pipeline complete")
     print(f"   {info}")
     return 0
