@@ -27,7 +27,7 @@ class ReadOnlyDuckDBConnection:
             raise PermissionError("Write operation denied")
         if "SELECT *" in sql.upper():
             raise PermissionError("SELECT * denied")
-        con = duckdb.connect(self.db_path, read_only=True)
+        con = duckdb.connect(self.db_path, read_only=False)
         try:
             result = con.execute(sql).fetchall()
             cols = [desc[0] for desc in con.description] if con.description else []

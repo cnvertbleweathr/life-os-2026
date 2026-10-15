@@ -357,7 +357,7 @@ def build_steps(year: int) -> List[Step]:
         ),
         Step(
             name="mart_cfb_live_strength",
-            cmd=["python3", "-m", "dbt", "run", "--profiles-dir", "dbt/profiles",
+            cmd=["dbt", "run", "--profiles-dir", "dbt/profiles",
              "--project-dir", "dbt", "--select", "mart_cfb_live_strength"],
             run_if_exists=ROOT / "dbt/models/marts/mart_cfb_live_strength.sql",
             tags=["betting", "cfb"],
@@ -384,7 +384,7 @@ def build_steps(year: int) -> List[Step]:
         ),
         Step(
             name="mart_live_picks",
-            cmd=["python3", "-m", "dbt", "run", "--profiles-dir", "dbt/profiles",
+            cmd=["dbt", "run", "--profiles-dir", "dbt/profiles",
                  "--project-dir", "dbt", "--select", "mart_live_picks"],
             run_if_exists=ROOT / "dbt/models/marts/mart_live_picks.sql",
             tags=["betting", "cfb"],
