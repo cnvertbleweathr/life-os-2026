@@ -34,6 +34,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 import sys; sys.path.insert(0, str(ROOT))
+
+# Unload FastAPI before any DuckDB-touching imports (openclaw validates on import)
+import subprocess as _sp
+_sp.run(["launchctl", "unload", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
+import time as _time; _time.sleep(3)
+
 try:
     from openclaw.orchestrator import run_openclaw_tier1
 except ImportError:
@@ -584,10 +590,7 @@ def main() -> int:
     sync_start   = datetime.now()
     results      = []
     aborted_at   = None
-    import subprocess as _sp
-    import time as _time
-    _sp.run(["launchctl", "unload", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
-    _time.sleep(3)
+
 
     for step in steps:
         # If a required step already failed, skip all remaining steps

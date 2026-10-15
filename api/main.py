@@ -60,6 +60,8 @@ app.add_middleware(
         "http://localhost:3001",
         "https://capuchin.cyou",   # production domain
         "https://www.capuchin.cyou",
+        "https://narcisystem.com",
+        "https://www.narcisystem.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
