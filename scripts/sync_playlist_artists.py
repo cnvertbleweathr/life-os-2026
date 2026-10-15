@@ -40,12 +40,16 @@ DENVER_TZ      = ZoneInfo("America/Denver")
 
 
 def get_sp() -> spotipy.Spotify:
-    return spotipy.Spotify(auth_manager=SpotifyOAuth(
-        scope="playlist-read-private playlist-read-collaborative",
-        client_id=os.getenv("SPOTIFY_CLIENT_ID"),
-        client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
-        redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
-        cache_path=str(ROOT / "secrets" / ".spotify_cache"),
+    return spotipy.Spotify(
+        auth_manager=SpotifyOAuth(
+            scope="playlist-read-private playlist-read-collaborative",
+            client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+            client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
+            redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
+            cache_path=str(ROOT / "secrets" / ".spotify_cache"),
+        ),
+        requests_timeout=30,
+        retries=3,
     ))
 
 
