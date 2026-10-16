@@ -12,6 +12,7 @@ from typing import Any
 import pandas as pd
 from fastapi import APIRouter, Query
 
+DENVER     = "America/Denver"
 router     = APIRouter()
 ROOT       = Path(__file__).resolve().parents[2]
 AEG_CSV    = ROOT / "data" / "shows" / "processed" / "denver_events_upcoming.csv"
@@ -55,12 +56,20 @@ def _load_shows() -> pd.DataFrame:
     # offset-aware ("2026-06-20T19:00:00-06:00") strings - same issue as
     # the home.py calendar fix, vectorized to_datetime(utc=True) silently
     # NaTs the offset-aware rows when formats are mixed in one column.
-    combined["date"] = combined["start_datetime"].apply(
-        lambda x: pd.to_datetime(x, errors="coerce", utc=True)
-    )
+    # Ticketmaster dateTime is UTC ("...Z"), so a 7pm Denver show used to
+    # land on the next day. Convert offset-aware values to Denver; naive
+    # values are already Denver-local. Date-only values have no time.
+    def _to_denver(x):
+        ts = pd.to_datetime(x, errors="coerce")
+        if pd.isna(ts):
+            return pd.NaT
+        return ts.tz_localize(DENVER) if ts.tzinfo is None else ts.tz_convert(DENVER)
+
+    combined["date"] = combined["start_datetime"].apply(_to_denver)
+    combined["has_time"] = combined["start_datetime"].astype(str).str.len() > 10
     if "event_url" in combined.columns and "ticket_url" not in combined.columns:
         combined["ticket_url"] = combined["event_url"]
-    today_ts = pd.Timestamp(date.today(), tz="UTC")
+    today_ts = pd.Timestamp(date.today(), tz=DENVER)
     combined = combined[combined["date"] >= today_ts]
     combined = combined.sort_values("date").drop_duplicates(
         subset=["title", "date"], keep="first"
@@ -90,8 +99,18 @@ async def shows(
         df = df[df["is_my_artist"]]
 
     df["date_str"] = df["date"].dt.strftime("%Y-%m-%d")
+    # Denver-local start for calendar links; null when the source gave a date only
+    df["start_local"] = [
+        d.strftime("%Y-%m-%dT%H:%M:%S") if t else None for d, t in zip(df["date"], df["has_time"])
+    ]
+    df["location"] = df["venue_name"].fillna("").astype(str)
+    for col in ("venue_city", "venue_region"):
+        if col in df.columns:
+            df["location"] = df["location"] + ", " + df[col].fillna("").astype(str)
+    df["location"] = df["location"].str.replace(r"(, )+$", "", regex=True)
 
-    cols = ["date_str", "title", "venue_name", "ticket_url", "source", "is_my_artist"]
+    cols = ["date_str", "title", "venue_name", "ticket_url", "source", "is_my_artist",
+            "start_local", "location"]
     available = [c for c in cols if c in df.columns]
     from api.deps import _clean
     raw_rows = df[available].head(limit).to_dict(orient="records")

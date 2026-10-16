@@ -240,21 +240,26 @@ export interface TopTrack {
   minutes: number;
 }
 
-export interface OnThisDayEvent {
-  year: number | null;
-  kind: "event" | "born" | "died";
-  text: string;
-  subject: string;
-  url: string | null;
-  is_my_artist: boolean;
-}
-
-export interface OnThisDay {
-  date: string;
-  events: OnThisDayEvent[];
-  // What you played on this date in previous years (empty until history spans >1 year)
-  history: { year: number; minutes: number; top_artists: string[] }[];
-  error: string | null;
+export interface ArtistOfTheDay {
+  available: boolean;
+  reason?: string;
+  artist?: string;
+  date?: string;
+  bio?: string;
+  bio_source?: "TheAudioDB" | "Last.fm" | "Wikipedia";
+  links?: Record<string, string>;
+  image?: string;
+  description?: string;
+  tags?: string[];
+  listeners?: number;
+  similar?: string[];
+  country?: string;
+  formed?: number;
+  members?: number;
+  label?: string;
+  website?: string;
+  you?: { minutes?: number; plays?: number; first_played?: string; top_track?: string | null };
+  shows?: { date: string; title: string; venue: string; ticket_url: string }[];
 }
 
 export const musicApi = {
@@ -267,7 +272,7 @@ export const musicApi = {
   // Not a data gap — verified real artists/tracks return correctly now.
   topArtists: (limit = 20) => get<TopArtist[]>(`/music/top-artists?limit=${limit}`),
   topTracks: (limit = 20) => get<TopTrack[]>(`/music/top-tracks?limit=${limit}`),
-  onThisDay: () => get<OnThisDay>("/music/on-this-day"),
+  artistOfTheDay: (reroll = 0) => get<ArtistOfTheDay>(`/music/artist-of-the-day?reroll=${reroll}`),
 };
 
 // ── Shows ────────────────────────────────────────────────────────────────────
@@ -286,6 +291,8 @@ export interface Show {
   source: "AEG" | "Ticketmaster";
   is_my_artist: boolean;
   date: string;
+  start_local?: string | null;  // Denver-local "YYYY-MM-DDTHH:MM:SS"; null = date only
+  location?: string;             // "Venue, City, ST" for calendar links
   // Almanac aliases for easier use in the new pages
   venue?: string;   // alias for venue_name, populated by the wrapper
 }

@@ -169,6 +169,7 @@ def main() -> None:
         "deeds_count": len(deeds),
         "combined_count": len(combined),
         "artists": sorted(combined),
+        "tewnidge": sorted(tewnidge),   # Artist of the Day picks from this alone
     }, indent=2))
     print(f"  Saved artists → {OUT_ARTISTS}")
 
