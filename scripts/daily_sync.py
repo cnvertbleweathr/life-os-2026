@@ -351,6 +351,21 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # CFB — ingest core CFBD data (games + final scores, lines, SP+).
+        # Without this, cfbd.games keeps the schedule but never gets scores
+        # for weeks played after the last manual run, which leaves points
+        # null in /api/cfb/team-trends and the score/line marts stale.
+        # Same days as the extended pipeline so Sat results land Sun/Mon.
+        # ------------------------------------------------------------------
+        Step(
+            name="cfbd_pipeline",
+            cmd=["python3", "pipelines/cfbd_pipeline.py", "--year", "2026"],
+            run_if_exists=ROOT / "pipelines/cfbd_pipeline.py",
+            tags=["betting", "cfb"],
+            run_on_days=[0, 3, 4, 5, 6],  # Mon + Thu-Sun
+        ),
+
+        # ------------------------------------------------------------------
         # CFB — ingest extended CFBD data (per-game PPA, recruiting, etc.)
         # Runs Mon+Thu so live_strength mart stays current through the week
         # ------------------------------------------------------------------
