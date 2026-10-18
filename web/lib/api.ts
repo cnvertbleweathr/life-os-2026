@@ -474,6 +474,56 @@ export interface CfbScheduleGame {
   spread_line: string | null;
 }
 
+/** One game in a team's season log, from GET /cfb/team-trends. PPA is per
+ *  play; def_ppa is PPA ALLOWED (lower = better). Points are scoreboard. */
+export interface CfbTrendGame {
+  week: number;
+  opponent: string | null;
+  venue: "home" | "away" | null;
+  off_ppa: number | null;
+  def_ppa: number | null;
+  points_for: number | null;
+  points_against: number | null;
+}
+
+/** Season trend summary per team from GET /cfb/team-trends. Every *_trend
+ *  is signed so POSITIVE = IMPROVING (last-3 vs first-3 games). Percentiles
+ *  are FBS-wide on season-average PPA (def_pct: higher = better defense). */
+export interface CfbTeamTrend {
+  team: string;
+  season: number;
+  games: number;
+  last_week: number | null;
+  off_avg: number | null;
+  def_avg: number | null;
+  net_avg: number | null;
+  off_trend: number | null;
+  def_trend: number | null;
+  net_trend: number | null;
+  points_for: number | null;
+  points_against: number | null;
+  ppg: number | null;
+  papg: number | null;
+  pf_trend: number | null;
+  pa_trend: number | null;
+  off_pct: number | null;
+  def_pct: number | null;
+  game_log: CfbTrendGame[];
+}
+
+export interface CfbWeekInfo {
+  week: number;
+  n_scored: number | null;
+  n_official: number | null;
+  graded: boolean;
+}
+
+export interface CfbWeeks {
+  season: number;
+  current_week: number | null;
+  weeks: CfbWeekInfo[];
+}
+
 export interface CfbStrengthSummary {
   team: string;
   season: number;
@@ -530,6 +580,11 @@ export interface CfbPick {
   coach_h2h?: CfbCoachH2H | null;
   n_edges: number;
   warnings: string[];
+  /** Written by scripts/grade_picks.py into history files once games finish. */
+  outcome?: "win" | "loss" | "push" | "pending" | "ungradeable";
+  pnl?: number;
+  home_score?: number;
+  away_score?: number;
 }
 
 /** Confirmed real shape from GET /cfb/picks/summary. Returns {count: 0}
@@ -575,6 +630,13 @@ export const cfbApi = {
     get<CfbPick[]>(`/cfb/slate?season=${season}&week=${week}`),
   picks: () =>
     get<CfbPick[]>(`/cfb/picks`),
+  weeks: (season: number) => get<CfbWeeks>(`/cfb/weeks?season=${season}`),
+  teamTrends: (season: number, opts?: { throughWeek?: number; teams?: string[] }) => {
+    const q = new URLSearchParams({ season: String(season) });
+    if (opts?.throughWeek != null) q.set("through_week", String(opts.throughWeek));
+    if (opts?.teams?.length) q.set("teams", opts.teams.join(","));
+    return get<CfbTeamTrend[]>(`/cfb/team-trends?${q}`);
+  },
   picksSummary: () => get<CfbPicksSummary>("/cfb/picks/summary"),
   liveTracker: (season?: number) =>
     get<CfbLiveTracker>(`/cfb/live-tracker${season ? `?season=${season}` : ""}`),

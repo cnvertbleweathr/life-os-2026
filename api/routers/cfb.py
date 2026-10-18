@@ -883,3 +883,176 @@ async def cfb_strength_summary(
     """, params)
 
     return rows
+
+# ── Season trends (Teams tab + This Week drill) ───────────────────────────────
+
+def _trend(vals: list[float]) -> float | None:
+    """Average of the last k games minus average of the first k games,
+    k = min(3, n // 2). Smooths single-game noise while still reading as
+    'where they are now vs where they started'. None until 2+ games."""
+    vals = [v for v in vals if v is not None]
+    n = len(vals)
+    if n < 2:
+        return None
+    k = min(3, n // 2)
+    return sum(vals[-k:]) / k - sum(vals[:k]) / k
+
+
+def _pct_rank(values: dict[str, float], higher_is_better: bool = True) -> dict[str, int]:
+    """Percentile (0-100) of each team's value among all teams with a value."""
+    items = [(t, v) for t, v in values.items() if v is not None]
+    n = len(items)
+    if n == 0:
+        return {}
+    out: dict[str, int] = {}
+    for t, v in items:
+        if higher_is_better:
+            beaten = sum(1 for _, o in items if o < v)
+        else:
+            beaten = sum(1 for _, o in items if o > v)
+        out[t] = round(100 * beaten / max(1, n - 1)) if n > 1 else 50
+    return out
+
+
+@router.get("/team-trends")
+async def cfb_team_trends(
+    request: Request,
+    season: int = Query(None, description="Season year; defaults to current year"),
+    through_week: int | None = Query(None, description="Only use games up to and including this week"),
+    teams: str = Query("", description="Comma-separated team names to return (percentiles are still FBS-wide)"),
+):
+    """
+    One row per team for the season: per-game log (week, opponent, off/def
+    PPA per play, points for/against) plus season aggregates and trends.
+
+    Units:
+      off_ppa / def_ppa   -- PPA per PLAY (cfbd.ppa_games). def_ppa is PPA
+                             ALLOWED, so lower = better defense.
+      points_for/against  -- actual scoreboard points (cfbd.games).
+    Trends (all signed so POSITIVE = IMPROVING):
+      off_trend  = last-k avg off_ppa  - first-k avg off_ppa
+      def_trend  = first-k avg def_ppa - last-k avg def_ppa
+      net_trend  = off_trend + def_trend
+      pf_trend   = last-k avg PF - first-k avg PF
+      pa_trend   = first-k avg PA - last-k avg PA
+    Percentiles are computed across ALL teams with games (not just `teams`),
+    on season-average PPA, so they are comparable between views.
+    """
+    db = get_db(request)
+    yr = season or date.today().year
+    params: list[Any] = [yr]
+    wk_filter = ""
+    if through_week is not None:
+        wk_filter = "AND p.week <= ?"
+        params.append(through_week)
+
+    rows = query(db, f"""
+        SELECT p.team, p.week, p.game_id, p.opponent,
+               p.off_ppa, p.def_ppa,
+               CASE WHEN g.home_team = p.team THEN g.home_points
+                    WHEN g.away_team = p.team THEN g.away_points END AS points_for,
+               CASE WHEN g.home_team = p.team THEN g.away_points
+                    WHEN g.away_team = p.team THEN g.home_points END AS points_against,
+               CASE WHEN g.home_team = p.team THEN 'home'
+                    WHEN g.away_team = p.team THEN 'away' END AS venue
+        FROM cfbd.ppa_games p
+        LEFT JOIN cfbd.games g ON g.game_id = p.game_id
+        WHERE p.season = ? {wk_filter}
+        ORDER BY p.team, p.week
+    """, params)
+
+    by_team: dict[str, list[dict]] = {}
+    for r in rows:
+        by_team.setdefault(r["team"], []).append(r)
+
+    def avg(xs):
+        xs = [x for x in xs if x is not None]
+        return sum(xs) / len(xs) if xs else None
+
+    summaries: dict[str, dict] = {}
+    for team, games in by_team.items():
+        off = [g["off_ppa"] for g in games]
+        dfn = [g["def_ppa"] for g in games]
+        pf = [g["points_for"] for g in games if g["points_for"] is not None]
+        pa = [g["points_against"] for g in games if g["points_against"] is not None]
+        off_t = _trend(off)
+        def_t = _trend(dfn)
+        def_t = -def_t if def_t is not None else None   # sign-flip: positive = improving
+        pa_t = _trend(pa)
+        summaries[team] = {
+            "team": team,
+            "season": yr,
+            "games": len(games),
+            "last_week": games[-1]["week"] if games else None,
+            "off_avg": avg(off),
+            "def_avg": avg(dfn),
+            "net_avg": (avg(off) - avg(dfn)) if avg(off) is not None and avg(dfn) is not None else None,
+            "off_trend": off_t,
+            "def_trend": def_t,
+            "net_trend": (off_t + def_t) if off_t is not None and def_t is not None else None,
+            "points_for": sum(pf) if pf else None,
+            "points_against": sum(pa) if pa else None,
+            "ppg": avg(pf),
+            "papg": avg(pa),
+            "pf_trend": _trend(pf),
+            "pa_trend": -pa_t if pa_t is not None else None,
+            "game_log": [
+                {k: g[k] for k in ("week", "opponent", "venue", "off_ppa", "def_ppa",
+                                   "points_for", "points_against")}
+                for g in games
+            ],
+        }
+
+    off_pct = _pct_rank({t: s["off_avg"] for t, s in summaries.items()}, higher_is_better=True)
+    def_pct = _pct_rank({t: s["def_avg"] for t, s in summaries.items()}, higher_is_better=False)
+    for t, s in summaries.items():
+        s["off_pct"] = off_pct.get(t)
+        s["def_pct"] = def_pct.get(t)
+
+    wanted = [t.strip() for t in teams.split(",") if t.strip()] if teams else None
+    out = [summaries[t] for t in wanted if t in summaries] if wanted else list(summaries.values())
+    return out
+
+
+@router.get("/weeks")
+async def cfb_weeks(season: int = Query(None)):
+    """
+    Weeks available for the This Week dropdown: every archived slate in
+    data/bets/history/{season}_wkNN.json, plus the week todays_picks.json
+    is for. Each entry says how many official / scored games it holds and
+    whether it has been graded.
+    """
+    yr = season or date.today().year
+    hist = ROOT / "data" / "bets" / "history"
+    weeks: dict[int, dict] = {}
+    if hist.exists():
+        for f in sorted(hist.glob(f"{yr}_wk*.json")):
+            try:
+                wk = int(f.stem.split("_wk")[1])
+                data = json.loads(f.read_text())
+                games = data.get("games", []) if isinstance(data, dict) else data
+                weeks[wk] = {
+                    "week": wk,
+                    "n_scored": len(games),
+                    "n_official": sum(1 for g in games if g.get("meets_publish_bar")),
+                    "graded": bool(isinstance(data, dict) and data.get("graded_at")),
+                }
+            except Exception:
+                continue
+
+    current_week = None
+    if PICKS_PATH.exists():
+        try:
+            picks = json.loads(PICKS_PATH.read_text())
+            if picks and picks[0].get("season") in (None, yr):
+                current_week = int(picks[0].get("week"))
+        except Exception:
+            pass
+    if current_week is not None and current_week not in weeks:
+        weeks[current_week] = {"week": current_week, "n_scored": None, "n_official": None, "graded": False}
+
+    return {
+        "season": yr,
+        "current_week": current_week,
+        "weeks": [weeks[k] for k in sorted(weeks)],
+    }
