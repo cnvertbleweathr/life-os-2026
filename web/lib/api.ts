@@ -9,6 +9,48 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api";
 
+export const API_BASE_URL = API_BASE;
+
+// ── Write key ────────────────────────────────────────────────────────────────
+// Personal endpoints (writes, check-in, inbox) need X-ONS-Write-Token when the
+// site is reached through Cloudflare (see api/auth.py). The key is kept in
+// this browser's localStorage only; on a 401 we ask once and retry.
+
+const TOKEN_KEY = "ons_write_token";
+
+function storedToken(): string | null {
+  try {
+    return typeof window === "undefined" ? null : localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function askForToken(): string | null {
+  if (typeof window === "undefined") return null;
+  const t = window.prompt("ONS write key (saved on this device only)")?.trim();
+  if (!t) return null;
+  try {
+    localStorage.setItem(TOKEN_KEY, t);
+  } catch {
+    /* private mode: key works for this request only */
+  }
+  return t;
+}
+
+/** Fetch a personal endpoint with the write key, asking for it once on 401. */
+async function ownerFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const send = (token: string | null) => {
+    const headers = new Headers(init.headers);
+    if (token) headers.set("X-ONS-Write-Token", token);
+    return fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
+  };
+  const res = await send(storedToken());
+  if (res.status !== 401) return res;
+  const fresh = askForToken();
+  return fresh ? send(fresh) : res;
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) {
@@ -17,25 +59,32 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
-/** POST JSON. Surfaces FastAPI's validation message when there is one. */
+async function errorDetail(res: Response, path: string): Promise<string> {
+  try {
+    const j = await res.json();
+    if (typeof j?.detail === "string") return j.detail;
+    if (Array.isArray(j?.detail) && j.detail[0]?.msg) return j.detail[0].msg;
+  } catch {
+    /* non-JSON error body */
+  }
+  return `API ${path} returned ${res.status}`;
+}
+
+/** GET a personal endpoint (check-in, inbox). */
+async function ownerGet<T>(path: string): Promise<T> {
+  const res = await ownerFetch(path);
+  if (!res.ok) throw new Error(await errorDetail(res, path));
+  return res.json();
+}
+
+/** POST JSON to a personal endpoint. Surfaces FastAPI's message on errors. */
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await ownerFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-    cache: "no-store",
   });
-  if (!res.ok) {
-    let detail = `API ${path} returned ${res.status}`;
-    try {
-      const j = await res.json();
-      if (typeof j?.detail === "string") detail = j.detail;
-      else if (Array.isArray(j?.detail) && j.detail[0]?.msg) detail = j.detail[0].msg;
-    } catch {
-      /* non-JSON error body */
-    }
-    throw new Error(detail);
-  }
+  if (!res.ok) throw new Error(await errorDetail(res, path));
   return res.json();
 }
 
@@ -169,8 +218,8 @@ export interface Checkin extends CheckinValues {
 }
 
 export const checkinApi = {
-  today: () => get<Checkin | null>("/checkin/today"),
-  history: (days = 30) => get<Checkin[]>(`/checkin/history?days=${days}`),
+  today: () => ownerGet<Checkin | null>("/checkin/today"),
+  history: (days = 30) => ownerGet<Checkin[]>(`/checkin/history?days=${days}`),
   log: (values: CheckinValues & { note?: string; date?: string }) =>
     post<Checkin>("/checkin/log", values),
 };
@@ -191,7 +240,7 @@ export interface CaptureItem {
 }
 
 export const inboxApi = {
-  list: (limit = 50) => get<CaptureItem[]>(`/inbox?limit=${limit}`),
+  list: (limit = 50) => ownerGet<CaptureItem[]>(`/inbox?limit=${limit}`),
   capture: (text: string, kind: CaptureKind = "note", domain?: string) =>
     post<CaptureItem>("/inbox", { text, kind, domain }),
 };

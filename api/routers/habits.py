@@ -9,9 +9,10 @@ shows up immediately without waiting for the sync.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from api.auth import require_owner
 from api.deps import get_db, query, query_one
 from api.store import (
     HABITS_LOG,
@@ -70,7 +71,7 @@ class HabitLogIn(BaseModel):
     )
 
 
-@router.post("/log")
+@router.post("/log", dependencies=[Depends(require_owner)])
 async def habits_log(body: HabitLogIn):
     """
     Mark one habit done/undone for a date. Appends a full-day snapshot so the

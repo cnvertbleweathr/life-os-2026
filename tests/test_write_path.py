@@ -169,6 +169,37 @@ def test_inbox_validation(client):
     assert client.post("/api/inbox", json={"text": "x", "kind": "spam"}).status_code == 422
 
 
+# ── owner guard (public tunnel) ───────────────────────────────────────────────
+
+TUNNEL = {"CF-Connecting-IP": "203.0.113.7"}
+
+
+def test_local_requests_need_no_key(client, monkeypatch):
+    monkeypatch.setenv("ONS_WRITE_TOKEN", "s3cret")
+    assert client.post("/api/inbox", json={"text": "from the mac mini"}).status_code == 200
+
+
+def test_tunnel_fails_closed_without_server_token(client, monkeypatch):
+    monkeypatch.delenv("ONS_WRITE_TOKEN", raising=False)
+    assert client.post("/api/inbox", json={"text": "x"}, headers=TUNNEL).status_code == 403
+    assert client.get("/api/checkin/today", headers=TUNNEL).status_code == 403
+
+
+def test_tunnel_requires_matching_key(client, monkeypatch):
+    monkeypatch.setenv("ONS_WRITE_TOKEN", "s3cret")
+    ok = {**TUNNEL, "X-ONS-Write-Token": "s3cret"}
+    bad = {**TUNNEL, "X-ONS-Write-Token": "guess"}
+    body = {"habit": "meditation", "done": True}
+
+    assert client.post("/api/habits/log", json=body, headers=TUNNEL).status_code == 401
+    assert client.post("/api/habits/log", json=body, headers=bad).status_code == 401
+    assert client.post("/api/habits/log", json=body, headers=ok).status_code == 200
+    # Personal reads are guarded too; public habit reads are not.
+    assert client.get("/api/inbox", headers=TUNNEL).status_code == 401
+    assert client.get("/api/checkin/history", headers=ok).status_code == 200
+    assert client.get("/api/habits/today", headers=TUNNEL).status_code == 200
+
+
 # ── pipelines → DuckDB ────────────────────────────────────────────────────────
 
 def test_pipelines_load_latest_rows_only(client, env):

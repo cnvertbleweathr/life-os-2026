@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type StreamsToday, type StreamMatch } from "@/lib/api";
+import { API_BASE_URL, homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type StreamsToday, type StreamMatch } from "@/lib/api";
 import { Card, K, Watermark, Loading, ErrorState } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 
@@ -36,7 +36,7 @@ export default function HomePage() {
       .catch((e) => setError(e.message));
   
     // Fetch the OpenClaw brief
-    fetch('http://localhost:8000/api/home/brief/latest?brief_type=daily')
+    fetch(`${API_BASE_URL}/home/brief/latest?brief_type=daily`)
       .then(r => r.json())
       .then(b => setBrief(b))
       .catch(e => console.error('Brief fetch error:', e));

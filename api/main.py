@@ -15,9 +15,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import duckdb
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.auth import require_owner
 from api.routers import (
     cfb,
     checkin,
@@ -84,8 +85,10 @@ app.include_router(cfb.router,     prefix="/api/cfb",     tags=["cfb"])
 app.include_router(kglw.router,    prefix="/api/kglw",    tags=["kglw"])
 
 # Write path — these append to JSONL logs (api/store.py), never to DuckDB.
-app.include_router(checkin.router, prefix="/api/checkin", tags=["checkin"])
-app.include_router(inbox.router,   prefix="/api/inbox",   tags=["inbox"])
+# Personal: over the public tunnel they need the write key (api/auth.py).
+owner_only = [Depends(require_owner)]
+app.include_router(checkin.router, prefix="/api/checkin", tags=["checkin"], dependencies=owner_only)
+app.include_router(inbox.router,   prefix="/api/inbox",   tags=["inbox"],   dependencies=owner_only)
 
 @app.get("/api/health")
 async def health():
