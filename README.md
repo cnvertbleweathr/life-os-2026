@@ -12,9 +12,12 @@ Your Life → DLT Pipelines → DuckDB → dbt → FastAPI → Next.js
                          Local Inputs              OpenClaw (Claude API)
                     (habits, SugarWOD CSV,      morning brief, picks analysis,
                        goals YAML)                 habit insights, weekly recap
+                                                 → being replaced by LangGraph agents
 ```
 
-The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin read-only query layer over DuckDB/dbt marts; Next.js is the actual UI. OpenClaw is the AI intelligence layer that generates daily briefs, weekly reviews, and game analysis.
+The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin read-only query layer over DuckDB/dbt marts; Next.js is the actual UI. OpenClaw is the current AI layer (daily briefs, weekly reviews, game analysis); it is being retired in favor of LangGraph agents — see [ROADMAP › Agentic Layer](./ROADMAP.md#agentic-layer--replaces-openclaw-new-track-2026-10-11).
+
+Live at **[narcisystem.com](https://narcisystem.com)** via Cloudflare Tunnel from the Mac mini (`narcisystem.com` → Next.js :3000, `api.narcisystem.com` → FastAPI :8000).
 
 The CFB betting system is documented in [`docs/SYSTEM_EXPLAINER.md`](./docs/SYSTEM_EXPLAINER.md) and [`docs/SYSTEM_DEEP_DIVE.md`](./docs/SYSTEM_DEEP_DIVE.md); deployment notes live in [`DEPLOYMENT_NOTES.md`](./DEPLOYMENT_NOTES.md).
 
@@ -58,6 +61,7 @@ life-os-2026/
 │   ├── generate_picks_report.py       # Thursday briefing
 │   ├── grade_picks.py                 # Grades results (Mon + Thu–Sun)
 │   ├── generate_postmortem.py
+│   ├── kglw_video_qa.py               # KGLW freshness + unmatched-upload report
 │   └── [20+ other utilities]
 │
 ├── api/                               # FastAPI backend — read-only query layer
@@ -82,8 +86,8 @@ life-os-2026/
 │   │   ├── fitness/page.tsx
 │   │   ├── reading/page.tsx
 │   │   ├── goals/page.tsx
-│   │   ├── music/page.tsx
-│   │   ├── shows/page.tsx
+│   │   ├── music/page.tsx             # incl. Denver shows (merged in Oct 2026)
+│   │   ├── shows/page.tsx             # redirects to /music
 │   │   ├── sports/page.tsx
 │   │   ├── cfb/page.tsx               # This Week · Matchup Lab · Teams
 │   │   ├── kglw/page.tsx
@@ -100,7 +104,8 @@ life-os-2026/
 │   ├── models/
 │   │   ├── staging/
 │   │   └── marts/                     # incl. core__life_events, mart_cfb_live_strength,
-│   │                                  #      mart_live_picks, mart_goal_pacing
+│   │                                  #      mart_live_picks, mart_goal_pacing,
+│   │                                  #      mart_kglw_youtube_matches, mart_kglw_music_videos
 │   └── profiles.yml                   # profile: ons → data/warehouse/ons.duckdb
 │
 ├── data/
@@ -137,6 +142,7 @@ Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate n
 | CFB lines + news | `track_lines`, `track_news_signals` | Daily · Wed/Thu |
 | CFB in-season | `cfbd_pipeline --skip-advanced` (games + final scores, lines, SP+) → `cfbd_extended_pipeline` (per-game PPA) → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
 | CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
+| King Gizzard | `kglw` (kglw.net catalog, `--shows-only`), `kglw_youtube` (channel uploads + music-videos playlist) | Daily, before dbt |
 | Goals + transform | `sync_playlist_artists`, `sync_goal_progress`, `dbt`, `load_goals`, `load_goal_progress` | Daily |
 | AI + backup | `openclaw_generation`, `backup_duckdb` | Daily, last |
 
@@ -145,7 +151,7 @@ source .venv/bin/activate
 PYTHONPATH=/Users/kg/life-os-2026 python scripts/daily_sync.py
 ```
 
-**Run the app:**
+**Run the app:** in normal operation both run under launchd (`com.ons.fastapi`, `com.ons.nextjs`) and are reachable at [narcisystem.com](https://narcisystem.com). Restart either with `launchctl kickstart -k gui/$(id -u)/com.ons.fastapi` (or `com.ons.nextjs`; rebuild with `cd web && npm run build` first). For local development:
 ```bash
 # Terminal 1 — API
 uvicorn api.main:app --reload --port 8000
@@ -163,7 +169,7 @@ python scripts/daily_sync.py --only openclaw_generation
 python scripts/daily_sync.py --skip spotify
 ```
 
-**Important:** DuckDB only allows one read-write connection at a time. `daily_sync.py` handles this automatically: it unloads FastAPI via `launchctl unload` at startup (before any imports), runs all pipeline steps, then reloads FastAPI when done. Do not run `daily_sync.py` while Streamlit is open — Streamlit holds a write lock.
+**Important:** DuckDB only allows one read-write connection at a time. `daily_sync.py` handles this automatically: it unloads FastAPI via `launchctl unload` at startup (before any imports), runs all pipeline steps, then reloads FastAPI when done. If you run a pipeline or `dbt run` by hand, unload FastAPI first.
 
 ---
 
@@ -192,13 +198,16 @@ cp .env.example .env
 | `STRAVA_CLIENT_ID` / `STRAVA_CLIENT_SECRET` | [Strava API](https://www.strava.com/settings/api) |
 | `HARDCOVER_TOKEN` | [Hardcover Settings](https://hardcover.app/account/api) |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` | [Spotify Developer](https://developer.spotify.com/dashboard) |
-| `ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com/) — **OpenClaw (morning brief, weekly review, picks analysis)** |
+| `ANTHROPIC_API_KEY` | [Anthropic](https://console.anthropic.com/) — OpenClaw now; agentic layer next |
 | `OPENAI_API_KEY` | [OpenAI](https://platform.openai.com/api-keys) — Daily 10 cover art |
 | `NEWS_API_KEY` | [NewsAPI](https://newsapi.org) — optional |
 | `TICKETMASTER_API_KEY` | [Ticketmaster Developer](https://developer.ticketmaster.com) |
 | `CFBD_API_TOKEN` | [CFBD](https://collegefootballdata.com) |
 | `NTFY_TOPIC` | [ntfy.sh](https://ntfy.sh) |
 | `LETTERBOXD_USERNAME` | Your Letterboxd handle — public RSS |
+| `LASTFM_API_KEY` | [Last.fm](https://www.last.fm/api/account/create) — Artist of the Day bios |
+| `AUDIODB_API_KEY` | [TheAudioDB](https://www.theaudiodb.com/api_guide.php) — optional, premium key only |
+| `YOUTUBE_API_KEY` | [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) — KGLW live recordings + music videos |
 | `KGLW_ATTENDED_SHOW_IDS` | Comma-separated show IDs from kglw.net (optional) |
 
 ---
@@ -212,16 +221,17 @@ cp .env.example .env
 | **Fitness** | YTD/weekly running miles, pace, bar chart, recent runs |
 | **Reading** | Books read, fiction/nonfiction split |
 | **Goals** | All domains, pace status badges, progress bars |
-| **Music** | Top artists, Daily 10 playlist, news |
-| **Shows** | Upcoming Denver concerts, artist matching |
+| **Music** | Year listening stats, Daily 10 playlist, Artist of the Day (from Tewnidge), upcoming Denver shows with artist matching and Google Calendar links (`/shows` redirects here) |
 | **Sports** | Streams, AI-ranked top 5, news |
 | **CFB Betting** | **This Week:** week picker for any 2026 week, official picks + watch list with WIN/LOSS and final scores once graded, weekly record, drill-down showing both teams' season-to-date trends going into that week · **Matchup Lab:** head-to-head model run · **Teams:** sortable table of Off/Def percentile, Off/Def/Net trend and points for/against; team profile with trend chart and game log |
-| **King Gizzard** | Upcoming shows, on-this-day, song catalog, jam chart |
+| **King Gizzard** | **Shows:** live shows and music videos in one list (All · Upcoming · Music Videos · Watchable), with embedded YouTube recordings and official videos · **Songs:** song catalog |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log |
 
 ---
 
 ## OpenClaw — AI Intelligence Layer
+
+> **Being retired.** OpenClaw stays live until each analyzer has an agent replacement with an eval suite. See [ROADMAP › Agentic Layer](./ROADMAP.md#agentic-layer--replaces-openclaw-new-track-2026-10-11).
 
 OpenClaw sits above the marts and generates daily insights. It runs as the `openclaw_generation` step near the end of `daily_sync.py` (after dbt, before backup), uses Claude Sonnet 4.6 with prompt caching (~$0.80/month), and logs every execution.
 
@@ -229,10 +239,6 @@ OpenClaw sits above the marts and generates daily insights. It runs as the `open
 - Morning brief — displayed on Home page, stored in `raw.ai_life_briefs`
 - Weekly recap — generated Sundays, stored in `raw.ai_life_briefs`
 - CFB narratives — active in-season, stored in `raw.ai_cfb_narratives`
-
-**Next (Tier 2):**
-- CFB picks analysis — weekly game previews + signal breakdown + why each pick was made
-- Habit insights — trend analysis, streak patterns, motivation signals
 
 **Audit trail:**
 ```bash
@@ -283,7 +289,9 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 | Spotify | JSON export + API | Streaming stats, Daily 10 |
 | AEG / Ticketmaster | Public API | Denver shows |
 | Letterboxd | Public RSS | Film diary, ratings |
-| KGLW.net | Public API v2 | Shows, songs, venues, jam chart |
+| KGLW.net | Public API v2 | Shows (incl. announced dates), songs, venues, jam chart |
+| YouTube (KGLW channel) | Data API v3 | Live recordings matched to shows; official music videos from the band's music-videos playlist |
+| Last.fm / Wikipedia / TheAudioDB | Public APIs | Artist of the Day bios |
 | streamed.pk | Public API | Live sports streams |
 | CFBD | DLT + Bearer | CFB games, lines, SP+, PPA, weather |
 

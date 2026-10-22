@@ -72,10 +72,15 @@ Note: the LangGraph course predates LangGraph 1.x — port examples to the curre
 | A5 | Habit/goal coach — trends, streak recovery, pacing risk → proposes items for `core.actions` | A2, Unified Action System | ⚪ |
 | A6 | Multi-agent supervisor (only if A1–A5 show a need) | Course 4 (optional) | ⚪ |
 
+### Tool Layer
+
+Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Crafting Apps CLIs (`photocraft-cli mcp`, etc.) give agents image, PDF and chart tools without custom wrappers.
+
 ### Agent Rules
 
 - **Agents explain and orchestrate; they don't decide.** CFB picks stay in the deterministic scorer. Agents never change model rules or bet logic.
 - **Read-only by default.** Tools query marts through the RBAC layer; writes only to `raw.ai_*`.
+- **File-writing tools are sandboxed.** Tools that write files run with a sandbox root (`~/Craft`) and a whitelisted tool set. If a required MCP server fails to start, the run aborts instead of improvising.
 - **No eval, no ship.** Every agent has a golden set and a pass bar before it goes into `daily_sync.py` or the UI.
 - **Bounded runs.** Max tool calls and a cost ceiling per run; failures are non-blocking for the sync.
 - **One job per agent.** Vague mandates ("summarize my life") are what sank OpenClaw.
@@ -135,7 +140,10 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | FastAPI layer — all 10 routers | Real data debugged, confirmed response shapes |
-| 🟢 | All 11 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in |
+| 🟢 | All 10 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in; `/shows` redirects to `/music` |
+| 🟢 | Music page refresh | Shows merged in, Artist of the Day, Google Calendar links, Denver-time show dates (2026-10-15) |
+| 🟢 | KGLW music videos + upcoming shows | Music Videos tab, videos interleaved by release date, upcoming flag from show date (2026-10-15) |
+| 🟡 | KGLW Songs tab version counts | Shows "0 versions" placeholder; needs full setlist ingestion (only the latest 50 shows are fetched today) |
 | 🟢 | CFB team logos | 260/263 downloaded |
 | 🟢 | OpenClaw morning brief | On Home page until Agentic Layer A4 replaces it |
 | 🟢 | Cloudflare Tunnel | narcisystem.com live |
@@ -202,9 +210,11 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | Google Calendar | 🟢 | Events, time allocation |
 | SugarWOD | 🟢 | CSV import, CrossFit classes |
 | Spotify | 🟢 | Streaming history, Daily 10, cover art |
+| Daily 10 cover finishing | 🔵 | PhotoCraft step after the DALL-E image: crop to square, add "DAILY 10" title, date and vignette. Goes in `spotify_daily10_decorate.py` between `_openai_generate_image_bytes` and `_to_jpeg_bytes` (which already handles Spotify's size limit) |
 | CFBD | 🟢 | CFB games, 2021-2025 + 2026 live. `cfbd_pipeline` added to daily_sync 2026-10-17 — 2026 scores had stalled after Week 4 because only the PPA pipeline was scheduled |
-| KGLW | 🟢 | 1104 shows, 1001 songs, 671 venues |
-| YouTube (KGLW) | 🟢 | 167 videos, 61 matched to shows |
+| KGLW | 🟢 | Daily via `daily_sync` (`kglw`, `--shows-only`): shows incl. announced dates, songs, venues, jam chart |
+| YouTube (KGLW) | 🟢 | Daily via `daily_sync` (`kglw_youtube`): uploads → `mart_kglw_youtube_matches`; music-videos playlist → `mart_kglw_music_videos`. New "Live in…" titles may need `festival_aliases` rows — check with `scripts/kglw_video_qa.py` |
+| KGLW show links | 🔴 | kglw.net `links/show/{id}` returns a PHP error server-side; recordings come from YouTube instead |
 | AEG/Ticketmaster | 🟢 | Denver shows |
 | Letterboxd | 🟡 | Dry-run confirmed, not yet in daily_sync |
 | Setlist.fm | 🔵 | Full concert history (planned) |
@@ -298,6 +308,18 @@ Generate TypeScript client from OpenAPI schema — prevent drift.
 | 🟡 | Add Pydantic response models to all routes |
 | 🔵 | Generate TypeScript API client |
 | 🔵 | Add schema snapshot testing in CI |
+
+---
+
+## ONS Annual Report (Idea)
+
+A year-end PDF built from the marts: VectorCraft charts → DesignCraft layout → PdfCraft export. Qualifies under "concrete user-facing outcome."
+
+| Status | Item |
+|--------|------|
+| ⚪ | Pick the year-end metrics + chart set |
+| ⚪ | Layout template |
+| ⚪ | PDF export step (December) |
 
 ---
 
