@@ -8,14 +8,17 @@ ONS is a personal analytics platform that treats life as a system — observable
 
 ```
 Your Life → DLT Pipelines → DuckDB → dbt → FastAPI → Next.js
-                                ↑                        ↑
-                         Local Inputs              OpenClaw (Claude API)
-                    (habits, SugarWOD CSV,      morning brief, picks analysis,
-                       goals YAML)                 habit insights, weekly recap
-                                                 → being replaced by LangGraph agents
+                                ↑            │
+                         Local Inputs        └─ writes ─→ JSONL logs ─┐
+                    (habits, check-ins,         (habits, check-in,    │
+                     Capture inbox,              Capture)             │
+                     SugarWOD CSV, goals YAML) ←──── loaded nightly ──┘
+
+AI layer: OpenClaw (Claude API) — morning brief, weekly recap, CFB narratives
+          → being replaced by LangGraph agents
 ```
 
-The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin read-only query layer over DuckDB/dbt marts; Next.js is the actual UI. OpenClaw is the current AI layer (daily briefs, weekly reviews, game analysis); it is being retired in favor of LangGraph agents — see [ROADMAP › Agentic Layer](./ROADMAP.md#agentic-layer--replaces-openclaw-new-track-2026-10-11).
+The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin query layer over DuckDB/dbt marts and never writes to the warehouse: what you enter in the UI (habits, check-ins, Capture) is appended to JSONL logs under `data/` and loaded by the nightly sync (see [Personal input](#personal-input--the-write-key)). Next.js is the actual UI. OpenClaw is the current AI layer (daily briefs, weekly reviews, game analysis); it is being retired in favor of LangGraph agents — see [ROADMAP › Agentic Layer](./ROADMAP.md#agentic-layer--replaces-openclaw-new-track-2026-10-11).
 
 Live at **[narcisystem.com](https://narcisystem.com)** via Cloudflare Tunnel from the Mac mini (`narcisystem.com` → Next.js :3000, `api.narcisystem.com` → FastAPI :8000).
 
@@ -44,7 +47,10 @@ life-os-2026/
 ├── pipelines/                         # DLT ingestion pipelines
 │   ├── strava_pipeline.py
 │   ├── hardcover_pipeline.py
-│   ├── habits_pipeline.py
+│   ├── habits_pipeline.py             # habits JSONL → habits.* (latest entry per day)
+│   ├── checkin_pipeline.py            # check-in JSONL → checkin.daily_checkin
+│   ├── inbox_pipeline.py              # Capture JSONL → raw.capture_inbox
+│   ├── _jsonl.py                      # shared latest-row-per-key reader
 │   ├── cfbd_pipeline.py
 │   ├── cfbd_extended_pipeline.py      # Per-game PPA (current season), recruiting, etc.
 │   ├── live_picks_pipeline.py         # Graded picks → cfbd.live_picks
@@ -64,12 +70,16 @@ life-os-2026/
 │   ├── kglw_video_qa.py               # KGLW freshness + unmatched-upload report
 │   └── [20+ other utilities]
 │
-├── api/                               # FastAPI backend — read-only query layer
+├── api/                               # FastAPI backend — never writes to DuckDB
 │   ├── main.py
 │   ├── deps.py
+│   ├── store.py                       # append-only JSONL write path (habits, check-in, inbox)
+│   ├── auth.py                        # write key for personal endpoints over the tunnel
 │   └── routers/
 │       ├── home.py                    # /api/home — digest, brief, calendar, WOD, daily10
-│       ├── habits.py
+│       ├── habits.py                  # incl. POST /log, GET /recent
+│       ├── checkin.py                 # /api/checkin — POST /log, /today, /history
+│       ├── inbox.py                   # /api/inbox — capture + list
 │       ├── fitness.py
 │       ├── reading.py
 │       ├── goals.py
@@ -91,10 +101,12 @@ life-os-2026/
 │   │   ├── sports/page.tsx
 │   │   ├── cfb/page.tsx               # This Week · Matchup Lab · Teams
 │   │   ├── kglw/page.tsx
-│   │   └── checkin/page.tsx
+│   │   ├── checkin/page.tsx
+│   │   └── capture/page.tsx           # Capture inbox
 │   ├── components/
 │   │   ├── nav/Sidebar.tsx
-│   │   └── ui/{primitives,TeamLogo}.tsx
+│   │   ├── cfb/LiveTrackerBanner.tsx
+│   │   └── ui/{primitives,icons,viz,TeamLogo,ProTeamLogo}.tsx
 │   ├── lib/
 │   │   ├── api.ts
 │   │   └── cfb_team_ids.json
@@ -113,20 +125,22 @@ life-os-2026/
 │   ├── backups/duckdb/                # Nightly backups, 7-day retention
 │   ├── daily/                         # Per-day sync logs + health.txt
 │   ├── ai/generations.jsonl           # OpenClaw audit trail — every generation logged
-│   ├── habits/habits_log.jsonl
+│   ├── habits/habits_log.jsonl        # written by the web UI (append-only)
+│   ├── checkin/checkin_log.jsonl      # written by the web UI (append-only)
+│   ├── inbox/capture_inbox.jsonl      # written by the web UI (append-only)
 │   ├── bets/todays_picks.json
 │   └── [other domains]
 │
 ├── tests/
 │   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups
-│   └── fixtures/load_fixtures.py
+│   └── test_write_path.py             # 15 tests — store, endpoints, write key, pipelines
 │
-├── .github/workflows/                 # ci.yml, picks-validation.yml
+├── .github/workflows/                 # ci.yml (syntax, write-path tests, hardcode audit,
+│                                      #   dbt parse, TypeScript), picks-validation.yml (Thu)
 ├── launchd/
 │   ├── com.ons.daily-sync.plist       # 9am daily sync
-│   ├── com.ons.backup-duckdb.plist    # 2am nightly backup
-│   ├── com.ons.fastapi.plist          # FastAPI (port 8000) — managed by daily_sync
-│   └── com.ons.nextjs.plist           # Next.js (port 3000)
+│   └── com.ons.backup-duckdb.plist    # 2am nightly backup
+│   # com.ons.fastapi / com.ons.nextjs live only in ~/Library/LaunchAgents on the Mac mini
 └── secrets/
 ```
 
@@ -134,11 +148,11 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 32 steps in order. Some steps only run on certain days:
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 35 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
-| Life data | strava, hardcover, habits, calendar, shows, spotify, Daily 10, streams, WOD | Daily (calendar export Mon/Thu) |
+| Life data | strava, hardcover, habits, checkin, capture_inbox, calendar, shows, spotify, Daily 10, streams, WOD | Daily (calendar export Mon/Thu) |
 | CFB lines + news | `track_lines`, `track_news_signals` | Daily · Wed/Thu |
 | CFB in-season | `cfbd_pipeline --skip-advanced` (games + final scores, lines, SP+) → `cfbd_extended_pipeline` (per-game PPA) → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
 | CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
@@ -209,6 +223,7 @@ cp .env.example .env
 | `AUDIODB_API_KEY` | [TheAudioDB](https://www.theaudiodb.com/api_guide.php) — optional, premium key only |
 | `YOUTUBE_API_KEY` | [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) — KGLW live recordings + music videos |
 | `KGLW_ATTENDED_SHOW_IDS` | Comma-separated show IDs from kglw.net (optional) |
+| `ONS_WRITE_TOKEN` | Any long random string — the write key for habits/check-in/Capture over narcisystem.com (see below) |
 
 ---
 
@@ -217,7 +232,7 @@ cp .env.example .env
 | Page | What it shows |
 |---|---|
 | **Home** | OpenClaw morning brief, stat row, calendar, WOD, Daily 10, goal pacing |
-| **Habits** | Today's checklist, current + longest streaks |
+| **Habits** | Today's checklist (tap to log — saved immediately), current + longest streaks, real 21-day history |
 | **Fitness** | YTD/weekly running miles, pace, bar chart, recent runs |
 | **Reading** | Books read, fiction/nonfiction split |
 | **Goals** | All domains, pace status badges, progress bars |
@@ -225,7 +240,24 @@ cp .env.example .env
 | **Sports** | Streams, AI-ranked top 5, news |
 | **CFB Betting** | **This Week:** week picker for any 2026 week, official picks + watch list with WIN/LOSS and final scores once graded, weekly record, drill-down showing both teams' season-to-date trends going into that week · **Matchup Lab:** head-to-head model run · **Teams:** sortable table of Off/Def percentile, Off/Def/Net trend and points for/against; team profile with trend chart and game log |
 | **King Gizzard** | **Shows:** live shows and music videos in one list (All · Upcoming · Music Videos · Watchable), with embedded YouTube recordings and official videos · **Songs:** song catalog |
-| **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log |
+| **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log with readiness score; saved, and re-saving updates today's entry |
+| **Capture** | Quick inbox for ideas, tasks, links and notes (⌘/Ctrl+Enter), tagged by kind and area; newest first |
+
+---
+
+## Personal Input & the Write Key
+
+The API holds a read-only DuckDB connection (single-writer rule), so it never writes to the warehouse. Anything entered in the UI is appended to a JSONL log by `api/store.py`; the matching pipeline loads the latest entry per day (or per item) on the next sync.
+
+| Input | Endpoint | Log | Warehouse table |
+|---|---|---|---|
+| Habit toggles | `POST /api/habits/log` | `data/habits/habits_log.jsonl` | `habits.habit_log`, `habits.habit_summary` |
+| Daily check-in | `POST /api/checkin/log` | `data/checkin/checkin_log.jsonl` | `checkin.daily_checkin` |
+| Capture | `POST /api/inbox` | `data/inbox/capture_inbox.jsonl` | `raw.capture_inbox` |
+
+The Habits page reads today and the 21-day strip straight from the log, so a toggle shows up immediately; streaks and YTD figures update after the sync. Habits can be backfilled up to 7 days.
+
+**Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin` and `/api/inbox` require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
 ---
 
@@ -283,12 +315,14 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 |---|---|---|
 | Strava | DLT + OAuth | Running miles, pace, weekly volume |
 | Hardcover | DLT + GraphQL | Books read, fiction vs nonfiction |
-| Habits | Local JSONL | Meditation, pushups, reading pages |
+| Habits | Web UI → JSONL | Meditation, pushups, reading pages |
+| Daily check-in | Web UI → JSONL | Energy, mood, focus, sleep, soreness, stress, readiness |
+| Capture inbox | Web UI → JSONL | Ideas, tasks, links, notes |
 | Google Calendar | OAuth API | Events, date nights |
 | SugarWOD | CSV export | CrossFit classes, PRs |
 | Spotify | JSON export + API | Streaming stats, Daily 10 |
 | AEG / Ticketmaster | Public API | Denver shows |
-| Letterboxd | Public RSS | Film diary, ratings |
+| Letterboxd | Public RSS | Film diary, ratings (pipeline built, not yet in the daily sync) |
 | KGLW.net | Public API v2 | Shows (incl. announced dates), songs, venues, jam chart |
 | YouTube (KGLW channel) | Data API v3 | Live recordings matched to shows; official music videos from the band's music-videos playlist |
 | Last.fm / Wikipedia / TheAudioDB | Public APIs | Artist of the Day bios |
@@ -303,7 +337,7 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 
 **Automation over willpower** — Runs at 9am daily. Willpower is finite. Cron jobs are not.
 
-**DuckDB as the hub** — All sources land in DuckDB. dbt builds clean marts. FastAPI queries read-only. No spaghetti.
+**DuckDB as the hub** — All sources land in DuckDB. dbt builds clean marts. FastAPI queries read-only; user input goes to append-only logs that the sync loads. No spaghetti.
 
 **Verify, don't assume** — Every API integration has confirmed field names against live data. Guessing wrong once in production is expensive.
 

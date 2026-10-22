@@ -114,10 +114,12 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
-| 🟢 | GitHub Actions CI | 5 jobs: syntax, CFB, hardcode, schema, TypeScript |
+| 🟢 | Write-path tests | `tests/test_write_path.py` — 15 tests, runs in CI |
+| 🟢 | GitHub Actions CI | 6 jobs: syntax, write-path tests, hardcode audit, dbt parse, TypeScript (`ci.yml`); Thursday picks report (`picks-validation.yml`) |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
-| 🔵 | Data freshness checks | Alert when a source stops advancing (e.g. latest `cfbd.games` week with scores lags the calendar). 2026 CFB scores sat at Week 4 for three weeks without anything noticing |
+| 🔵 | Data freshness checks | Alert when a source stops advancing (e.g. latest `cfbd.games` week with scores lags the calendar). Two silent failures so far: 2026 CFB scores sat at Week 4 for three weeks, and `sync_playlist_artists` failed to compile from 2026-10-15 to 10-21 (stray paren, fixed) so "My artists" show matching stopped |
+| 🔵 | Spotify Development Mode compliance | Since 2026-03-09 the app owner needs Premium, and playlist contents are readable only for playlists you own or collaborate on. Confirm the Tewnidge/Deeds playlists still return tracks (`sync_playlist_artists`, Daily 10 bucket B). `user_playlist_create` calls a removed endpoint, only hit if the Daily 10 playlist is deleted |
 | 🟡 | `track_news_signals` step | SQL references columns not yet in schema — non-blocking, skipped |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale |
@@ -139,8 +141,13 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | FastAPI layer — all 10 routers | Real data debugged, confirmed response shapes |
-| 🟢 | All 10 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in; `/shows` redirects to `/music` |
+| 🟢 | FastAPI layer — 12 routers | 10 read routers plus `checkin` and `inbox` (write path) |
+| 🟢 | All 11 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in, Capture; `/shows` redirects to `/music` |
+| 🟢 | Web write path | Habit toggles, Check-in and Capture persist via append-only JSONL (`api/store.py`), loaded by the daily sync. FastAPI never writes to DuckDB (2026-10-21) |
+| 🟢 | Write key for personal endpoints | `ONS_WRITE_TOKEN`; required through Cloudflare, not locally or over Tailscale; fails closed if unset (2026-10-21) |
+| 🟢 | Home morning brief over the tunnel | Brief was fetched from hardcoded `localhost:8000`, so it only loaded on the Mac mini; now uses `NEXT_PUBLIC_API_BASE` (2026-10-21) |
+| 🔵 | Mobile layout | Sidebar stays 232px at every width, so pages are cramped on a phone. Needed for Capture/Check-in on the go |
+| 🔵 | Public vs private decision | The whole dashboard (fitness, habits, goals incl. finance targets) is public at narcisystem.com. Either put it behind Cloudflare Access or split a deliberate public view from a private one. Strava's API terms (Nov 2024) limit showing a user's activity data to anyone but that user |
 | 🟢 | Music page refresh | Shows merged in, Artist of the Day, Google Calendar links, Denver-time show dates (2026-10-15) |
 | 🟢 | KGLW music videos + upcoming shows | Music Videos tab, videos interleaved by release date, upcoming flag from show date (2026-10-15) |
 | 🟡 | KGLW Songs tab version counts | Shows "0 versions" placeholder; needs full setlist ingestion (only the latest 50 shows are fetched today) |
@@ -185,8 +192,8 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 
 ### Roadmap
 
-| Status | Item |
-|--------|------|
+| Status | Item | Notes |
+|--------|------|-------|
 | 🟢 | Walk-forward backtester v3 |
 | 🟢 | Per-season ablation |
 | 🟢 | Unified scorer |
@@ -194,9 +201,9 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | 🟢 | CFB postmortem + grading |
 | 🟢 | Calibration audit suite |
 | 🟢 | Quality-of-Win system (Phases A-D) |
-| 🟡 | 2026 live monitoring | Live strength, grading loop, full slate UI shipped; season-trend Teams view + week picker shipped 2026-10-17; Week 8 re-evaluation pending |
+| 🟡 | 2026 live monitoring | Live strength, grading loop, full slate UI shipped; season-trend Teams view + week picker shipped 2026-10-17; Week 8 re-evaluation due now (Week 8 scores loaded) |
 | 🔵 | Line movement signal |
-| 🔵 | Re-run ablation at 2026 Week 4 |
+| 🔵 | Re-run ablation at 2026 Week 4 | Overdue: 2026 scores stalled after Week 4 until 2026-10-17, so there was no data to run it on. Run it alongside the Week 8 re-evaluation |
 
 ---
 
@@ -206,7 +213,9 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 |--------|--------|-------|
 | Strava | 🟢 | Running, full history synced to 2019 |
 | Hardcover | 🟢 | Books read, daily |
-| Habits | 🟢 | JSONL local log |
+| Habits | 🟢 | Web UI → JSONL log; pipeline loads latest entry per day (fixed double-counting 2026-10-21) |
+| Daily check-in | 🟢 | Web UI → JSONL → `checkin.daily_checkin` (input for the Daily Feature Mart) |
+| Capture inbox | 🟢 | Web UI → JSONL → `raw.capture_inbox` |
 | Google Calendar | 🟢 | Events, time allocation |
 | SugarWOD | 🟢 | CSV import, CrossFit classes |
 | Spotify | 🟢 | Streaming history, Daily 10, cover art |
@@ -239,11 +248,12 @@ Create `core.actions` — canonical place to manage what should happen next.
 
 Create `raw.capture_inbox` — universal holding area for manual input.
 
-| Status | Item |
-|--------|------|
-| 🔵 | Create `raw.capture_inbox` |
-| 🔵 | Mobile quick-capture form |
-| 🔵 | AI classification (suggest domain, event type) |
+| Status | Item | Notes |
+|--------|------|-------|
+| 🟢 | Create `raw.capture_inbox` | `POST /api/inbox` → `data/inbox/capture_inbox.jsonl` → `inbox_pipeline.py` |
+| 🟡 | Mobile quick-capture form | `/capture` page shipped (kind + area tags, ⌘↵); needs the mobile layout to be comfortable on a phone |
+| 🔵 | Triage: mark done / promote to `core.actions` | Items carry a stable `capture_id` and `status` for this |
+| 🔵 | AI classification (suggest domain, event type) | |
 
 ### Semantic Metrics Registry (P0)
 
@@ -259,9 +269,9 @@ Create `metadata.metrics` — prevent metric-definition drift.
 
 Create `mart_daily_features` — one row per day combining all signals.
 
-| Status | Item |
-|--------|------|
-| 🔵 | Create mart (sleep, HRV, steps, running, workouts, mood, meetings, weather) |
+| Status | Item | Notes |
+|--------|------|-------|
+| 🔵 | Create mart (sleep, HRV, steps, running, workouts, mood, meetings, weather) | Check-in (mood, energy, sleep, stress, readiness) now available in `checkin.daily_checkin` |
 | 🔵 | Enable cross-domain correlation analysis |
 
 ### Notification Policy Engine (P1)
