@@ -50,7 +50,7 @@ def get_sp() -> spotipy.Spotify:
         ),
         requests_timeout=30,
         retries=3,
-    ))
+    )
 
 
 def get_playlist_artists(sp: spotipy.Spotify, playlist_id: str, label: str) -> set[str]:
