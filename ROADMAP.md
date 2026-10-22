@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-10-11
+Last updated: 2026-10-21
 
 ---
 
@@ -104,12 +104,15 @@ Note: the LangGraph course predates LangGraph 1.x — port examples to the curre
 | 🟢 | DuckDB backup script | Timestamped copies, 7-day retention |
 | 🟢 | DuckDB backup launchd | `com.ons.backup-duckdb.plist` at 2am |
 | 🟢 | Daily sync launchd | `com.ons.daily-sync.plist` at 9am |
+| 🟢 | FastAPI + Next.js launchd | `com.ons.fastapi.plist` + `com.ons.nextjs.plist`; FastAPI auto-unloaded/reloaded by daily_sync |
+| 🟢 | DuckDB write-lock management | daily_sync unloads FastAPI before pipelines, reloads after |
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
 | 🟢 | GitHub Actions CI | 5 jobs: syntax, CFB, hardcode, schema, TypeScript |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
+| 🟡 | `track_news_signals` step | SQL references columns not yet in schema — non-blocking, skipped |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale |
 
@@ -122,8 +125,8 @@ Note: the LangGraph course predates LangGraph 1.x — port examples to the curre
 Mac mini
 ├── FastAPI   api/              Python (port 8000)
 └── Next.js   web/              TypeScript (port 3000)
-Remote: Tailscale or Cloudflare Tunnel
-Domain: capuchin.cyou
+Remote: Cloudflare Tunnel
+Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :8000)
 ```
 
 ### Status
@@ -134,9 +137,9 @@ Domain: capuchin.cyou
 | 🟢 | All 11 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music, Shows, Sports, CFB, KGLW, Check-in |
 | 🟢 | CFB team logos | 260/263 downloaded |
 | 🟢 | OpenClaw morning brief | On Home page until Agentic Layer A4 replaces it |
-| 🔵 | Tailscale setup | 15 min |
-| 🔵 | capuchin.cyou DNS | Point to production app |
-| 🔵 | Decommission Streamlit | After parity confirmed |
+| 🟢 | Cloudflare Tunnel | narcisystem.com live |
+| 🟢 | narcisystem.com DNS | Live — Cloudflare Tunnel routing |
+| 🟢 | Decommission Streamlit | Done — Next.js is the UI |
 
 ---
 

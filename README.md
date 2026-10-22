@@ -29,7 +29,7 @@ life-os-2026/
 │
 ├── openclaw/                          # AI analytics layer
 │   ├── config.py
-│   ├── db.py                          # Read-only DuckDB connection (RBAC enforced)
+│   ├── db.py                          # DuckDB connection (RBAC enforced)
 │   ├── audit.py                       # Immutable execution log
 │   ├── orchestrator.py                # run_openclaw_tier1()
 │   ├── rbac/policy.py                 # Zero-trust read policy
@@ -118,8 +118,10 @@ life-os-2026/
 │
 ├── .github/workflows/                 # ci.yml, picks-validation.yml
 ├── launchd/
-│   ├── com.ons.daily-sync.plist       # 9am daily
-│   └── com.ons.backup-duckdb.plist    # 2am nightly
+│   ├── com.ons.daily-sync.plist       # 9am daily sync
+│   ├── com.ons.backup-duckdb.plist    # 2am nightly backup
+│   ├── com.ons.fastapi.plist          # FastAPI (port 8000) — managed by daily_sync
+│   └── com.ons.nextjs.plist           # Next.js (port 3000)
 └── secrets/
 ```
 
@@ -161,7 +163,7 @@ python scripts/daily_sync.py --only openclaw_generation
 python scripts/daily_sync.py --skip spotify
 ```
 
-**Important:** DuckDB only allows one read-write connection at a time. FastAPI opens read-only, so it doesn't block pipeline writes — but stop it before any `dbt run` and restart afterward.
+**Important:** DuckDB only allows one read-write connection at a time. `daily_sync.py` handles this automatically: it unloads FastAPI via `launchctl unload` at startup (before any imports), runs all pipeline steps, then reloads FastAPI when done. Do not run `daily_sync.py` while Streamlit is open — Streamlit holds a write lock.
 
 ---
 
