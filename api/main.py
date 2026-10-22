@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import duckdb
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -36,6 +37,10 @@ from api.routers import (
 
 ROOT    = Path(__file__).resolve().parents[1]
 DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
+
+# Load .env explicitly (ONS_WRITE_TOKEN, API keys) instead of relying on
+# launchd or another module having done it. Existing env vars win.
+load_dotenv(ROOT / ".env")
 
 # ── Shared DuckDB connection ──────────────────────────────────────────────────
 # Opened once on startup, injected into routers via app.state.db
