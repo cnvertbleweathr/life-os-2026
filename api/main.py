@@ -20,10 +20,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
     cfb,
+    checkin,
     fitness,
     goals,
     habits,
     home,
+    inbox,
     kglw,
     music,
     reading,
@@ -36,7 +38,8 @@ DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
 # ── Shared DuckDB connection ──────────────────────────────────────────────────
 # Opened once on startup, injected into routers via app.state.db
-# All queries are read-only — writes go through the pipeline scripts
+# All queries are read-only. User input (habits, check-ins, captures) is
+# appended to JSONL logs by api/store.py and loaded by the daily sync.
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -79,6 +82,10 @@ app.include_router(shows.router,   prefix="/api/shows",   tags=["shows"])
 app.include_router(sports.router,  prefix="/api/sports",  tags=["sports"])
 app.include_router(cfb.router,     prefix="/api/cfb",     tags=["cfb"])
 app.include_router(kglw.router,    prefix="/api/kglw",    tags=["kglw"])
+
+# Write path — these append to JSONL logs (api/store.py), never to DuckDB.
+app.include_router(checkin.router, prefix="/api/checkin", tags=["checkin"])
+app.include_router(inbox.router,   prefix="/api/inbox",   tags=["inbox"])
 
 @app.get("/api/health")
 async def health():

@@ -2,9 +2,13 @@
 """
 Habits DLT pipeline.
 
-Replaces Pixela entirely. Habits are stored locally in DuckDB via DLT.
-The Streamlit UI writes to data/habits/habits_log.jsonl; this pipeline
-loads that file into the warehouse.
+Habits are stored locally in DuckDB via DLT. The web UI (POST /api/habits/log)
+and the legacy Streamlit page append full-day snapshots to
+data/habits/habits_log.jsonl; this pipeline loads that file into the warehouse.
+
+The log is append-only, so a date can have several lines. Only the latest
+line per date counts (pipelines/_jsonl.latest_by). Before this, repeated
+saves on the same day were each counted in habit_summary.
 
 Tables produced in DuckDB (schema: habits):
   habits.habit_log        — one row per (date, habit) entry
@@ -18,22 +22,34 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
-from datetime import datetime, date
-from pathlib import Path
+from datetime import datetime
 from typing import Iterator
 
 import dlt
 
-ROOT = Path(__file__).resolve().parents[1]
-LOG_PATH = ROOT / "data" / "habits" / "habits_log.jsonl"
-DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
+try:
+    from pipelines._jsonl import data_dir, db_path, latest_by
+except ImportError:  # run as a plain script from pipelines/
+    from _jsonl import data_dir, db_path, latest_by
 
 HABIT_KEYS = ["meditation", "pushups_100", "nonfiction_pages_10", "fiction_pages_10"]
 
 
+def _log_path():
+    return data_dir() / "habits" / "habits_log.jsonl"
+
+
+def _days(year: int | None) -> list[dict]:
+    """Latest snapshot per date, optionally filtered to one year, sorted by date."""
+    latest = latest_by(_log_path(), "date")
+    return [
+        row for d, row in sorted(latest.items())
+        if not year or str(d).startswith(str(year))
+    ]
+
+
 # ---------------------------------------------------------------------------
-# DLT resource: stream rows from the JSONL log
+# DLT resources
 # ---------------------------------------------------------------------------
 
 @dlt.resource(
@@ -42,31 +58,15 @@ HABIT_KEYS = ["meditation", "pushups_100", "nonfiction_pages_10", "fiction_pages
     primary_key=["log_date", "habit"],
 )
 def habit_log_resource(year: int | None = None) -> Iterator[dict]:
-    """Yields one record per (date, habit) from the local JSONL log."""
-    if not LOG_PATH.exists():
-        return
-
-    with LOG_PATH.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            log_date = row.get("date", "")
-            if year and not log_date.startswith(str(year)):
-                continue
-
-            for habit in HABIT_KEYS:
-                yield {
-                    "log_date": log_date,
-                    "habit": habit,
-                    "completed": int(bool(row.get(habit, False))),
-                    "logged_at": row.get("logged_at", ""),
-                }
+    """Yields one record per (date, habit) from the latest snapshot per date."""
+    for row in _days(year):
+        for habit in HABIT_KEYS:
+            yield {
+                "log_date": row["date"],
+                "habit": habit,
+                "completed": int(bool(row.get(habit, False))),
+                "logged_at": row.get("logged_at", ""),
+            }
 
 
 @dlt.resource(
@@ -75,34 +75,10 @@ def habit_log_resource(year: int | None = None) -> Iterator[dict]:
 )
 def habit_summary_resource(year: int) -> Iterator[dict]:
     """Aggregates completion counts across the full year."""
-    if not LOG_PATH.exists():
-        return
-
-    counts: dict[str, int] = {h: 0 for h in HABIT_KEYS}
-    days_logged: set[str] = set()
-
-    with LOG_PATH.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            log_date = row.get("date", "")
-            if not log_date.startswith(str(year)):
-                continue
-
-            days_logged.add(log_date)
-            for habit in HABIT_KEYS:
-                if row.get(habit):
-                    counts[habit] += 1
-
-    total_days = len(days_logged)
+    days = _days(year)
+    total_days = len(days)
     for habit in HABIT_KEYS:
-        done = counts[habit]
+        done = sum(1 for row in days if row.get(habit))
         yield {
             "year": year,
             "habit": habit,
@@ -119,7 +95,7 @@ def habit_summary_resource(year: int) -> Iterator[dict]:
 def run(year: int) -> None:
     pipeline = dlt.pipeline(
         pipeline_name="habits",
-        destination=dlt.destinations.duckdb(DB_PATH),
+        destination=dlt.destinations.duckdb(db_path()),
         dataset_name="habits",
     )
 

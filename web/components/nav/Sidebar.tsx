@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { kind: "link", href: "/reading", label: "Reading",      icon: "reading" },
   { kind: "link", href: "/goals",   label: "Goals",        icon: "goals" },
   { kind: "link", href: "/checkin", label: "Check-in",     icon: "checkin" },
+  { kind: "link", href: "/capture", label: "Capture",      icon: "inbox" },
   { kind: "section", label: "Entertainment" },
   { kind: "link", href: "/music",   label: "Music",        icon: "music" },
   { kind: "link", href: "/kglw",    label: "King Gizzard", icon: "kglw" },

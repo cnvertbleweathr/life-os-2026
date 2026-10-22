@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { habitsApi, type HabitToday, type HabitStreak } from "@/lib/api";
+import {
+  habitsApi, parseLocalDate,
+  type HabitToday, type HabitStreak, type HabitDay,
+} from "@/lib/api";
 import {
   Card, PageHead, Stat, StatBand, K, Loading, ErrorState,
 } from "@/components/ui/primitives";
@@ -10,22 +13,43 @@ import { OnsIcon } from "@/components/ui/icons";
 export default function HabitsPage() {
   const [today, setToday] = useState<HabitToday | null>(null);
   const [streaks, setStreaks] = useState<HabitStreak[] | null>(null);
+  const [recent, setRecent] = useState<HabitDay[]>([]);
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([habitsApi.today(), habitsApi.streaks()])
-      .then(([t, s]) => {
+    Promise.all([habitsApi.today(), habitsApi.streaks(), habitsApi.recent(21)])
+      .then(([t, s, r]) => {
         setToday(t);
         setStreaks(s);
+        setRecent(r);
         setDone(Object.fromEntries(t.habits.map((h) => [h.key, h.done])));
       })
       .catch((e) => setError(e.message));
   }, []);
 
+  // Optimistic: flip immediately, write to the log, roll back on failure.
+  // One request per habit at a time so rapid taps can't land out of order.
   const toggle = useCallback((key: string) => {
-    setDone((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
+    if (pending[key]) return;
+    const next = !done[key];
+    setDone((prev) => ({ ...prev, [key]: next }));
+    setPending((prev) => ({ ...prev, [key]: true }));
+    setSaveError(null);
+    habitsApi
+      .log(key, next)
+      .then((day) => {
+        setToday(day);
+        setDone(Object.fromEntries(day.habits.map((h) => [h.key, h.done])));
+      })
+      .catch((e) => {
+        setDone((prev) => ({ ...prev, [key]: !next }));
+        setSaveError(`Couldn't save — ${e.message}`);
+      })
+      .finally(() => setPending((prev) => ({ ...prev, [key]: false })));
+  }, [done, pending]);
 
   if (error) return <ErrorState message={error} />;
   if (!today || !streaks) return <Loading />;
@@ -37,7 +61,7 @@ export default function HabitsPage() {
 
   const streakFor = (key: string) => streaks.find((s) => s.habit === key);
 
-  const todayLong = new Date(today.date).toLocaleDateString("en-US", {
+  const todayLong = parseLocalDate(today.date).toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
@@ -67,6 +91,11 @@ export default function HabitsPage() {
             <K>Today</K>
             <span className="font-mono text-faint" style={{ fontSize: 9.5 }}>TAP TO LOG</span>
           </div>
+          {saveError && (
+            <div className="font-mono mb-3" role="alert" style={{ fontSize: 10.5, color: "#a8473a" }}>
+              {saveError}
+            </div>
+          )}
           <div className="flex flex-col gap-1">
             {habits.map((h) => {
               const on = !!done[h.key];
@@ -76,7 +105,10 @@ export default function HabitsPage() {
                   key={h.key}
                   className="ons-tap flex items-center gap-[13px] border-none cursor-pointer text-left"
                   onClick={() => toggle(h.key)}
+                  aria-pressed={on}
+                  aria-busy={!!pending[h.key]}
                   style={{
+                    opacity: pending[h.key] ? 0.7 : 1,
                     padding: "13px 12px",
                     margin: "0 -12px",
                     background: on ? "#e9efe7" : "transparent",
@@ -123,12 +155,12 @@ export default function HabitsPage() {
               const streak = streakFor(h.key);
               const cur = streak?.current_streak ?? (done[h.key] ? 1 : 0);
               const best = streak?.longest_streak ?? 0;
-              // synthesize 21-day history (deterministic placeholder —
-              // needs a per-day habit log endpoint to be real)
-              const seed = h.key.length * 7;
-              const hist = Array.from({ length: 21 }, (_, i) =>
-                (Math.sin(seed + i * 1.3) * 0.5 + 0.5) > 0.42
-              );
+              // Previous 20 days from the log (oldest first); today is the
+              // dashed cell after them, driven by live toggle state.
+              const hist = recent.slice(0, -1).map((d) => ({
+                date: d.date,
+                on: d[h.key] === true,
+              }));
               return (
                 <div key={h.key} style={{ padding: "14px 0", borderTop: "1px solid #ebe5d8" }}>
                   <div className="flex justify-between items-baseline mb-[9px]">
@@ -141,13 +173,13 @@ export default function HabitsPage() {
                   <div className="flex gap-[3px]">
                     {hist.map((d, i) => (
                       <div
-                        key={i}
+                        key={d.date}
                         className="flex-1 rounded-sm"
-                        title={d ? "done" : "missed"}
+                        title={`${d.date} · ${d.on ? "done" : "missed"}`}
                         style={{
                           height: 16,
-                          background: d
-                            ? `rgba(29,85,54,${(0.4 + (i / 21) * 0.6).toFixed(2)})`
+                          background: d.on
+                            ? `rgba(29,85,54,${(0.4 + (i / hist.length) * 0.6).toFixed(2)})`
                             : "#efebe1",
                         }}
                       />

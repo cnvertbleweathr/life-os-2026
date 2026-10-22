@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 
 from api.deps import get_db, query, query_one
+from api.store import HABITS_LOG as HABITS_STORE, today_local
 
 router  = APIRouter()
 ROOT    = Path(__file__).resolve().parents[2]
@@ -49,8 +50,8 @@ async def home_summary(request: Request):
       - streams
     """
     db      = get_db(request)
-    today   = date.today().isoformat()
-    year    = date.today().year
+    today   = today_local().isoformat()
+    year    = today_local().year
 
     # ── Stat cards ────────────────────────────────────────────────────────────
     running = query_one(db, """
@@ -70,16 +71,10 @@ async def home_summary(request: Request):
 
     # Habits today
     habits_today: dict[str, bool] = {}
-    if HABITS_LOG.exists():
-        for line in reversed(HABITS_LOG.read_text().splitlines()):
-            try:
-                row = json.loads(line)
-                if row.get("date") == today:
-                    habits_today = {k: bool(v) for k, v in row.items()
-                                    if k not in ("date", "logged_at")}
-                    break
-            except Exception:
-                continue
+    row = HABITS_STORE.latest_by("date").get(today)
+    if row:
+        habits_today = {k: bool(v) for k, v in row.items()
+                        if k not in ("date", "logged_at")}
 
     habit_keys   = ["meditation", "pushups_100", "nonfiction_pages_10", "fiction_pages_10"]
     habits_done  = sum(1 for k in habit_keys if habits_today.get(k, False))

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { checkinApi, type CheckinValues } from "@/lib/api";
 import { Card, PageHead, K } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 import { Donut } from "@/components/ui/viz";
@@ -28,6 +29,40 @@ export default function CheckinPage() {
   const [vals, setVals] = useState<Vals>(BLANK);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [existingAt, setExistingAt] = useState<string | null>(null);
+
+  // If today already has a check-in, start from it so saving updates it.
+  useEffect(() => {
+    checkinApi
+      .today()
+      .then((c) => {
+        if (!c) return;
+        setVals(Object.fromEntries(FIELDS.map((f) => [f.key, c[f.key]])));
+        setNote(c.note ?? "");
+        setExistingAt(c.logged_at);
+      })
+      .catch(() => {
+        /* page still works for a fresh check-in */
+      });
+  }, []);
+
+  const save = () => {
+    setSaving(true);
+    setSaveError(null);
+    const values = Object.fromEntries(
+      FIELDS.map((f) => [f.key, vals[f.key]])
+    ) as unknown as CheckinValues;
+    checkinApi
+      .log({ ...values, note })
+      .then((c) => {
+        setExistingAt(c.logged_at);
+        setSaved(true);
+      })
+      .catch((e) => setSaveError(`Couldn't save — ${e.message}`))
+      .finally(() => setSaving(false));
+  };
 
   const filled = FIELDS.every((f) => vals[f.key] > 0);
   const readiness = filled
@@ -45,11 +80,8 @@ export default function CheckinPage() {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
-  const reset = () => {
-    setVals(BLANK);
-    setNote("");
-    setSaved(false);
-  };
+  // Back to the form with today's values still filled in, to adjust them.
+  const reset = () => setSaved(false);
 
   if (saved) {
     return (
@@ -65,7 +97,8 @@ export default function CheckinPage() {
           <div className="font-serif text-[22px] font-bold">Logged for today</div>
           <p className="text-[13px] text-muted mt-2">
             Readiness <b style={{ color: readColor }}>{readLabel}</b> · avg {avg}/5.
-            Feeds training readiness and the morning brief.
+            Feeds training readiness and the morning brief. Saving again
+            replaces today&apos;s entry.
           </p>
           <button
             className="ons-tap mt-[18px] font-mono cursor-pointer"
@@ -75,7 +108,7 @@ export default function CheckinPage() {
               border: "1px solid rgba(29,85,54,0.33)", borderRadius: 999, padding: "8px 18px",
             }}
           >
-            LOG ANOTHER
+            EDIT TODAY&apos;S CHECK-IN
           </button>
         </Card>
       </div>
@@ -86,10 +119,14 @@ export default function CheckinPage() {
     <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
         title="Daily Check-in"
-        kicker="30 seconds · feeds training readiness + OpenClaw"
+        kicker={
+          existingAt
+            ? "Already checked in today · saving updates it"
+            : "30 seconds · feeds training readiness + morning brief"
+        }
         right={
           <div className="font-mono text-right text-faint" style={{ fontSize: 9.5 }}>
-            {today.toUpperCase()}<br />STORED IN DUCKDB
+            {today.toUpperCase()}<br />SAVED TO ONS · SYNCED NIGHTLY
           </div>
         }
       />
@@ -152,20 +189,32 @@ export default function CheckinPage() {
               />
             </div>
 
+            {saveError && (
+              <div className="font-mono" role="alert" style={{ fontSize: 10.5, color: "#a8473a" }}>
+                {saveError}
+              </div>
+            )}
             <button
               className="ons-tap w-full font-semibold"
-              disabled={!filled}
-              onClick={() => setSaved(true)}
+              disabled={!filled || saving}
+              onClick={save}
               style={{
                 padding: 14, borderRadius: 8, border: "none",
-                cursor: filled ? "pointer" : "not-allowed",
+                cursor: filled && !saving ? "pointer" : "not-allowed",
                 fontSize: 14,
                 background: filled ? "#1d5536" : "#e6e3dc",
                 color: filled ? "#fff" : "#a39d8c",
+                opacity: saving ? 0.75 : 1,
                 transition: "background .15s",
               }}
             >
-              {filled ? "Save check-in" : "Rate all six to save"}
+              {!filled
+                ? "Rate all six to save"
+                : saving
+                ? "Saving…"
+                : existingAt
+                ? "Update check-in"
+                : "Save check-in"}
             </button>
           </div>
         </Card>
@@ -214,7 +263,7 @@ export default function CheckinPage() {
             <div className="flex flex-col gap-[10px]">
               {[
                 ["fitness", "Training readiness — gates today's WOD intensity"],
-                ["scenarios", "Morning brief context (OpenClaw)"],
+                ["scenarios", "Morning brief context"],
                 ["goals", "Trend lines for energy, sleep & stress"],
               ].map(([ic, txt], i) => (
                 <div key={i} className="flex gap-[10px] items-start">

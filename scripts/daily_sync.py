@@ -247,6 +247,18 @@ def build_steps(year: int) -> List[Step]:
             run_if_exists=ROOT / "pipelines/habits_pipeline.py",
             tags=["pipelines"],
         ),
+        Step(
+            name="checkin",
+            cmd=["python3", "run_pipelines.py", "--only", "checkin", "--year", str(year)],
+            run_if_exists=ROOT / "pipelines/checkin_pipeline.py",
+            tags=["pipelines"],
+        ),
+        Step(
+            name="capture_inbox",
+            cmd=["python3", "run_pipelines.py", "--only", "inbox", "--year", str(year)],
+            run_if_exists=ROOT / "pipelines/inbox_pipeline.py",
+            tags=["pipelines"],
+        ),
 
         # ------------------------------------------------------------------
         # Calendar

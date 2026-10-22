@@ -5,6 +5,7 @@ Run Operating Narcisystem DLT pipelines.
 Usage:
   python run_pipelines.py                    # run all
   python run_pipelines.py --only habits      # run one
+  python run_pipelines.py --only checkin inbox  # web write-path logs
   python run_pipelines.py --only strava hardcover
   python run_pipelines.py --year 2026
 """
@@ -15,7 +16,7 @@ import argparse
 import sys
 from datetime import datetime
 
-PIPELINES = ["habits", "strava", "hardcover"]
+PIPELINES = ["habits", "checkin", "inbox", "strava", "hardcover"]
 
 
 def run_pipeline(name: str, year: int) -> bool:
@@ -25,6 +26,10 @@ def run_pipeline(name: str, year: int) -> bool:
     try:
         if name == "habits":
             from pipelines.habits_pipeline import run
+        elif name == "checkin":
+            from pipelines.checkin_pipeline import run
+        elif name == "inbox":
+            from pipelines.inbox_pipeline import run
         elif name == "strava":
             from pipelines.strava_pipeline import run
         elif name == "hardcover":

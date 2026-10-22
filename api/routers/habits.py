@@ -1,21 +1,27 @@
 """
 /api/habits — today's checklist, streaks, YTD completion, history.
+
+Writes (POST /log) append a full-day snapshot to data/habits/habits_log.jsonl
+via api.store; the habits pipeline loads that file into DuckDB on the next sync.
+Reads of today and the recent strip come straight from the log, so a toggle
+shows up immediately without waiting for the sync.
 """
 
 from __future__ import annotations
 
-import json
-from datetime import date
-from pathlib import Path
-
-from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from api.deps import get_db, query, query_one
+from api.store import (
+    HABITS_LOG,
+    date_window,
+    timestamp,
+    today_local,
+    validate_log_date,
+)
 
-router   = APIRouter()
-ROOT     = Path(__file__).resolve().parents[2]
-LOG_PATH = ROOT / "data" / "habits" / "habits_log.jsonl"
+router = APIRouter()
 
 HABITS = {
     "meditation":          "Meditation",
@@ -33,38 +39,75 @@ FALLBACK_QUOTES = [
 ]
 
 
-def _load_today() -> dict:
-    today = date.today().isoformat()
-    if not LOG_PATH.exists():
-        return {}
-    for line in reversed(LOG_PATH.read_text().splitlines()):
-        try:
-            row = json.loads(line)
-            if row.get("date") == today:
-                return row
-        except Exception:
-            continue
-    return {}
+def _day_state(log_date: str, latest: dict | None = None) -> dict:
+    """Habit state for one date: the last snapshot written for it, or all false."""
+    latest = HABITS_LOG.latest_by("date") if latest is None else latest
+    row = latest.get(log_date, {})
+    return {
+        "date": log_date,
+        "habits": [
+            {"key": k, "label": label, "done": bool(row.get(k, False))}
+            for k, label in HABITS.items()
+        ],
+        "done_count":  sum(1 for k in HABITS if row.get(k, False)),
+        "total_count": len(HABITS),
+        "logged_at":   row.get("logged_at"),
+    }
 
 
 @router.get("/today")
 async def habits_today():
-    """Today's habit state from the local JSONL log."""
-    today = date.today().isoformat()
-    existing = _load_today()
-    return {
-        "date": today,
-        "habits": [
-            {
-                "key":   k,
-                "label": label,
-                "done":  bool(existing.get(k, False)),
-            }
-            for k, label in HABITS.items()
-        ],
-        "done_count":  sum(1 for k in HABITS if existing.get(k, False)),
-        "total_count": len(HABITS),
-    }
+    """Today's habit state (user's local date) from the JSONL log."""
+    return _day_state(today_local().isoformat())
+
+
+class HabitLogIn(BaseModel):
+    habit: str
+    done: bool
+    date: str | None = Field(
+        default=None,
+        description="YYYY-MM-DD; defaults to today. Up to 7 days back for backfill.",
+    )
+
+
+@router.post("/log")
+async def habits_log(body: HabitLogIn):
+    """
+    Mark one habit done/undone for a date. Appends a full-day snapshot so the
+    log stays in the one-row-per-write format the pipeline and Streamlit use.
+    """
+    if body.habit not in HABITS:
+        raise HTTPException(422, f"unknown habit '{body.habit}'")
+    try:
+        log_date = validate_log_date(body.date)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+    current = _day_state(log_date)
+    values = {h["key"]: h["done"] for h in current["habits"]}
+    values[body.habit] = body.done
+    HABITS_LOG.append({"date": log_date, "logged_at": timestamp(), **values})
+    return _day_state(log_date)
+
+
+@router.get("/recent")
+async def habits_recent(days: int = 21):
+    """
+    Last N days (oldest first) straight from the log, so it's current without
+    a sync. Days with no entry come back with every habit false.
+    """
+    days = max(1, min(days, 120))
+    latest = HABITS_LOG.latest_by("date")
+    out = []
+    for d in date_window(days):
+        state = _day_state(d.isoformat(), latest)
+        out.append({
+            "date": state["date"],
+            "logged": state["logged_at"] is not None,
+            "done_count": state["done_count"],
+            **{h["key"]: h["done"] for h in state["habits"]},
+        })
+    return out
 
 
 @router.get("/streaks")
@@ -116,6 +159,6 @@ async def habits_quote():
                     return {"quote": data[0]["q"], "author": data[0]["a"]}
     except Exception:
         pass
-    idx = date.today().timetuple().tm_yday % len(FALLBACK_QUOTES)
+    idx = today_local().timetuple().tm_yday % len(FALLBACK_QUOTES)
     q, a = FALLBACK_QUOTES[idx]
     return {"quote": q, "author": a}

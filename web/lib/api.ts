@@ -17,6 +17,33 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
+/** POST JSON. Surfaces FastAPI's validation message when there is one. */
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    let detail = `API ${path} returned ${res.status}`;
+    try {
+      const j = await res.json();
+      if (typeof j?.detail === "string") detail = j.detail;
+      else if (Array.isArray(j?.detail) && j.detail[0]?.msg) detail = j.detail[0].msg;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
+  }
+  return res.json();
+}
+
+/** "2026-10-21" → Date at local noon, so it never shifts to the previous day. */
+export function parseLocalDate(iso: string): Date {
+  return new Date(`${iso.slice(0, 10)}T12:00:00`);
+}
+
 // ── Shared / cross-cutting types ──────────────────────────────────────────────
 
 export interface Goal {
@@ -106,9 +133,67 @@ export interface HabitStreak {
   longest_streak: number;
 }
 
+/** One day of the recent strip, read straight from the habit log. */
+export interface HabitDay {
+  date: string;
+  logged: boolean;
+  done_count: number;
+  [habitKey: string]: string | boolean | number;
+}
+
 export const habitsApi = {
   today: () => get<HabitToday>("/habits/today"),
   streaks: () => get<HabitStreak[]>("/habits/streaks"),
+  recent: (days = 21) => get<HabitDay[]>(`/habits/recent?days=${days}`),
+  /** Returns the day's full state after the write. */
+  log: (habit: string, done: boolean, date?: string) =>
+    post<HabitToday>("/habits/log", { habit, done, date }),
+};
+
+// ── Check-in ─────────────────────────────────────────────────────────────────
+
+export interface CheckinValues {
+  energy: number;
+  mood: number;
+  focus: number;
+  sleep: number;
+  soreness: number;
+  stress: number;
+}
+
+export interface Checkin extends CheckinValues {
+  date: string;
+  logged_at: string | null;
+  readiness: number;
+  note: string;
+}
+
+export const checkinApi = {
+  today: () => get<Checkin | null>("/checkin/today"),
+  history: (days = 30) => get<Checkin[]>(`/checkin/history?days=${days}`),
+  log: (values: CheckinValues & { note?: string; date?: string }) =>
+    post<Checkin>("/checkin/log", values),
+};
+
+// ── Capture inbox ────────────────────────────────────────────────────────────
+
+export type CaptureKind = "note" | "idea" | "task" | "link" | "log";
+
+export interface CaptureItem {
+  capture_id: string;
+  captured_at: string;
+  capture_date: string;
+  text: string;
+  kind: CaptureKind;
+  domain: string | null;
+  source: string;
+  status: string;
+}
+
+export const inboxApi = {
+  list: (limit = 50) => get<CaptureItem[]>(`/inbox?limit=${limit}`),
+  capture: (text: string, kind: CaptureKind = "note", domain?: string) =>
+    post<CaptureItem>("/inbox", { text, kind, domain }),
 };
 
 // ── Fitness ──────────────────────────────────────────────────────────────────

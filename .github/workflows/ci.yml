@@ -17,6 +17,19 @@ jobs:
       - name: Compile-check all Python files
         run: python -m compileall -q api pipelines scripts dbt/macros
 
+  write-path-tests:
+    name: Write-path tests (habits, check-in, inbox)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install "fastapi>=0.137" httpx "dlt[duckdb]>=1.4" "duckdb>=1.5" pandas pyarrow python-dotenv requests pyyaml pytest
+      - name: Run tests (temp data dir + temp DuckDB, no real data)
+        run: python -m pytest tests/test_write_path.py -q
+
   hardcode-audit:
     name: Hardcoded-year audit
     runs-on: ubuntu-latest
