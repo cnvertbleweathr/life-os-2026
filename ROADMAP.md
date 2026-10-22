@@ -112,6 +112,7 @@ Note: the LangGraph course predates LangGraph 1.x — port examples to the curre
 | 🟢 | GitHub Actions CI | 5 jobs: syntax, CFB, hardcode, schema, TypeScript |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
+| 🔵 | Data freshness checks | Alert when a source stops advancing (e.g. latest `cfbd.games` week with scores lags the calendar). 2026 CFB scores sat at Week 4 for three weeks without anything noticing |
 | 🟡 | `track_news_signals` step | SQL references columns not yet in schema — non-blocking, skipped |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
 | 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale |
@@ -185,7 +186,7 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | 🟢 | CFB postmortem + grading |
 | 🟢 | Calibration audit suite |
 | 🟢 | Quality-of-Win system (Phases A-D) |
-| 🟡 | 2026 live monitoring | Live strength, grading loop, full slate UI shipped; Week 8 re-evaluation pending |
+| 🟡 | 2026 live monitoring | Live strength, grading loop, full slate UI shipped; season-trend Teams view + week picker shipped 2026-10-17; Week 8 re-evaluation pending |
 | 🔵 | Line movement signal |
 | 🔵 | Re-run ablation at 2026 Week 4 |
 
@@ -201,7 +202,7 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | Google Calendar | 🟢 | Events, time allocation |
 | SugarWOD | 🟢 | CSV import, CrossFit classes |
 | Spotify | 🟢 | Streaming history, Daily 10, cover art |
-| CFBD | 🟢 | CFB games, 2021-2025 + 2026 live |
+| CFBD | 🟢 | CFB games, 2021-2025 + 2026 live. `cfbd_pipeline` added to daily_sync 2026-10-17 — 2026 scores had stalled after Week 4 because only the PPA pipeline was scheduled |
 | KGLW | 🟢 | 1104 shows, 1001 songs, 671 venues |
 | YouTube (KGLW) | 🟢 | 167 videos, 61 matched to shows |
 | AEG/Ticketmaster | 🟢 | Denver shows |

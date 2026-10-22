@@ -129,13 +129,13 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 28 steps in order. Some steps only run on certain days:
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 32 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
 | Life data | strava, hardcover, habits, calendar, shows, spotify, Daily 10, streams, WOD | Daily (calendar export Mon/Thu) |
 | CFB lines + news | `track_lines`, `track_news_signals` | Daily · Wed/Thu |
-| CFB in-season | `cfbd_extended_pipeline` → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
+| CFB in-season | `cfbd_pipeline --skip-advanced` (games + final scores, lines, SP+) → `cfbd_extended_pipeline` (per-game PPA) → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
 | CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
 | Goals + transform | `sync_playlist_artists`, `sync_goal_progress`, `dbt`, `load_goals`, `load_goal_progress` | Daily |
 | AI + backup | `openclaw_generation`, `backup_duckdb` | Daily, last |
@@ -215,7 +215,7 @@ cp .env.example .env
 | **Music** | Top artists, Daily 10 playlist, news |
 | **Shows** | Upcoming Denver concerts, artist matching |
 | **Sports** | Streams, AI-ranked top 5, news |
-| **CFB Betting** | **This Week:** full ranked slate with final scores, official picks, below-bar signals, collapsible no-signal games, game drill-down · **Matchup Lab:** head-to-head model run · **Teams:** profiles with live in-season strength |
+| **CFB Betting** | **This Week:** week picker for any 2026 week, official picks + watch list with WIN/LOSS and final scores once graded, weekly record, drill-down showing both teams' season-to-date trends going into that week · **Matchup Lab:** head-to-head model run · **Teams:** sortable table of Off/Def percentile, Off/Def/Net trend and points for/against; team profile with trend chart and game log |
 | **King Gizzard** | Upcoming shows, on-this-day, song catalog, jam chart |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log |
 
@@ -262,7 +262,8 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 - **Live strength:** `mart_cfb_live_strength` scores each team's 2026 per-game PPA against its prior-season baseline (z-scored), plus a market residual, so ratings drift with real performance instead of sitting on 2025 numbers. Built from the games table, so unplayed games keep their schedule rows.
 - **Grading loop:** `grade_picks` → `live_picks_pipeline` → `mart_live_picks` keeps the record and header stats current through the week.
 - **Week anchoring:** `current_cfb_week` anchors on the last Saturday of August, so Week 1 runs through the following Friday.
-- **API:** `/api/cfb/slate` (weekly ranked slate), `/api/cfb/strength` and `/api/cfb/strength/summary` (live strength), `/api/cfb/schedule` (FBS-only, with final scores), `/api/cfb/live-tracker`, `/api/cfb/matchup-lab`.
+- **Season trends:** `/api/cfb/team-trends` joins `cfbd.ppa_games` (PPA per play) to `cfbd.games` (scores). Trend = last 3 games minus first 3, signed so positive always means improving; defensive PPA is *allowed*, so lower is better. Percentiles are FBS-wide on season-average PPA. `through_week` limits it to games already played, so past weeks show no lookahead.
+- **API:** `/api/cfb/slate` (weekly ranked slate), `/api/cfb/weeks` (archived weeks for the picker), `/api/cfb/team-trends`, `/api/cfb/strength` and `/api/cfb/strength/summary` (live strength), `/api/cfb/schedule` (FBS-only, with final scores), `/api/cfb/live-tracker`, `/api/cfb/matchup-lab`.
 
 **Documentation:**
 - 7-minute overview: [`docs/SYSTEM_EXPLAINER.md`](./docs/SYSTEM_EXPLAINER.md)
