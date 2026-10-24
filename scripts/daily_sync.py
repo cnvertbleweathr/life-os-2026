@@ -514,6 +514,13 @@ def build_steps(year: int) -> List[Step]:
             tags=["ai"],
         ),
         Step(
+            name="freshness_check",
+            cmd=["python3", "scripts/freshness_check.py"],
+            run_if_exists=ROOT / "scripts/freshness_check.py",
+            required=False,
+            tags=["infra"],
+        ),
+        Step(
             name="backup_duckdb",
             cmd=["python3", "scripts/backup_duckdb.py", "--retention", "7"],
             run_if_exists=ROOT / "scripts/backup_duckdb.py",
@@ -603,6 +610,28 @@ def write_health_summary(
 
 
 # ---------------------------------------------------------------------------
+# Dead-man's switch (healthchecks.io)
+# ---------------------------------------------------------------------------
+
+def _hc_ping(suffix: str = "", body: str = "") -> None:
+    """
+    Ping HEALTHCHECK_SYNC_URL (+ "/start" or "/fail"). If the 9am sync never
+    runs — Mac asleep, launchd job broken — no ping arrives and healthchecks.io
+    alerts. Never raises.
+    """
+    url = os.getenv("HEALTHCHECK_SYNC_URL", "").strip()
+    if not url:
+        return
+    try:
+        import urllib.request
+        req = urllib.request.Request(url.rstrip("/") + suffix, data=body.encode()[:100_000],
+                                     method="POST")
+        urllib.request.urlopen(req, timeout=10).close()
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
@@ -636,6 +665,7 @@ def main() -> int:
 
     print(f"Operating Narcisystem — {today}")
     print(f"Running {len(steps)} steps  (year={args.year})\n")
+    _hc_ping("/start")
 
     sync_start   = datetime.now()
     results      = []
@@ -700,6 +730,14 @@ def main() -> int:
         print(f"    ⛔ Aborted at: {aborted_at}")
     print(f"\n  Health summary: {health_path}")
     print(f"{'='*52}\n")
+
+    try:
+        _health_text = health_path.read_text()
+    except OSError:
+        _health_text = ""
+    # Red only if the sync aborted; individual step failures are reported
+    # by freshness_check (2+ in a row) and the ntfy summary, not here.
+    _hc_ping("/fail" if aborted_at else "", _health_text)
 
     # ── Push notification ────────────────────────────────────
     _notify_script = ROOT / "scripts" / "notify.py"
