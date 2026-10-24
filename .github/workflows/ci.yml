@@ -17,8 +17,8 @@ jobs:
       - name: Compile-check all Python files
         run: python -m compileall -q api pipelines scripts dbt/macros
 
-  write-path-tests:
-    name: Write-path tests (habits, check-in, inbox)
+  python-tests:
+    name: Python tests (write path, freshness, Spotify compat)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,9 +26,16 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: pip install "fastapi>=0.137" httpx "dlt[duckdb]>=1.4" "duckdb>=1.5" pandas pyarrow python-dotenv requests pyyaml pytest
+        run: pip install "fastapi>=0.137" httpx "dlt[duckdb]>=1.4" "duckdb>=1.5" pandas pyarrow python-dotenv requests pyyaml spotipy pytest
       - name: Run tests (temp data dir + temp DuckDB, no real data)
-        run: python -m pytest tests/test_write_path.py -q
+        run: python -m pytest -q
+
+  shellcheck:
+    name: ShellCheck (ops scripts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -s bash ops/macmini/*.sh
 
   hardcode-audit:
     name: Hardcoded-year audit

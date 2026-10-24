@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ONS heartbeat — LaunchDaemon (runs from boot, before anyone logs in).
+  Installed to /Library/LaunchDaemons/com.ons.heartbeat.plist by
+  ops/macmini/harden.sh apply, which fills in __REPO__ and __USER__.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ons.heartbeat</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>__REPO__/ops/macmini/heartbeat.sh</string>
+  </array>
+  <key>UserName</key>
+  <string>__USER__</string>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/ons-heartbeat.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/ons-heartbeat.log</string>
+</dict>
+</plist>
