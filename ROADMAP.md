@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-10-21
+Last updated: 2026-10-23
 
 ---
 
@@ -114,15 +114,20 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
-| 🟢 | Write-path tests | `tests/test_write_path.py` — 15 tests, runs in CI |
-| 🟢 | GitHub Actions CI | 6 jobs: syntax, write-path tests, hardcode audit, dbt parse, TypeScript (`ci.yml`); Thursday picks report (`picks-validation.yml`) |
+| 🟢 | Python tests | `tests/` — 26 tests (write path, freshness, Spotify compat), all in CI |
+| 🟢 | GitHub Actions CI | `ci.yml`: syntax, Python tests (26), ShellCheck, hardcode audit, dbt parse, TypeScript; Thursday picks report (`picks-validation.yml`) |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
-| 🔵 | Data freshness checks | Alert when a source stops advancing (e.g. latest `cfbd.games` week with scores lags the calendar). Two silent failures so far: 2026 CFB scores sat at Week 4 for three weeks, and `sync_playlist_artists` failed to compile from 2026-10-15 to 10-21 (stray paren, fixed) so "My artists" show matching stopped |
-| 🔵 | Spotify Development Mode compliance | Since 2026-03-09 the app owner needs Premium, and playlist contents are readable only for playlists you own or collaborate on. Confirm the Tewnidge/Deeds playlists still return tracks (`sync_playlist_artists`, Daily 10 bucket B). `user_playlist_create` calls a removed endpoint, only hit if the Daily 10 playlist is deleted |
+| 🟡 | Data freshness checks | `scripts/freshness_check.py` as a daily-sync step: steps failing 2+ runs or overdue (interval learned per step), sync not running, backups > 36h, CFB scores stale in season, Daily 10 and show listings. Built to catch the two Oct 2026 silent failures (CFB scores stuck at Week 4 for three weeks; `sync_playlist_artists` failing six days). Written 2026-10-23, deploys with the Mac mini runbook |
+| 🟡 | Spotify Development Mode compliance | Root cause found: the Feb 2026 API renamed each playlist entry's `track` to `item`, so Tewnidge/Deeds reads came back empty — likely why Daily 10 Bucket B gave 5 tracks, and why show matching found no artists. Fixed in `spotify_compat.py`; `user_playlist_create` replaced. Verify with `scripts/spotify_check.py` (also checks playlist ownership) |
 | 🟡 | `track_news_signals` step | SQL references columns not yet in schema — non-blocking, skipped |
 | 🔵 | Spotify OAuth non-interactive | Token refresh without browser |
-| 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale |
+| 🔴 | Mac mini outage 2026-10-22 | Tailscale and the Cloudflare tunnel (1033) both down; machine unreachable from outside. Recovery + hardening: [`docs/MACMINI_RUNBOOK.md`](./docs/MACMINI_RUNBOOK.md) |
+| 🟡 | Unattended recovery | `ops/macmini/harden.sh`: never sleep, wake-on-LAN, restart after power loss, no auto-installed macOS updates. Plus Tailscale → `tailscaled` (runs before login, Tailscale SSH) and cloudflared → boot daemon. Pending: run on the Mac mini |
+| 🔵 | FileVault decision | Keep it (unlock over SSH from the LAN via plex-server, macOS 26) or turn it off with auto-login. Record the choice here |
+| 🟡 | Heartbeat + dead-man's switches | healthchecks.io: 5-min machine heartbeat (`/fail` names the down service) and daily-sync check. Pending: create checks, set `HEARTBEAT_URL`/`HEALTHCHECK_SYNC_URL` |
+| 🔵 | Off-machine backups | Mac mini holds the only DuckDB copies; rsync nightly to plex-server over Tailscale |
+| 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale (`harden.sh check` covers the CLI side) |
 
 ---
 
@@ -288,9 +293,9 @@ Create `ops.notification_rules` — centralize alert logic.
 
 Monitor infrastructure, pipelines, FastAPI, Next.js, and AI operations.
 
-| Status | Item |
-|--------|------|
-| 🔵 | Deploy Uptime Kuma |
+| Status | Item | Notes |
+|--------|------|-------|
+| 🟡 | External uptime monitoring | healthchecks.io heartbeat instead of self-hosted Uptime Kuma (a monitor on the same Mac can't report the Mac being down) |
 | 🔵 | Add Sentry to FastAPI + Next.js |
 | 🔵 | Create system health API endpoint |
 | 🔵 | Create observability dashboard |

@@ -62,6 +62,9 @@ life-os-2026/
 │   ├── daily_sync.py                  # ← The one command to rule them all
 │   ├── backup_duckdb.py
 │   ├── notify.py                      # ntfy.sh push notifications
+│   ├── freshness_check.py             # alerts when a source/step stops updating
+│   ├── spotify_compat.py              # playlist reads for Spotify's 2026 API shape
+│   ├── spotify_check.py               # Spotify access diagnostic (read-only)
 │   ├── tz_utils.py                    # Denver-timezone-correct date helpers
 │   ├── generate_picks.py              # Weekly picks (Mon–Wed)
 │   ├── generate_picks_report.py       # Thursday briefing
@@ -123,7 +126,7 @@ life-os-2026/
 ├── data/
 │   ├── warehouse/ons.duckdb           # DuckDB warehouse (gitignored)
 │   ├── backups/duckdb/                # Nightly backups, 7-day retention
-│   ├── daily/                         # Per-day sync logs + health.txt
+│   ├── daily/                         # Per-day sync logs, health.txt, freshness.json
 │   ├── ai/generations.jsonl           # OpenClaw audit trail — every generation logged
 │   ├── habits/habits_log.jsonl        # written by the web UI (append-only)
 │   ├── checkin/checkin_log.jsonl      # written by the web UI (append-only)
@@ -132,10 +135,17 @@ life-os-2026/
 │   └── [other domains]
 │
 ├── tests/
-│   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups
-│   └── test_write_path.py             # 15 tests — store, endpoints, write key, pipelines
+│   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups (run directly)
+│   ├── test_write_path.py             # 15 tests — store, endpoints, write key, pipelines
+│   ├── test_freshness_check.py        # 8 tests — incl. replays of the Oct 2026 silent failures
+│   └── test_spotify_compat.py         # 3 tests — old/new playlist shapes, unreadable playlists
 │
-├── .github/workflows/                 # ci.yml (syntax, write-path tests, hardcode audit,
+├── ops/macmini/
+│   ├── harden.sh                      # check: what would keep ONS offline · apply: power, updates, heartbeat
+│   ├── heartbeat.sh                   # 5-min healthchecks.io ping from boot; /fail with reason
+│   └── com.ons.heartbeat.plist.template
+│
+├── .github/workflows/                 # ci.yml (syntax, Python tests, ShellCheck, hardcode audit,
 │                                      #   dbt parse, TypeScript), picks-validation.yml (Thu)
 ├── launchd/
 │   ├── com.ons.daily-sync.plist       # 9am daily sync
@@ -148,7 +158,7 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 35 steps in order. Some steps only run on certain days:
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 36 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
@@ -158,7 +168,7 @@ Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate n
 | CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
 | King Gizzard | `kglw` (kglw.net catalog, `--shows-only`), `kglw_youtube` (channel uploads + music-videos playlist) | Daily, before dbt |
 | Goals + transform | `sync_playlist_artists`, `sync_goal_progress`, `dbt`, `load_goals`, `load_goal_progress` | Daily |
-| AI + backup | `openclaw_generation`, `backup_duckdb` | Daily, last |
+| Ops + AI + backup | `openclaw_generation`, `freshness_check`, `backup_duckdb` | Daily, last |
 
 ```bash
 source .venv/bin/activate
@@ -224,6 +234,21 @@ cp .env.example .env
 | `YOUTUBE_API_KEY` | [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) — KGLW live recordings + music videos |
 | `KGLW_ATTENDED_SHOW_IDS` | Comma-separated show IDs from kglw.net (optional) |
 | `ONS_WRITE_TOKEN` | Any long random string — the write key for habits/check-in/Capture over narcisystem.com (see below) |
+| `HEARTBEAT_URL` / `HEALTHCHECK_SYNC_URL` | [healthchecks.io](https://healthchecks.io) ping URLs — Mac mini heartbeat and daily-sync dead-man's switch |
+| `SPOTIFY_TEWNIDGE_PLAYLIST_ID` / `SPOTIFY_DEEDS_PLAYLIST_ID` | Optional overrides — must be playlists you own or collaborate on (Spotify, since Mar 2026) |
+
+---
+
+## Operations & Monitoring
+
+The Mac mini is the single host for the warehouse, API, UI and tunnel, so it has to come back on its own and say so when it doesn't. Full procedure: [`docs/MACMINI_RUNBOOK.md`](./docs/MACMINI_RUNBOOK.md).
+
+| Layer | What | Alerts via |
+|---|---|---|
+| Machine | `ops/macmini/heartbeat.sh` every 5 min from boot: Tailscale, cloudflared, FastAPI, Next.js | healthchecks.io (`/fail` with reason; silence = Mac down) |
+| Daily sync | `daily_sync.py` pings start/end; red only if a required step aborts | healthchecks.io (missed 9am run) |
+| Data | `freshness_check` step: steps failing 2+ runs, last success overdue (learned per step), stale CFB scores in season, backups > 36h, Daily 10 and show listings | ntfy |
+| Config | `bash ops/macmini/harden.sh check` — power, updates, FileVault, Remote Login, Tailscale variant, cloudflared mode, services, env | (run by hand) |
 
 ---
 
