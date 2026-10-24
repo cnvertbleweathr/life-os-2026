@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import csv
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,11 +27,16 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spotify_compat import iter_playlist_tracks  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
-TEWNIDGE_ID = "7hxa1w4AzUjm6xgvU3Zf3x"
-DEEDS_ID    = "6GP6ERcYJArZ7WWaC2g0Xv"
+# Overridable in .env: since March 2026 Spotify only returns items for playlists
+# you own or collaborate on, so these may need to point at copies you own.
+TEWNIDGE_ID = os.getenv("SPOTIFY_TEWNIDGE_PLAYLIST_ID", "").strip() or "7hxa1w4AzUjm6xgvU3Zf3x"
+DEEDS_ID    = os.getenv("SPOTIFY_DEEDS_PLAYLIST_ID", "").strip() or "6GP6ERcYJArZ7WWaC2g0Xv"
 
 OUT_ARTISTS    = ROOT / "data" / "spotify" / "processed" / "my_artists.json"
 OUT_MY_SHOWS   = ROOT / "data" / "shows" / "my_artist_shows.json"
@@ -54,28 +60,17 @@ def get_sp() -> spotipy.Spotify:
 
 
 def get_playlist_artists(sp: spotipy.Spotify, playlist_id: str, label: str) -> set[str]:
+    # Reads both the pre- and post-Feb-2026 playlist shapes (see spotify_compat).
     artists: set[str] = set()
-    offset = 0
-    while True:
-        results = sp.playlist_tracks(
-            playlist_id,
-            offset=offset,
-            limit=100,
-            fields="items(track(artists(name))),next",
-        )
-        items = results.get("items", [])
-        if not items:
-            break
-        for item in items:
-            track = item.get("track") or {}
-            for artist in (track.get("artists") or []):
-                name = (artist.get("name") or "").strip()
-                if name:
-                    artists.add(name)
-        offset += 100
-        if not results.get("next"):
-            break
+    for track in iter_playlist_tracks(sp, playlist_id):
+        for artist in (track.get("artists") or []):
+            name = (artist.get("name") or "").strip()
+            if name:
+                artists.add(name)
     print(f"  {label}: {len(artists)} unique artists")
+    if not artists:
+        print(f"  WARNING: {label} returned no artists. Run: python scripts/spotify_check.py",
+              file=sys.stderr)
     return artists
 
 

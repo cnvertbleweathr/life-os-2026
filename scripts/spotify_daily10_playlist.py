@@ -18,6 +18,9 @@ from dotenv import load_dotenv
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spotify_compat import first_artist_names, iter_playlist_tracks  # noqa: E402
+
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,32 +124,14 @@ def top_n_tracks(totals: Dict[TrackKey, int], n: int) -> List[TrackKey]:
 
 
 def fetch_tewnidge(sp: spotipy.Spotify, playlist_id: str):
-    uris, artists = set(), []
-    seen = set()
-
-    offset = 0
-    while True:
-        page = sp.playlist_items(
-            playlist_id,
-            offset=offset,
-            limit=100,
-            fields="items(track(uri,artists(name))),next",
-        )
-        for it in page["items"]:
-            tr = it["track"] or {}
-            uri = tr.get("uri")
-            arts = tr.get("artists") or []
-            if uri:
-                uris.add(uri)
-            if arts:
-                name = arts[0]["name"]
-                key = name.lower()
-                if key not in seen:
-                    seen.add(key)
-                    artists.append(name)
-        if not page["next"]:
-            break
-        offset += 100
+    # Reads both the pre- and post-Feb-2026 playlist shapes (see spotify_compat).
+    tracks = list(iter_playlist_tracks(sp, playlist_id))
+    uris = {t["uri"] for t in tracks if t.get("uri")}
+    artists = first_artist_names(tracks)
+    print(f"Tewnidge: {len(tracks)} tracks, {len(artists)} artists")
+    if not artists:
+        print("WARNING: Tewnidge returned no artists; Bucket B will be empty. "
+              "Run: python scripts/spotify_check.py", file=sys.stderr)
 
     return uris, artists
 
@@ -179,8 +164,8 @@ def create_or_replace_playlist(sp, name, description, public, uris) -> str:
         replace_playlist_items(sp, pid, uris)
         return pid
 
-    user_id = sp.me()["id"]
-    pl = sp.user_playlist_create(user_id, name=name, public=public, description=description)
+    # POST /users/{id}/playlists was removed for Development Mode apps (Feb 2026).
+    pl = sp.current_user_playlist_create(name=name, public=public, description=description)
     pid = pl["id"]
     replace_playlist_items(sp, pid, uris)
     return pid
