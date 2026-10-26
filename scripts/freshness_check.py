@@ -37,6 +37,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import statistics
@@ -104,9 +105,50 @@ def _table_exists(con, schema: str, table: str) -> bool:
     ).fetchone()[0])
 
 
+DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def step_schedules(sync_path: Path | None = None) -> dict[str, list[int] | None]:
+    """
+    Each sync step's run_on_days, read from daily_sync.py's source with ast.
+    (Importing daily_sync would unload FastAPI as a side effect.)
+    None = runs every day. Steps not in the file are absent from the result.
+    """
+    path = sync_path or (ROOT / "scripts" / "daily_sync.py")
+    try:
+        tree = ast.parse(path.read_text())
+    except (OSError, SyntaxError):
+        return {}
+    out: dict[str, list[int] | None] = {}
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and getattr(node.func, "id", None) == "Step"):
+            continue
+        kw = {k.arg: k.value for k in node.keywords}
+        name = kw.get("name")
+        if not isinstance(name, ast.Constant):
+            continue
+        days = None
+        if "run_on_days" in kw:
+            try:
+                days = sorted({int(d) for d in ast.literal_eval(kw["run_on_days"])})
+            except (ValueError, TypeError):
+                days = None
+        out[name.value] = days
+    return out
+
+
+def allowed_gap(days: list[int] | None) -> timedelta:
+    """Longest wait between scheduled runs, plus one day of grace."""
+    if not days:
+        return timedelta(days=2)
+    gaps = [(b - a) for a, b in zip(days, days[1:])] + [days[0] + 7 - days[-1]]
+    return timedelta(days=max(gaps) + 1)
+
+
 # ── checks ────────────────────────────────────────────────────────────────────
 
-def check_steps(con, now: datetime, window_days: int = 45) -> list[Finding]:
+def check_steps(con, now: datetime, window_days: int = 45,
+                schedules: dict[str, list[int] | None] | None = None) -> list[Finding]:
     if not _table_exists(con, "ops", "pipeline_runs"):
         return [Finding("sync", "pipeline_runs", WARN,
                         "ops.pipeline_runs doesn't exist yet; step history unavailable")]
@@ -124,6 +166,7 @@ def check_steps(con, now: datetime, window_days: int = 45) -> list[Finding]:
         if ts and ts >= cutoff:
             runs.setdefault(name, []).append((ts, status))
 
+    schedules = step_schedules() if schedules is None else schedules
     findings: list[Finding] = []
     latest_any: datetime | None = None
 
@@ -140,11 +183,19 @@ def check_steps(con, now: datetime, window_days: int = 45) -> list[Finding]:
         oks = [ts for ts, s in history if s == "ok"]
         last_ok = oks[-1] if oks else None
 
-        # Expected interval: median gap between distinct run days.
-        days = sorted({ts.date() for ts, _ in history})
-        gaps = [(b - a).days for a, b in zip(days, days[1:])]
-        typical = statistics.median(gaps) if len(gaps) >= 2 else 1
-        allowed = timedelta(days=max(2.0, 2 * typical + 1))
+        # Expected interval: the step's schedule in daily_sync.py; for steps
+        # not in the sync (ad-hoc), the median gap between its run days.
+        if name in schedules:
+            days_on = schedules[name]
+            allowed = allowed_gap(days_on)
+            cadence = ("daily" if not days_on
+                       else "scheduled " + "/".join(DAY_NAMES[d] for d in days_on))
+        else:
+            run_days = sorted({ts.date() for ts, _ in history})
+            gaps = [(b - a).days for a, b in zip(run_days, run_days[1:])]
+            typical = statistics.median(gaps) if len(gaps) >= 2 else 1
+            allowed = timedelta(days=max(2.0, 2 * typical + 1))
+            cadence = f"usually every {typical:g}d"
 
         seen = last_ok.isoformat(timespec="minutes") if last_ok else None
         if streak >= 2:
@@ -160,7 +211,7 @@ def check_steps(con, now: datetime, window_days: int = 45) -> list[Finding]:
         elif now - last_ok > allowed:
             findings.append(Finding(
                 "steps", name, ALERT,
-                f"last success {_age(now, last_ok)} (usually runs every {typical:g}d)",
+                f"last success {_age(now, last_ok)} ({cadence})",
                 seen,
             ))
         else:

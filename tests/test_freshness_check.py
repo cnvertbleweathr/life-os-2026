@@ -142,3 +142,29 @@ def test_cli_records_and_stays_non_blocking(fc, con, tmp_path, monkeypatch, caps
 
     monkeypatch.setattr("sys.argv", ["freshness_check.py", "--no-notify", "--no-record", "--strict"])
     assert fc.main() == 1
+
+
+def test_schedules_read_from_daily_sync(fc):
+    s = fc.step_schedules()
+    assert s["generate_picks_report"] == [3]          # Thursday
+    assert s["calendar_export"] == [0, 3]             # Mon + Thu
+    assert s["strava"] is None                        # daily
+    assert fc.allowed_gap([3]) == timedelta(days=8)
+    assert fc.allowed_gap([0, 3]) == timedelta(days=5)
+    assert fc.allowed_gap(None) == timedelta(days=2)
+
+
+def test_thursday_step_uses_its_schedule(fc, con):
+    # Manual test runs on consecutive days used to teach the check "every 1d",
+    # so a Thursday-only step was flagged by Sunday.
+    sched = {"generate_picks_report": [3], "strava": None}
+    add_runs(con, "strava", [(0, "ok")])
+    add_runs(con, "generate_picks_report", [(17, "ok"), (16, "ok"), (15, "ok"), (4, "ok")])
+    f = by_subject(fc.check_steps(con, NOW, schedules=sched))["generate_picks_report"]
+    assert f.status == fc.OK
+
+    # Oct 25 2026: last success 10.5 days ago, because Thursday's run was missed.
+    con.execute("DELETE FROM ops.pipeline_runs WHERE source_name = 'generate_picks_report'")
+    add_runs(con, "generate_picks_report", [(17, "ok"), (10, "ok")])
+    f = by_subject(fc.check_steps(con, NOW, schedules=sched))["generate_picks_report"]
+    assert f.status == fc.ALERT and "scheduled Thu" in f.detail
