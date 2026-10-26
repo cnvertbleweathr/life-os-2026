@@ -49,9 +49,13 @@ def get_quality_signal(con, team: str, season: int, week: int) -> float | None:
     return float(result[0]) if result and result[0] is not None else None
 
 
-def run() -> None:
-    con = duckdb.connect(DB_PATH, read_only=True)
-
+def historical_published_picks(con) -> pd.DataFrame:
+    """
+    Every pick the current model would have published in 2021-2025
+    (model_score >= 70 and 4+ edges), graded, with the bet team's pregame
+    off_vs_preseason as `signal` (NaN when unavailable). Pushes excluded.
+    Shared with cfb_season_review.py.
+    """
     df = con.execute("""
         SELECT m.game_id, m.season, m.week, m.home_team, m.away_team,
                m.spread, m.over_under, m.off_ppa_gap, m.def_ppa_gap,
@@ -116,10 +120,14 @@ def run() -> None:
                 'signal':     signal,
             })
 
-    con.close()
-
     picks = pd.DataFrame(rows)
-    picks = picks.drop_duplicates(subset='game_id', keep='first')
+    return picks.drop_duplicates(subset='game_id', keep='first')
+
+
+def run() -> None:
+    con = duckdb.connect(DB_PATH, read_only=True)
+    picks = historical_published_picks(con)
+    con.close()
     print(f"Published picks (after spread-rule fix): {len(picks):,}")
     print(f"With quality signal available: {picks['signal'].notna().sum():,}")
     picks = picks[picks['signal'].notna()]

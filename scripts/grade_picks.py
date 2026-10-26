@@ -52,6 +52,21 @@ def compute_cover(spread: float, home_score: int, away_score: int) -> tuple[bool
     return actual_margin > -spread, False
 
 
+def backed_team_of(bet_str: str, home_team: str, away_team: str) -> str | None:
+    """
+    The team a pick backs, from its bet string ("Iowa State +3.0 (away dog)").
+
+    Longest matching name wins: a plain startswith(home_team) check credits
+    "Iowa State +3.0" to home team "Iowa" (also Kansas/Kansas State,
+    Washington/Washington State, Georgia/Georgia Tech, ...). Returns None if
+    the string names neither team.
+    """
+    bet_str = (bet_str or "").strip()
+    matches = [t for t in (home_team, away_team)
+               if t and (bet_str == t or bet_str.startswith(t + " "))]
+    return max(matches, key=len) if matches else None
+
+
 def grade_one_pick(pick: dict, home_score: int, away_score: int) -> dict:
     """
     Returns {"outcome": "win"|"loss"|"push", "pnl": float} for a single
@@ -86,8 +101,9 @@ def grade_one_pick(pick: dict, home_score: int, away_score: int) -> dict:
     # pick["bet"] always starts with the backed team's name now
     # ("Georgia Tech -7.0 (home fav)", "Notre Dame -20.5 (away fav)") --
     # bet_type no longer changes this shape.
-    bet_str = pick.get("bet", "")
-    backed_team = home_team if bet_str.startswith(home_team) else away_team
+    backed_team = backed_team_of(pick.get("bet", ""), home_team, away_team)
+    if backed_team is None:
+        return {"outcome": "ungradeable", "pnl": 0.0, "grade_error": "bet names neither team"}
 
     backing_home = backed_team == home_team
 
@@ -185,6 +201,32 @@ def grade_history_file(path: Path, dry_run: bool) -> dict:
     }
 
 
+def regrade_history_file(path: Path, dry_run: bool) -> list[dict]:
+    """
+    Re-grade already-settled picks from their stored final scores (no CFBD
+    call). Used once to repair picks graded by the old startswith() parser,
+    which credited e.g. "Iowa State +3" to home team Iowa. Changed picks keep
+    their old outcome in `previous_outcome`. Returns the changes.
+    """
+    data = json.loads(path.read_text())
+    changes = []
+    for pick in data["games"]:
+        if pick.get("outcome") not in ("win", "loss", "push"):
+            continue
+        if pick.get("home_score") is None or pick.get("away_score") is None:
+            continue
+        fresh = grade_one_pick(pick, int(pick["home_score"]), int(pick["away_score"]))
+        if fresh["outcome"] != pick["outcome"]:
+            changes.append({"file": path.name, "matchup": pick["matchup"], "bet": pick.get("bet"),
+                            "was": pick["outcome"], "now": fresh["outcome"]})
+            pick["previous_outcome"] = pick["outcome"]
+            pick.update(fresh)
+            pick["regraded_at"] = datetime.now().isoformat(timespec="seconds")
+    if changes and not dry_run:
+        path.write_text(json.dumps(data, indent=2))
+    return changes
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────────────────────────────────────
@@ -194,6 +236,8 @@ def main() -> int:
     p.add_argument("--season", type=int, default=None)
     p.add_argument("--week",   type=int, default=None)
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--regrade", action="store_true",
+                   help="re-grade settled picks from stored scores (repairs old parser mistakes)")
     args = p.parse_args()
 
     if not HISTORY_DIR.exists():
@@ -211,6 +255,14 @@ def main() -> int:
 
     if not files:
         print("No archived weeks found to grade.")
+        return 0
+
+    if args.regrade:
+        changes = [c for path in files for c in regrade_history_file(path, args.dry_run)]
+        for c in changes:
+            print(f"  {c['file']}: {c['matchup']} — {c['bet']}: {c['was']} → {c['now']}")
+        verb = "would change" if args.dry_run else "changed"
+        print(f"Regrade: {verb} {len(changes)} pick(s).")
         return 0
 
     print(f"Checking {len(files)} archived week(s) for ungraded picks...")
