@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ons.nextjs</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/kg/.nvm/versions/node/v24.15.0/bin/node</string>
+        <string>/Users/kg/life-os-2026/web/node_modules/.bin/next</string>
+        <string>start</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/kg/life-os-2026/web</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/kg/life-os-2026/data/daily/nextjs.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/kg/life-os-2026/data/daily/nextjs.err</string>
+</dict>
+</plist>
