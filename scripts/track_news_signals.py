@@ -196,6 +196,48 @@ def current_cfb_week(year: int) -> int | None:
     return min(delta // 7 + 1, 15)
 
 
+def load_movers(con, year: int, week: int, min_move: float | None, limit: int = 30):
+    """
+    This week's games with their line movement, biggest movers first.
+
+    cfbd.line_history has one row per game x provider x day, each carrying
+    that snapshot's `spread` plus `spread_open`/`spread_movement`. Take each
+    provider's latest snapshot, then average across providers per game.
+    (The old query asked for a `spread_latest` column, which only exists in
+    the dbt mart — that failed every run from Sep 23 to Oct 25, 2026. The
+    mart isn't used here because dbt runs after this step in daily_sync.)
+
+    min_move=None returns every game with movement data (--all-games).
+    """
+    having = "" if min_move is None else "AND abs(avg(spread_movement)) >= ?"
+    params = [year, week] + ([] if min_move is None else [min_move]) + [limit]
+    return con.execute(f"""
+        WITH latest AS (
+            SELECT *
+            FROM cfbd.line_history
+            WHERE season = ? AND week = ?
+            QUALIFY row_number() OVER (
+                PARTITION BY game_id, provider
+                ORDER BY snapshot_ts DESC NULLS LAST, snapshot_date DESC
+            ) = 1
+        )
+        SELECT
+            game_id,
+            any_value(season)                  AS season,
+            any_value(week)                    AS week,
+            any_value(home_team)               AS home_team,
+            any_value(away_team)               AS away_team,
+            round(avg(spread), 1)              AS spread_latest,
+            round(avg(spread_open), 1)         AS spread_open,
+            round(avg(spread_movement), 1)     AS spread_movement
+        FROM latest
+        GROUP BY game_id
+        HAVING avg(spread_movement) IS NOT NULL {having}
+        ORDER BY abs(avg(spread_movement)) DESC
+        LIMIT ?
+    """, params).df()
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Track news signals for CFB line movers")
     p.add_argument("--year",      type=int,   default=date.today().year)
@@ -231,22 +273,7 @@ def main() -> int:
         print(f"Cannot open DuckDB: {e}", file=sys.stderr)
         return 1
 
-    # Query the line history for this week's games
-    # Filter to significant movers unless --all-games
-    move_filter = "" if args.all_games else f"AND abs(spread_movement) >= {args.min_move}"
-
-    games = con.execute(f"""
-        SELECT DISTINCT
-            game_id, season, week, home_team, away_team,
-            spread_latest, spread_open, spread_movement
-        FROM cfbd.line_history
-        WHERE season = {year}
-          AND week   = {week}
-          {move_filter}
-          AND spread_movement IS NOT NULL
-        ORDER BY abs(spread_movement) DESC
-        LIMIT 30
-    """).df()
+    games = load_movers(con, year, week, None if args.all_games else args.min_move)
 
     if games.empty:
         if args.all_games:
