@@ -84,7 +84,7 @@ export default function HabitsPage() {
         <Stat label="Tracked Habits" value={total} last />
       </StatBand>
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1.35fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1.35fr" }}>
         {/* Today checklist */}
         <Card>
           <div className="flex justify-between items-center mb-4">

@@ -8,7 +8,7 @@ type NavItem =
   | { kind: "section"; label: string }
   | { kind: "link"; href: string; label: string; icon: string };
 
-const NAV: NavItem[] = [
+export const NAV: NavItem[] = [
   { kind: "section", label: "Life" },
   { kind: "link", href: "/",        label: "Home",         icon: "home" },
   { kind: "link", href: "/habits",  label: "Habits",       icon: "habits" },
@@ -25,12 +25,17 @@ const NAV: NavItem[] = [
   { kind: "link", href: "/cfb",     label: "CFB Betting",  icon: "cfb" },
 ];
 
+/** Shared by the sidebar and the phone nav so "active" means the same thing. */
+export function isActive(path: string, href: string): boolean {
+  return href === "/" ? path === "/" : path.startsWith(href);
+}
+
 export function Sidebar() {
   const path = usePathname();
 
   return (
     <aside
-      className="w-[232px] shrink-0 bg-canvas-2 flex flex-col overflow-hidden"
+      className="ons-sidebar w-[232px] shrink-0 bg-canvas-2 flex flex-col overflow-hidden"
       style={{ borderRight: "1px solid #e6e3dc", padding: "24px 0 16px" }}
     >
       {/* Brand mark */}
@@ -73,10 +78,7 @@ export function Sidebar() {
             );
           }
 
-          const active =
-            item.href === "/"
-              ? path === "/"
-              : path.startsWith(item.href);
+          const active = isActive(path, item.href);
 
           return (
             <Link

@@ -40,6 +40,7 @@ export function LiveTrackerBanner() {
 
   return (
     <div
+      className="ons-banner"
       style={{
         borderBottom: "1px solid #e6e3dc",
         background: "#fbfaf5",
@@ -71,7 +72,7 @@ export function LiveTrackerBanner() {
               PRESEASON
             </span>
           )}
-          <StatInline label="Graded Picks" value={String(tracker?.graded_picks ?? 0)} />
+          <StatInline label="Graded Picks" value={String(tracker?.graded_picks ?? 0)} extra />
           <StatInline
             label="Record"
             value={tracker ? `${tracker.wins}–${tracker.losses}${tracker.pushes ? `–${tracker.pushes}` : ""}` : "0–0"}
@@ -81,11 +82,12 @@ export function LiveTrackerBanner() {
             value={tracker?.win_rate_pct != null ? `${tracker.win_rate_pct}%` : "—"}
           />
           <StatInline
+            extra
             label="ROI"
             value={tracker?.roi_pct != null ? `${tracker.roi_pct > 0 ? "+" : ""}${tracker.roi_pct}%` : "—"}
           />
         </div>
-        <span className="font-mono text-faint" style={{ fontSize: 9 }}>
+        <span className="ons-banner-extra font-mono text-faint" style={{ fontSize: 9 }}>
           MODEL: 107–32 · 77.0% · +47.0% ROI (134 BETS, 5/5 SEASONS){weekLabel}{pendingLabel}
         </span>
       </div>
@@ -93,9 +95,10 @@ export function LiveTrackerBanner() {
   );
 }
 
-function StatInline({ label, value }: { label: string; value: string }) {
+function StatInline({ label, value, extra }: { label: string; value: string; extra?: boolean }) {
+  // `extra` items are hidden on phones to keep the banner to one line.
   return (
-    <span className="flex items-baseline gap-[6px]">
+    <span className={`${extra ? "ons-banner-extra " : ""}flex items-baseline gap-[6px]`}>
       <span className="font-mono uppercase text-faint" style={{ fontSize: 8.5, letterSpacing: "1px" }}>
         {label}
       </span>

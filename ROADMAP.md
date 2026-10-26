@@ -151,7 +151,7 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 | 🟢 | Web write path | Habit toggles, Check-in and Capture persist via append-only JSONL (`api/store.py`), loaded by the daily sync. FastAPI never writes to DuckDB (2026-10-21) |
 | 🟢 | Write key for personal endpoints | `ONS_WRITE_TOKEN`; required through Cloudflare, not locally or over Tailscale; fails closed if unset (2026-10-21) |
 | 🟢 | Home morning brief over the tunnel | Brief was fetched from hardcoded `localhost:8000`, so it only loaded on the Mac mini; now uses `NEXT_PUBLIC_API_BASE` (2026-10-21) |
-| 🔵 | Mobile layout | Sidebar stays 232px at every width, so pages are cramped on a phone. Needed for Capture/Check-in on the go |
+| 🟢 | Mobile layout | Below 768px: bottom tab bar (Home, Habits, Check-in, Capture, More sheet), stacked layouts, two-across stat bands, one-line Live Tracker, 16px inputs so iOS doesn't zoom (2026-10-26) |
 | 🔵 | Public vs private decision | The whole dashboard (fitness, habits, goals incl. finance targets) is public at narcisystem.com. Either put it behind Cloudflare Access or split a deliberate public view from a private one. Strava's API terms (Nov 2024) limit showing a user's activity data to anyone but that user |
 | 🟢 | Music page refresh | Shows merged in, Artist of the Day, Google Calendar links, Denver-time show dates (2026-10-15) |
 | 🟢 | KGLW music videos + upcoming shows | Music Videos tab, videos interleaved by release date, upcoming flag from show date (2026-10-15) |
@@ -256,7 +256,7 @@ Create `raw.capture_inbox` — universal holding area for manual input.
 | Status | Item | Notes |
 |--------|------|-------|
 | 🟢 | Create `raw.capture_inbox` | `POST /api/inbox` → `data/inbox/capture_inbox.jsonl` → `inbox_pipeline.py` |
-| 🟡 | Mobile quick-capture form | `/capture` page shipped (kind + area tags, ⌘↵); needs the mobile layout to be comfortable on a phone |
+| 🟢 | Mobile quick-capture form | `/capture` is a tab in the phone tab bar |
 | 🔵 | Triage: mark done / promote to `core.actions` | Items carry a stable `capture_id` and `status` for this |
 | 🔵 | AI classification (suggest domain, event type) | |
 

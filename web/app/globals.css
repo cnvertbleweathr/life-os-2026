@@ -54,3 +54,43 @@ body {
   border-color: theme('colors.green.DEFAULT');
   box-shadow: 0 0 0 3px rgb(29 85 54 / 0.13);
 }
+
+/* ── Phone layout (< 768px) ──────────────────────────────────────────────────
+   Pages are styled inline, so these rules use !important to override inline
+   padding/grids. Marker classes: ons-sidebar, ons-page, ons-stack, ons-band,
+   ons-pagehead, ons-banner(-extra). The bottom tab bar is MobileNav.tsx. */
+
+/* Dynamic viewport height: 100vh runs under Safari's toolbars on iOS. */
+.ons-shell { height: 100vh; height: 100dvh; }
+
+.ons-tabbar, .ons-sheet { display: none; }
+
+@media (max-width: 767px) {
+  .ons-sidebar { display: none !important; }
+  .ons-tabbar { display: flex; }
+  .ons-sheet[data-open="true"] { display: flex; }
+
+  .ons-page { padding: 18px 16px 104px !important; overflow-x: clip; }
+  .ons-masthead h1 { font-size: 34px !important; }
+  .ons-pagehead > :not(:first-child) { text-align: left !important; }
+
+  /* Multi-column page layouts stack into one column. */
+  .ons-stack { grid-template-columns: minmax(0, 1fr) !important; }
+
+  /* Stat bands: two across, ruled like a table. */
+  .ons-band { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ons-band > * { border-right: none !important; border-bottom: 1px solid #ebe5d8; padding: 12px !important; }
+  .ons-band > *:nth-child(odd) { border-right: 1px solid #ebe5d8 !important; }
+  .ons-band .font-serif { font-size: 24px !important; }
+
+  .ons-pagehead { flex-wrap: wrap; gap: 10px; align-items: flex-start !important; margin-bottom: 18px !important; }
+  .ons-pagehead h1 { font-size: 30px !important; }
+
+  .ons-banner { padding: 8px 16px !important; }
+  .ons-banner .gap-\[18px\] { gap: 10px !important; }
+  .ons-banner .uppercase { letter-spacing: 0.8px !important; }
+  .ons-banner-extra { display: none !important; }
+
+  /* iOS Safari zooms into any focused field under 16px. */
+  .ons-input, input, textarea, select { font-size: 16px !important; }
+}

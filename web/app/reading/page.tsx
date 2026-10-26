@@ -81,7 +81,7 @@ export default function ReadingPage() {
         <Stat label="On-Pace Target" value={ytdTarget} unit="by now" last />
       </StatBand>
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
         {/* Shelf — real books */}
         <Card pad={0}>
           <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>

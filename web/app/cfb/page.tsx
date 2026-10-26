@@ -535,7 +535,7 @@ function TeamsView({ teams }: { teams: CfbTeam[] }) {
   );
 
   return (
-    <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: sel ? "1.45fr 1fr" : "1fr" }}>
+    <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: sel ? "1.45fr 1fr" : "1fr" }}>
       <Card pad={0}>
         <div style={{ padding: "16px 18px 10px" }}>
           <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
@@ -722,7 +722,7 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
   };
 
   return (
-    <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1fr 1.3fr" }}>
+    <div className="ons-stack grid gap-[22px]" style={{ gridTemplateColumns: "1fr 1.3fr" }}>
       <Card style={{ maxWidth: 420 }}>
         <K style={{ marginBottom: 14 }}>Matchup Simulator</K>
         <div className="flex flex-col gap-3">
@@ -928,8 +928,8 @@ function SlateView() {
 
   const header = (
     <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-      <div className="flex items-center gap-3">
-        <K color={GOOD}>{season} ·</K>
+      <div className="flex items-center gap-3 flex-wrap">
+        <K color={GOOD} className="whitespace-nowrap">{season} ·</K>
         <select
           value={week ?? ""}
           onChange={(e) => setWeek(parseInt(e.target.value, 10))}

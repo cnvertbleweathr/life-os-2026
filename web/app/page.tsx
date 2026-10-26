@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_BASE_URL, homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type StreamsToday, type StreamMatch } from "@/lib/api";
+import { API_BASE_URL, parseLocalDate, homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type StreamsToday, type StreamMatch } from "@/lib/api";
 import { Card, K, Watermark, Loading, ErrorState } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 
@@ -35,11 +35,12 @@ export default function HomePage() {
       })
       .catch((e) => setError(e.message));
   
-    // Fetch the OpenClaw brief
+    // Fetch the latest daily brief. null = still loading, false = none
+    // available (no brief yet, or the API errored) -- never crash Home.
     fetch(`${API_BASE_URL}/home/brief/latest?brief_type=daily`)
-      .then(r => r.json())
-      .then(b => setBrief(b))
-      .catch(e => console.error('Brief fetch error:', e));
+      .then(r => (r.ok ? r.json() : null))
+      .then(b => setBrief(b && typeof b.brief_content === "string" ? b : false))
+      .catch(() => setBrief(false));
   
     sportsApi.streams()
       .then(setStreams)
@@ -50,7 +51,7 @@ export default function HomePage() {
   if (!data || !habitsToday) return <Loading label="Loading today's summary..." />;
 
   const { stat_cards: sc, calendar, daily10 } = data;
-  const todayLong = new Date(data.date).toLocaleDateString("en-US", {
+  const todayLong = parseLocalDate(data.date).toLocaleDateString("en-US", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
   });
 
@@ -81,7 +82,7 @@ export default function HomePage() {
   return (
     <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       {/* Masthead */}
-      <div className="flex justify-between items-start mb-7">
+      <div className="ons-pagehead ons-masthead flex justify-between items-start mb-7">
         <div>
           <K color="#1d5536">{todayLong} · Denver, CO</K>
           <h1
@@ -118,7 +119,7 @@ export default function HomePage() {
 
       {/* Stat band */}
       <div
-        className="grid mb-7"
+        className="ons-band grid mb-7"
         style={{ gridTemplateColumns: "repeat(6,1fr)", borderTop: "1.5px solid #232a22", borderBottom: "1px solid #e6e3dc" }}
       >
         {[
@@ -151,7 +152,7 @@ export default function HomePage() {
       </div>
 
       {/* Brief + This Week */}
-      <div className="grid gap-[22px] mb-[22px]" style={{ gridTemplateColumns: "1.62fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] mb-[22px]" style={{ gridTemplateColumns: "1.62fr 1fr" }}>
         <div
           className="relative overflow-hidden"
           style={{
@@ -175,10 +176,10 @@ export default function HomePage() {
               />
             ) : (
               <p className="font-serif m-0 text-muted" style={{ fontSize: 21, lineHeight: 1.4, maxWidth: 640, marginBottom: 18 }}>
-                Loading brief…
+                {brief === false ? "No brief yet today. It's written during the 9am sync." : "Loading brief…"}
               </p>
             )}
-            <div className="grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid #ebe5d8" }}>
+            <div className="ons-stack grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid #ebe5d8" }}>
               {[
                 {
                   icon: "fitness", title: "What's happening",
@@ -263,7 +264,7 @@ export default function HomePage() {
       </div>
 
       {/* Lower row: Habits · Daily 10 · Goals */}
-      <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1.2fr 1fr 1.2fr" }}>
+      <div className="ons-stack grid gap-[22px]" style={{ gridTemplateColumns: "1.2fr 1fr 1.2fr" }}>
         <Card>
           <div className="flex justify-between items-center mb-3">
             <K>Today's Habits</K>

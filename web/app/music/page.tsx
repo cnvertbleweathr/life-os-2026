@@ -94,7 +94,7 @@ export default function MusicPage() {
       </StatBand>
 
       {/* ── Playlist (left) + Shows (right) ───────────────────────────── */}
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <Card accent pad={0} style={{ overflow: "hidden" }}>
           <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
             <K>Daily 10</K>
@@ -219,7 +219,7 @@ function ArtistOfTheDayCard({ data, onShuffle }: { data: ArtistOfTheDay | null; 
     <div className="mb-7">
       {header}
       <div
-        className="grid gap-[26px]"
+        className="ons-stack grid gap-[26px]"
         style={{
           gridTemplateColumns: data.image ? "200px 1fr 240px" : "1fr 240px",
           borderTop: "1.5px solid #232a22",

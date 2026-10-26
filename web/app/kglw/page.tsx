@@ -78,7 +78,7 @@ function ShowExplorer({ shows: allShows, musicVideos }: { shows: KglwShow[]; mus
     : `${nShows} SHOWS`;
 
   return (
-    <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1.05fr 1.25fr" }}>
+    <div className="ons-stack grid gap-[22px]" style={{ gridTemplateColumns: "1.05fr 1.25fr" }}>
       <div>
         <Card pad={0}>
           <div className="border-b border-border-2" style={{ padding: "16px 18px 14px" }}>
@@ -278,7 +278,7 @@ function SongExplorer({ songs: catalog }: { songs: KglwSong[] }) {
   const maxV = Math.max(...catalog.map((s) => s.versions ?? 0), 1);
 
   return (
-    <div className="grid gap-[22px]" style={{ gridTemplateColumns: "1.05fr 1.25fr" }}>
+    <div className="ons-stack grid gap-[22px]" style={{ gridTemplateColumns: "1.05fr 1.25fr" }}>
       <div>
         <Card pad={0}>
           <div className="border-b border-border-2" style={{ padding: "16px 18px 14px" }}>

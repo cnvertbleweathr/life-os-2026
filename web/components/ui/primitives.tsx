@@ -77,7 +77,7 @@ export function PageHead({
   right?: ReactNode;
 }) {
   return (
-    <div className="flex justify-between items-end mb-[26px]">
+    <div className="ons-pagehead flex justify-between items-end mb-[26px]">
       <div>
         {kicker && (
           <K color="#1d5536" style={{ marginBottom: 10 }}>
@@ -152,7 +152,7 @@ export function Stat({
 export function StatBand({ children }: { children: ReactNode }) {
   return (
     <div
-      className="grid mb-7"
+      className="ons-band grid mb-7"
       style={{
         gridTemplateColumns: `repeat(${
           Array.isArray(children) ? children.length : 1

@@ -131,7 +131,7 @@ export default function CheckinPage() {
         }
       />
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.5fr 1fr" }}>
         <Card>
           <div className="flex flex-col gap-5">
             {FIELDS.map((f) => (

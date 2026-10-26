@@ -174,7 +174,7 @@ export default function SportsPage() {
         }
       />
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
         {/* Left column: My Teams + Top 5 + Other Popular, stacked */}
         <div>
           <div className="mb-4" style={{ borderTop: "2.5px solid #1d5536", paddingTop: 12 }}>

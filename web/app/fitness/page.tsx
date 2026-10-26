@@ -320,7 +320,7 @@ export default function FitnessPage() {
       </Card>
 
       {/* Split: Running (left) / CrossFit (right) */}
-      <div className="grid gap-[30px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="ons-stack grid gap-[30px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {/* Running */}
         <div>
           <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #1d5536", paddingTop: 12 }}>

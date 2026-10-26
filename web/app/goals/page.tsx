@@ -71,7 +71,7 @@ export default function GoalsPage() {
         <Stat label="Domains" value={groups.length} last />
       </StatBand>
 
-      <div className="grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {groups.map((grp) => (
           <Card key={grp.domain} pad={0}>
             <div
