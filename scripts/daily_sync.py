@@ -61,6 +61,7 @@ class Step:
     run_if_exists: Optional[Path] = None
     tags:          List[str]      = field(default_factory=list)
     run_on_days:   Optional[List[int]] = None
+    timeout_s:     int            = 1200   # kill a hung step so it can't stall the sync
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +160,8 @@ def run_step(step: Step, log_dir: Path) -> dict:
                 text=True,
                 check=False,
                 env=os.environ.copy(),
+                stdin=subprocess.DEVNULL,   # never wait on a prompt
+                timeout=step.timeout_s,
             )
             proc_returncode = proc.returncode
             stdout_text = proc.stdout or ""
@@ -198,19 +201,29 @@ def run_step(step: Step, log_dir: Path) -> dict:
     except Exception as e:
         ended_dt = datetime.now()
         duration = round((ended_dt - started_dt).total_seconds(), 2)
+        if isinstance(e, subprocess.TimeoutExpired):
+            message = f"timed out after {step.timeout_s}s and was stopped"
+            partial = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
+        else:
+            message, partial = repr(e), ""
         with open(log_path, "w", encoding="utf-8") as f:
-            f.write(f"Exception: {repr(e)}\n")
-        return {
-            "name":       step.name,
-            "status":     "failed",
-            "returncode": None,
-            "started_at": start,
-            "ended_at":   ended_dt.isoformat(timespec="seconds"),
-            "duration_s": duration,
-            "required":   step.required,
-            "error":      repr(e),
-            "log":        str(log_path),
+            f.write(f"Exception: {message}\n")
+            if partial:
+                f.write("\n--- partial output ---\n" + partial)
+        result = {
+            "name":        step.name,
+            "status":      "failed",
+            "returncode":  None,
+            "started_at":  start,
+            "ended_at":    ended_dt.isoformat(timespec="seconds"),
+            "duration_s":  duration,
+            "required":    step.required,
+            "error":       message,
+            "stderr_tail": [message],
+            "log":         str(log_path),
         }
+        _write_pipeline_run(step.name, result)
+        return result
 
 
 
