@@ -3,6 +3,10 @@
 -- Phase C of the Quality-of-Win/SOS system (design v5).
 -- One row per (team, season, week) -- the pregame rating entering that week.
 --
+-- Reads cfbd.games, not cfbd_staging.games: the _staging schema is dlt's
+-- scratch copy of the most recent merge load only (2026), which silently
+-- dropped 2021-2025 and would swap seasons on any backfill.
+--
 -- TWO PERMANENTLY SEPARATE TIME SERIES, per design v5 core principle:
 --
 -- 1. live_off_strength / live_def_strength
@@ -63,7 +67,7 @@ game_sequence as (
         coalesce(mr.spread_residual, 0)
             / nullif(season_mr.season_spread_std, 0) as market_residual_z
 
-    from cfbd_staging.games g
+    from cfbd.games g
 
     -- Left join PPA stats so future/unplayed games keep the schedule row
     left join cfbd.ppa_games p
@@ -132,7 +136,7 @@ game_sequence as (
         coalesce(mr.spread_residual, 0)
             / nullif(season_mr.season_spread_std, 0) as market_residual_z
 
-    from cfbd_staging.games g
+    from cfbd.games g
 
     left join cfbd.ppa_games p
         on p.game_id = g.game_id

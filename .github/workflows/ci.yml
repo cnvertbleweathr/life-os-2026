@@ -58,6 +58,20 @@ jobs:
           fi
           echo "No stray ${LAST_YEAR} hardcodes found."
 
+  dbt-staging-guard:
+    name: dbt models don't read dlt staging schemas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on references to *_staging schemas
+        run: |
+          # dlt's <dataset>_staging schemas hold only the latest merge load.
+          # mart_cfb_live_strength read cfbd_staging.games and lost 2021-2025.
+          if grep -rnE "\b[a-z_]+_staging\.[a-z_]+" dbt/models | grep -vE "^[^:]+:[0-9]+:[[:space:]]*--"; then
+            echo "Read from the real dataset (e.g. cfbd.games), not dlt's staging copy."
+            exit 1
+          fi
+
   dbt-parse:
     name: dbt parse
     runs-on: ubuntu-latest
