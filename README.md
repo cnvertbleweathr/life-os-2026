@@ -351,7 +351,7 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 | KGLW.net | Public API v2 | Shows (incl. announced dates), songs, venues, jam chart |
 | YouTube (KGLW channel) | Data API v3 | Live recordings matched to shows; official music videos from the band's music-videos playlist |
 | Last.fm / Wikipedia / TheAudioDB | Public APIs | Artist of the Day bios |
-| streamed.pk | Public API | Live sports streams |
+| ESPN | Public site API (unofficial, keyless) | Live scores, team schedules, team news |
 | CFBD | DLT + Bearer | CFB games, lines, SP+, PPA, weather |
 
 ---

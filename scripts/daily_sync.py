@@ -335,16 +335,6 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
-        # Streams
-        # ------------------------------------------------------------------
-        Step(
-            name="fetch_streams",
-            cmd=["python3", "scripts/fetch_streams.py"],
-            run_if_exists=ROOT / "scripts/fetch_streams.py",
-            tags=["streams"],
-        ),
-
-        # ------------------------------------------------------------------
         # WOD (Park Hill CrossFit — Playwright headless)
         # ------------------------------------------------------------------
         Step(

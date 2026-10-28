@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-10-23
+Last updated: 2026-10-27
 
 ---
 
@@ -161,6 +161,7 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 | 🟢 | Cloudflare Tunnel | narcisystem.com live |
 | 🟢 | narcisystem.com DNS | Live — Cloudflare Tunnel routing |
 | 🟢 | Decommission Streamlit | Done — Next.js is the UI |
+| 🟢 | Sports page on ESPN | `/api/sports/today` (my teams, coming up, top games, all games; auto-refresh while live) and `/api/sports/team-news` (server-side, replaces the per-team NewsAPI fan-out). Top games ranked by a heuristic (postseason, national TV, AP rank) instead of GPT (2026-10-27) |
 
 ---
 
@@ -230,6 +231,8 @@ Underdogs: 37-8 (82.2% cover, +57.0% ROI)
 | YouTube (KGLW) | 🟢 | Daily via `daily_sync` (`kglw_youtube`): uploads → `mart_kglw_youtube_matches`; music-videos playlist → `mart_kglw_music_videos`. New "Live in…" titles may need `festival_aliases` rows — check with `scripts/kglw_video_qa.py` |
 | KGLW show links | 🔴 | kglw.net `links/show/{id}` returns a PHP error server-side; recordings come from YouTube instead |
 | AEG/Ticketmaster | 🟢 | Denver shows |
+| streamed.pk | 🔴 | Dead as of 2026-10. Watch links removed; revisit only if a real free stream source turns up |
+| ESPN (site API) | 🟢 | Replaced streamed.pk 2026-10-27. Live scoreboards (NFL, FBS, NBA, MLB, NHL, MLS), next game per team, team news. Unofficial, keyless, no published rate limit — `api/espn.py` caches every call (scores 60s, schedules 1h, news 15m, team ids 24h). No odds or predictive metrics pulled for CFB: CFBD stays the source there |
 | Letterboxd | 🟡 | Dry-run confirmed, not yet in daily_sync |
 | Setlist.fm | 🔵 | Full concert history (planned) |
 | Apple Health | 🔵 | Sleep, HRV, steps, weight |
@@ -369,9 +372,18 @@ Extend CFB model to other sports. Walk-forward backtesting, per-season ablation,
 
 | Sport | Status |
 |--------|--------|
+| NBA | 🔵 **Next — build in the offseason.** Net rating, pace, rest, injury signals |
+| NHL | 🔵 **Next — build in the offseason.** Corsi, Fenwick, PDO, goalie signals |
 | NFL | 🔵 Planned — rest, efficiency, QB, weather signals |
-| NHL | 🔵 Planned — Corsi, Fenwick, PDO, goalie signals |
-| NBA | 🔵 Planned — net rating, pace, rest, injury signals |
+
+**Data plan for NBA/NHL (decided 2026-10-27):**
+
+- **Lines from ESPN.** Game odds (spread, total, moneylines per sportsbook) come from the ESPN summary/core odds endpoints. ESPN drops pre-game odds once a game is final, so a daily `espn_odds` DLT pipeline has to snapshot upcoming games each day — start it before the models so line history accumulates. Historical lines before the snapshot start need another source (The Odds API history, or a one-off backfill)
+- **Results, schedules, box scores, injuries from ESPN** (scoreboard, team schedule, summary, team injuries). Map ESPN ids once into a `espn.teams` table
+- **Not used: ESPN's own predictive outputs** (predictor, win probability, BPI-style game projections). Models are built on raw inputs only
+- CFB is unchanged: CFBD stays the source for lines, SP+ and PPA
+
+- ⚪ **ESPN FPI (CFB) as a reference rating.** Interested, not now. `sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/{year}/powerindex`, back to 2005. Would only be a cross-check next to SP+/PPA, not a model input, given the no-ESPN-predictive rule
 
 ---
 

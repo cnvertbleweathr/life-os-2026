@@ -24,7 +24,6 @@ WOD_PATH     = ROOT / "data" / "fitness" / "wod_today.json"
 DAILY10_PATH = ROOT / "data" / "spotify" / "processed" / "daily10_latest.json"
 PICKS_PATH   = ROOT / "data" / "bets" / "todays_picks.json"
 HABITS_LOG   = ROOT / "data" / "habits" / "habits_log.jsonl"
-STREAMS_PATH = ROOT / "data" / "streams" / "today.json"
 
 
 def _load_json(path: Path) -> Any:
@@ -47,7 +46,6 @@ async def home_summary(request: Request):
       - Daily 10 playlist
       - top CFB picks (max 3)
       - goals summary
-      - streams
     """
     db      = get_db(request)
     today   = today_local().isoformat()
@@ -126,9 +124,6 @@ async def home_summary(request: Request):
         ORDER BY domain, goal_key
     """)
 
-    # ── Streams ───────────────────────────────────────────────────────────────
-    streams = _load_json(STREAMS_PATH) or {}
-
     return {
         "date":       today,
         "stat_cards": {
@@ -144,7 +139,6 @@ async def home_summary(request: Request):
         "daily10":    daily10,
         "picks":      picks,
         "goals":      goals,
-        "streams":    streams,
     }
 
 @router.get("/briefs")
@@ -215,7 +209,3 @@ async def get_calendar():
     return [{k: _clean(v) for k, v in row.items()} for row in raw_events]
 
 
-@router.get("/streams")
-async def get_streams():
-    """Today's sports streams."""
-    return _load_json(STREAMS_PATH) or {}

@@ -142,12 +142,6 @@ export interface HomeSummary {
   } | null;
   picks: unknown[];
   goals: Goal[];
-  streams: {
-    fetched_at: string;
-    my_teams: unknown[];
-    top5: unknown[];
-    popular: unknown[];
-  } | null;
 }
 
 export interface CalendarEvent {
@@ -454,26 +448,68 @@ export const showsApi = {
 
 // ── Sports ───────────────────────────────────────────────────────────────────
 
-export interface StreamMatch {
+export interface GameSide {
   id: string;
-  title: string;
-  category: string;
-  popular: boolean;
-  home_team: string;
-  away_team: string;
-  kickoff_utc: string | null;
-  kickoff_local: string | null;
-  watch_url: string;
-  sources: unknown[];
-  is_live: boolean;
-  team_label?: string; // only present on my_teams entries
+  name: string;
+  short: string;
+  abbr: string;
+  logo: string | null;
+  score: string | null;
+  record: string | null;
+  rank: number | null;
+  winner?: boolean;
 }
 
-export interface StreamsToday {
-  fetched_at: string | null;
-  my_teams: StreamMatch[];
-  top5: StreamMatch[];
-  popular: StreamMatch[];
+/** One game from ESPN's scoreboard/schedule, normalised by api/espn.py. */
+export interface Game {
+  id: string;
+  league: "nfl" | "cfb" | "nba" | "mlb" | "nhl" | "mls";
+  league_label: string;
+  name: string;
+  short_name: string;
+  start_utc: string | null;
+  state: "pre" | "in" | "post";
+  status_detail: string;
+  is_live: boolean;
+  home: GameSide;
+  away: GameSide;
+  broadcasts: string[];
+  national_tv: boolean;
+  note: string | null;
+  postseason: boolean;
+  venue: string | null;
+  link: string | null; // ESPN Gamecast
+  my_team: string | null;
+}
+
+export interface SportsToday {
+  fetched_at: string;
+  date: string;
+  any_live: boolean;
+  my_teams: Game[];  // today's games involving my teams
+  upcoming: Game[];  // next game per team not already playing today
+  top: Game[];       // top 5 by prominence heuristic
+  all: Game[];
+  errors: string[];
+}
+
+export interface TeamNewsArticle {
+  title: string;
+  description: string | null;
+  url: string;
+  published: string | null;
+  image: string | null;
+  source: string;
+  team: string;
+  team_abbr: string | null;
+  team_logo: string | null;
+  league: string;
+}
+
+export interface TeamNews {
+  teams: { name: string; short: string | null; abbr: string | null; logo: string | null; league: string }[];
+  articles: TeamNewsArticle[];
+  errors: string[];
 }
 
 export interface NewsArticle {
@@ -484,8 +520,10 @@ export interface NewsArticle {
 }
 
 export const sportsApi = {
-  streams: () => get<StreamsToday>("/sports/streams"),
-  // Needs NEWS_API_KEY server-side — [] is expected, not a bug, until set.
+  today: () => get<SportsToday>("/sports/today"),
+  teamNews: (team?: string) =>
+    get<TeamNews>(`/sports/team-news${team ? `?team=${encodeURIComponent(team)}` : ""}`),
+  // Generic headlines via NewsAPI — needs NEWS_API_KEY server-side.
   news: (q?: string) => get<NewsArticle[]>(`/sports/news${q ? `?q=${encodeURIComponent(q)}` : ""}`),
 };
 
