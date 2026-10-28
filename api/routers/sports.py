@@ -7,8 +7,9 @@ gone until a real free stream source exists — games link to ESPN Gamecast.
 
 from __future__ import annotations
 
+import asyncio
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter
@@ -44,6 +45,109 @@ async def today():
         "all": games,
         "errors": id_errors + sb_errors + sched_errors,
     }
+
+
+@router.get("/ticker")
+async def ticker(headlines: int = 8, news: int = 8):
+    """
+    Everything the site-wide top ticker scrolls, in one request:
+      games     — my teams: live now, later today, finals from the last ~30h,
+                  then each other team's next game within a week
+      team_news — ESPN news for MY_TEAMS from the last 72h, max 2 per team
+      headlines — top US headlines via NewsAPI (empty without NEWS_API_KEY)
+
+    The frontend polls every minute while anything is live, every 5 otherwise.
+    ESPN calls ride the shared TTL cache; NewsAPI is cached 30 min so polling
+    stays far under the free plan's 100 requests/day.
+    """
+    now = datetime.now(timezone.utc)
+    today = today_local()
+    async with httpx.AsyncClient() as client:
+        ids, id_errors = await espn.resolve_team_ids(client)
+        (games, sb_errors), (prev, prev_errors), (upcoming, sched_errors), \
+            (articles, news_errors), (heads, head_errors) = await asyncio.gather(
+                espn.scoreboards(client, today),
+                espn.scoreboards(client, today - timedelta(days=1), ttl=1800),
+                espn.next_games(client, ids, now),
+                espn.team_news(client, ids, limit=4),
+                _top_headlines(client, headlines),
+            )
+        espn.tag_my_teams(games, ids)
+        espn.tag_my_teams(prev, ids)
+
+    today_mine = [g for g in games if g["my_team"]]
+    recent_finals = [
+        g for g in prev
+        if g["my_team"] and g["state"] == "post" and g["start_utc"]
+        and espn._parse(g["start_utc"]) > now - timedelta(hours=30)
+    ]
+    order = {"in": 0, "pre": 1, "post": 2}
+    today_mine.sort(key=lambda g: (order.get(g["state"], 3), g["start_utc"] or ""))
+    seen = {g["id"] for g in today_mine} | {g["id"] for g in recent_finals}
+    # Teams already playing today don't also need a "next game" item.
+    covered = {t for g in today_mine for t in (g["my_team"] or "").split(" / ")}
+    next_up = [
+        g for g in upcoming
+        if g["id"] not in seen and g["start_utc"]
+        and espn._parse(g["start_utc"]) < now + timedelta(days=7)
+        and not set(g["my_team"].split(" / ")) <= covered
+    ]
+
+    live = [g for g in today_mine if g["state"] == "in"]
+    later = [g for g in today_mine if g["state"] == "pre"]
+    finals = [g for g in today_mine if g["state"] == "post"] + recent_finals
+
+    cutoff = (now - timedelta(hours=72)).isoformat()
+    per_team: dict[str, int] = {}
+    fresh_news = []
+    for a in articles:
+        if (a.get("published") or "") < cutoff[:19]:
+            continue
+        if per_team.get(a["team"], 0) >= 2:
+            continue
+        per_team[a["team"]] = per_team.get(a["team"], 0) + 1
+        fresh_news.append(a)
+        if len(fresh_news) >= news:
+            break
+
+    return {
+        "fetched_at": now.isoformat(),
+        "any_live": bool(live),
+        "games": [{**g, "ticker_group": grp} for grp, gs in
+                  (("live", live), ("today", later), ("final", finals), ("next", next_up)) for g in gs],
+        "team_news": fresh_news,
+        "headlines": heads,
+        "errors": id_errors + sb_errors + prev_errors + sched_errors + news_errors + head_errors,
+    }
+
+
+async def _top_headlines(client: httpx.AsyncClient, limit: int) -> tuple[list[dict], list[str]]:
+    api_key = os.getenv("NEWS_API_KEY")
+    if not api_key:
+        return [], []
+    try:
+        data = await espn.get_json(
+            client, "https://newsapi.org/v2/top-headlines",
+            {"country": "us", "pageSize": 20, "apiKey": api_key}, ttl=1800,
+        )
+    except Exception as e:
+        return [], [f"headlines: {e}"]
+    out, titles = [], set()
+    for a in data.get("articles") or []:
+        title, url = a.get("title"), a.get("url")
+        if not title or not url or title == "[Removed]":
+            continue
+        source = (a.get("source") or {}).get("name") or ""
+        # NewsAPI titles end in " - Source"; the ticker shows the source separately.
+        if source and title.endswith(f" - {source}"):
+            title = title[: -len(source) - 3]
+        if title in titles:
+            continue
+        titles.add(title)
+        out.append({"title": title, "source": source, "url": url, "published": a.get("publishedAt")})
+        if len(out) >= limit:
+            break
+    return out, []
 
 
 @router.get("/team-news")

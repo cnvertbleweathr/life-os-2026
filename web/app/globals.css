@@ -55,6 +55,101 @@ body {
   box-shadow: 0 0 0 3px rgb(29 85 54 / 0.13);
 }
 
+/* ── Top ticker (components/nav/TopTicker.tsx) ──────────────────────────── */
+.ons-ticker-bar {
+  display: flex; align-items: stretch; height: 38px; flex-shrink: 0;
+  background: #fbfaf5; border-bottom: 1px solid #e6e3dc;
+  font-family: "Spline Sans", system-ui, sans-serif; color: #232a22;
+}
+.ons-ticker-label {
+  display: flex; align-items: center; gap: 7px; padding: 0 16px 0 24px; flex-shrink: 0;
+  border-right: 1px solid #e6e3dc;
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9.5px;
+  letter-spacing: 1.7px; text-transform: uppercase; color: #1d5536;
+}
+.ons-ticker-dot { width: 6px; height: 6px; border-radius: 999px; background: #1d5536; }
+.ons-ticker-dot.is-live { background: #a8473a; animation: ons-pulse 1.6s ease-out infinite; }
+@keyframes ons-pulse {
+  0% { box-shadow: 0 0 0 0 rgb(168 71 58 / 0.5); }
+  100% { box-shadow: 0 0 0 7px rgb(168 71 58 / 0); }
+}
+.ons-ticker-pinned {
+  display: flex; align-items: center; flex-shrink: 0; padding: 0 6px;
+  border-right: 1px solid #e6e3dc; background: rgb(168 71 58 / 0.04);
+}
+.ons-ticker-pinned > * + * { border-left: 1px solid #ebe5d8; }
+.ons-ticker-viewport {
+  flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+.ons-ticker-track {
+  display: flex; width: max-content;
+  animation: ons-marquee 90s linear infinite;
+}
+.ons-ticker-viewport:hover .ons-ticker-track,
+.ons-ticker-viewport:focus-within .ons-ticker-track { animation-play-state: paused; }
+@keyframes ons-marquee { to { transform: translateX(-50%); } }
+.ons-ticker-copy { display: flex; align-items: center; flex-shrink: 0; padding-right: 8px; }
+.ons-ticker-empty { flex: 1; display: flex; align-items: center; padding: 0 18px; font-size: 10px; letter-spacing: 0.5px; }
+
+.ons-ticker-tag {
+  margin: 0 6px 0 18px; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: #e9efe7; color: #1d5536;
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 8.5px;
+  letter-spacing: 1.3px; text-transform: uppercase;
+}
+.ons-ticker-item {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  padding: 3px 12px; font-size: 12px; color: #232a22; text-decoration: none;
+  border-radius: 4px;
+}
+.ons-ticker-item + .ons-ticker-item { border-left: 1px solid #ebe5d8; }
+a.ons-ticker-item:hover .ons-ticker-headline { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #a39d8c; }
+a.ons-ticker-item:focus-visible { outline: 2px solid #1d5536; outline-offset: -2px; }
+.ons-ticker-league,
+.ons-ticker-source,
+.ons-ticker-status,
+.ons-ticker-ago {
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px;
+  letter-spacing: 0.9px; text-transform: uppercase; color: #a39d8c;
+}
+.ons-ticker-source { color: #736e5f; }
+.ons-ticker-source.is-team { color: #1d5536; font-weight: 600; }
+.ons-ticker-status.is-live { color: #a8473a; font-weight: 600; }
+.ons-ticker-ago { letter-spacing: 0.3px; text-transform: none; }
+.ons-ticker-headline { font-family: "Spectral", Georgia, serif; font-size: 13.5px; max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
+.ons-ticker-result {
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 3px;
+}
+.ons-ticker-result.is-win { background: #e9efe7; color: #1d5536; }
+.ons-ticker-result.is-loss { background: rgb(168 71 58 / 0.1); color: #a8473a; }
+
+.ons-ticker-cfb {
+  display: flex; align-items: center; gap: 9px; padding: 0 24px 0 16px; flex-shrink: 0;
+  border-left: 1px solid #e6e3dc; font-size: 13px; color: #232a22; text-decoration: none;
+}
+.ons-ticker-cfb:hover { background: #f6f5f2; }
+.ons-ticker-cfb-label {
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px;
+  letter-spacing: 1.4px; text-transform: uppercase; color: #a39d8c;
+}
+.ons-ticker-cfb-pre {
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; color: #9a6a1e;
+  border: 1px solid rgb(154 106 30 / 0.33); border-radius: 999px; padding: 2px 9px;
+}
+.ons-ticker-cfb-pending {
+  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; color: #9a6a1e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ons-ticker-track { animation: none; }
+  .ons-ticker-track > [aria-hidden] { display: none; }
+  .ons-ticker-viewport { overflow-x: auto; scrollbar-width: none; }
+  .ons-ticker-dot.is-live { animation: none; }
+}
+
 /* ── Phone layout (< 768px) ──────────────────────────────────────────────────
    Pages are styled inline, so these rules use !important to override inline
    padding/grids. Marker classes: ons-sidebar, ons-page, ons-stack, ons-band,
@@ -86,9 +181,9 @@ body {
   .ons-pagehead { flex-wrap: wrap; gap: 10px; align-items: flex-start !important; margin-bottom: 18px !important; }
   .ons-pagehead h1 { font-size: 30px !important; }
 
-  .ons-banner { padding: 8px 16px !important; }
-  .ons-banner .gap-\[18px\] { gap: 10px !important; }
-  .ons-banner .uppercase { letter-spacing: 0.8px !important; }
+  .ons-ticker-bar { height: 34px; }
+  .ons-ticker-label { padding: 0 10px 0 14px; }
+  .ons-ticker-item { font-size: 11.5px; }
   .ons-banner-extra { display: none !important; }
 
   /* iOS Safari zooms into any focused field under 16px. */

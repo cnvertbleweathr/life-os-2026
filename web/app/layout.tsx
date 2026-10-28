@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { MobileNav } from "@/components/nav/MobileNav";
-import { LiveTrackerBanner } from "@/components/cfb/LiveTrackerBanner";
+import { TopTicker } from "@/components/nav/TopTicker";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default function RootLayout({
       <body className="ons-shell flex overflow-hidden bg-canvas text-ink font-sans antialiased">
         <Sidebar />
         <main className="flex-1 overflow-y-auto ons-scroll flex flex-col">
-          <LiveTrackerBanner />
+          <TopTicker />
           <div className="flex-1">{children}</div>
         </main>
         <MobileNav />

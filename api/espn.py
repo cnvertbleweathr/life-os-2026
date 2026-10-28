@@ -225,7 +225,7 @@ async def resolve_team_ids(client: httpx.AsyncClient) -> tuple[dict[MyTeam, dict
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
-async def scoreboards(client: httpx.AsyncClient, day: date) -> tuple[list[dict], list[str]]:
+async def scoreboards(client: httpx.AsyncClient, day: date, ttl: int = 60) -> tuple[list[dict], list[str]]:
     errors: list[str] = []
 
     async def one(league: str):
@@ -233,7 +233,7 @@ async def scoreboards(client: httpx.AsyncClient, day: date) -> tuple[list[dict],
         params: dict[str, Any] = {"dates": day.strftime("%Y%m%d"), "limit": 300}
         if league == "cfb":
             params["groups"] = 80  # all FBS, not just the default Top 25 view
-        return league, await get_json(client, f"{SITE}/{path}/scoreboard", params, ttl=60)
+        return league, await get_json(client, f"{SITE}/{path}/scoreboard", params, ttl=ttl)
 
     games: list[dict] = []
     for res in await asyncio.gather(*(one(l) for l in LEAGUES), return_exceptions=True):

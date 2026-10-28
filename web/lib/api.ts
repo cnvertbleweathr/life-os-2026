@@ -519,8 +519,31 @@ export interface NewsArticle {
   published: string;
 }
 
+/** GET /sports/ticker — everything the site-wide top ticker scrolls. */
+export interface TickerGame extends Game {
+  /** live = in progress · today = later today · final = today/last night · next = next game this week */
+  ticker_group: "live" | "today" | "final" | "next";
+}
+
+export interface TickerHeadline {
+  title: string;
+  source: string;
+  url: string;
+  published: string | null;
+}
+
+export interface SportsTicker {
+  fetched_at: string;
+  any_live: boolean;
+  games: TickerGame[];
+  team_news: TeamNewsArticle[];
+  headlines: TickerHeadline[];
+  errors: string[];
+}
+
 export const sportsApi = {
   today: () => get<SportsToday>("/sports/today"),
+  ticker: () => get<SportsTicker>("/sports/ticker"),
   teamNews: (team?: string) =>
     get<TeamNews>(`/sports/team-news${team ? `?team=${encodeURIComponent(team)}` : ""}`),
   // Generic headlines via NewsAPI — needs NEWS_API_KEY server-side.
