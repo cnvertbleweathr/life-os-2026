@@ -76,7 +76,7 @@ h1 { font: 700 28px/34px var(--sans); margin: 0; letter-spacing: -.01em; }
 
 .chip { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .chip.run { background: var(--run); color: var(--run-ink); } .chip.edge { background: var(--edge); color: var(--edge-ink); } .chip.warn { background: #fff3dc; color: #7a430a; } .chip.plain { background: var(--raised); color: #3a3e44; }
-.ev { display: flex; align-items: center; gap: 14px; min-height: 52px; border-bottom: 1px solid var(--rule); }
+.ev { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
 .ev:last-child { border-bottom: 0; }
 .ev .d { width: 46px; flex: none; text-align: center; font-size: 13px; color: var(--muted); line-height: 16px; }
 .ev .d b { display: block; font-size: 18px; color: var(--ink); line-height: 22px; }

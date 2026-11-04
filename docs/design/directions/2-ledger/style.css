@@ -86,7 +86,7 @@ td .sub { display: block; font-size: 13px; color: var(--muted); line-height: 18p
 .legend i { display: inline-block; width: 10px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
 
 /* Queue */
-.q { display: flex; align-items: center; gap: 12px; min-height: 44px; border-bottom: 1px solid var(--rule); }
+.q { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
 .q:last-child { border-bottom: 0; }
 .box { width: 20px; height: 20px; border: 1.5px solid var(--control); border-radius: 5px; background: #fff; flex: none; cursor: pointer; }
 .box:hover { border-color: var(--ink); }

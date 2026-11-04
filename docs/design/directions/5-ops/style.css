@@ -10,7 +10,7 @@
 }
 * { box-sizing: border-box; }
 html { color-scheme: dark; }
-body { margin: 0; background: var(--ground); color: var(--text); font: 400 13px/18px var(--sans); -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--ground); color: var(--text); font: 400 13px/19px var(--sans); -webkit-font-smoothing: antialiased; }
 ::selection { background: var(--acc); color: #0b0c0d; }
 :focus-visible { outline: 1px solid var(--acc); outline-offset: 2px; }
 a { color: inherit; }
@@ -72,7 +72,7 @@ td .sub { color: var(--dim); margin-left: 8px; }
 .gauge b { position: absolute; inset: 0 auto 0 0; background: #c9cacd; }
 .gauge i { position: absolute; top: -3px; width: 1px; height: 10px; background: var(--acc); }
 
-.q { display: flex; align-items: center; gap: 10px; height: 36px; border-bottom: 1px solid var(--rule); }
+.q { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 6px 0; border-bottom: 1px solid var(--rule); }
 .q:last-child { border-bottom: 0; }
 .q kbd { font: 11px/18px var(--mono); min-width: 20px; text-align: center; border: 1px solid var(--control); border-radius: 4px; color: var(--muted); }
 .q .box { width: 16px; height: 16px; border: 1px solid #5a5c61; border-radius: 3px; background: transparent; cursor: pointer; }
