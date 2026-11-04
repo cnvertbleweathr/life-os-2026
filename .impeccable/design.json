@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T04:14:54.503364+00:00",
+  "title": "Design System: ONS (Almanac)",
+  "extensions": {
+    "colorMeta": {
+      "forest": {
+        "role": "primary",
+        "displayName": "Forest Ink",
+        "canonical": "#1d5536",
+        "oklch": "oklch(40.3% 0.079 156)",
+        "tonalRamp": [
+          "#040e07",
+          "#162c1e",
+          "#2a4e38",
+          "#417354",
+          "#679678",
+          "#95b8a1",
+          "#c0d8c8",
+          "#e4f3e8"
+        ]
+      },
+      "forest-bright": {
+        "role": "primary",
+        "displayName": "Forest Bright",
+        "canonical": "#2f6b43",
+        "oklch": "oklch(47.6% 0.090 152)",
+        "tonalRamp": [
+          "#040e06",
+          "#142d1c",
+          "#284f34",
+          "#3e744e",
+          "#659772",
+          "#93b99d",
+          "#bfd9c5",
+          "#e3f4e7"
+        ]
+      },
+      "forest-wash": {
+        "role": "primary",
+        "displayName": "Forest Wash",
+        "canonical": "#e9efe7",
+        "oklch": "oklch(94.5% 0.012 138)",
+        "tonalRamp": [
+          "#0a0b0a",
+          "#252724",
+          "#434642",
+          "#636861",
+          "#868b85",
+          "#abafaa",
+          "#cfd2ce",
+          "#edefed"
+        ]
+      },
+      "forest-light": {
+        "role": "primary",
+        "displayName": "Forest Light",
+        "canonical": "#7ec8a0",
+        "oklch": "oklch(77.3% 0.094 160)",
+        "tonalRamp": [
+          "#030e07",
+          "#0f2d1e",
+          "#205038",
+          "#327554",
+          "#5c9878",
+          "#8ebaa1",
+          "#bbdac8",
+          "#e1f4e8"
+        ]
+      },
+      "ochre": {
+        "role": "secondary",
+        "displayName": "Almanac Ochre",
+        "canonical": "#9a6a1e",
+        "oklch": "oklch(56.1% 0.107 74)",
+        "tonalRamp": [
+          "#120901",
+          "#362204",
+          "#5d3e0c",
+          "#885c16",
+          "#aa8046",
+          "#c8a87e",
+          "#e4cdb0",
+          "#fbecda"
+        ]
+      },
+      "brick": {
+        "role": "secondary",
+        "displayName": "Brick",
+        "canonical": "#a8473a",
+        "oklch": "oklch(52.3% 0.131 30)",
+        "tonalRamp": [
+          "#180504",
+          "#401813",
+          "#6e2f26",
+          "#a0473a",
+          "#c36e60",
+          "#de9a8f",
+          "#f4c4bb",
+          "#ffe6e1"
+        ]
+      },
+      "slate-blue": {
+        "role": "secondary",
+        "displayName": "Slate Blue",
+        "canonical": "#3a5f7a",
+        "oklch": "oklch(46.9% 0.061 241)",
+        "tonalRamp": [
+          "#050c12",
+          "#192834",
+          "#30485a",
+          "#486a84",
+          "#6d8ea6",
+          "#99b2c5",
+          "#c2d4e1",
+          "#e5f0f9"
+        ]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Canvas",
+        "canonical": "#f6f5f2",
+        "oklch": "oklch(97.0% 0.004 91)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#272625",
+          "#454543",
+          "#676664",
+          "#8a8987",
+          "#aeaeac",
+          "#d1d1d0",
+          "#efeeed"
+        ]
+      },
+      "canvas-2": {
+        "role": "neutral",
+        "displayName": "Canvas Deep",
+        "canonical": "#efebe1",
+        "oklch": "oklch(94.0% 0.014 89)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#282623",
+          "#47453f",
+          "#69665e",
+          "#8c8981",
+          "#b0aea8",
+          "#d2d1cc",
+          "#efeeec"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "#fbfaf5",
+        "oklch": "oklch(98.4% 0.007 97)",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#272625",
+          "#464542",
+          "#676662",
+          "#8a8985",
+          "#aeaeab",
+          "#d1d1cf",
+          "#efeeed"
+        ]
+      },
+      "surface-hi": {
+        "role": "neutral",
+        "displayName": "Surface White",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#262626",
+          "#454545",
+          "#666666",
+          "#898989",
+          "#aeaeae",
+          "#d1d1d1",
+          "#eeeeee"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#e6e3dc",
+        "oklch": "oklch(91.6% 0.010 87)",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#272624",
+          "#474541",
+          "#686660",
+          "#8b8983",
+          "#afaea9",
+          "#d2d1ce",
+          "#efeeec"
+        ]
+      },
+      "border-2": {
+        "role": "neutral",
+        "displayName": "Hairline Warm",
+        "canonical": "#ebe5d8",
+        "oklch": "oklch(92.3% 0.019 86)",
+        "tonalRamp": [
+          "#0c0b09",
+          "#282621",
+          "#48453d",
+          "#6a665b",
+          "#8d897f",
+          "#b1aea6",
+          "#d3d1cb",
+          "#f0eeeb"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#232a22",
+        "oklch": "oklch(27.5% 0.018 142)",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#242824",
+          "#414741",
+          "#616960",
+          "#848c83",
+          "#aab0a9",
+          "#ced2ce",
+          "#edefec"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "canonical": "#736e5f",
+        "oklch": "oklch(53.8% 0.023 92)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#282620",
+          "#48453b",
+          "#6a6658",
+          "#8d897c",
+          "#b1aea4",
+          "#d3d1ca",
+          "#f0eeea"
+        ]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Faint",
+        "canonical": "#a39d8c",
+        "oklch": "oklch(69.6% 0.025 91)",
+        "tonalRamp": [
+          "#0c0b08",
+          "#292620",
+          "#49453a",
+          "#6b6657",
+          "#8e897b",
+          "#b2aea3",
+          "#d3d1c9",
+          "#f0eee9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page titles via PageHead; 30px on phones, 34px Home masthead."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Stat-band figures; 24px on phones."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Empty-state titles, card headings; ticker headlines at 13.5px."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running UI text, nav items, table rows."
+      },
+      "body-sub": {
+        "displayName": "Subtitle",
+        "purpose": "PageHead subtitle in Muted."
+      },
+      "label": {
+        "displayName": "Kicker",
+        "purpose": "The K kicker: mono caps, tracked. Sidebar sections at 8.5px / 1.8px."
+      },
+      "numeric": {
+        "displayName": "Numeric",
+        "purpose": "Inline figures, scores, counts, input values."
+      }
+    },
+    "shadows": [
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 3px rgb(29 85 54 / 0.13)",
+        "purpose": "Input focus ring. Not elevation."
+      },
+      {
+        "name": "nav-active-tick",
+        "value": "inset 2px 0 0 #1d5536",
+        "purpose": "Active sidebar item marker."
+      },
+      {
+        "name": "tabbar-lift",
+        "value": "0 -4px 16px rgba(35,42,34,0.06)",
+        "purpose": "The single allowed lift: phone bottom tab bar over scrolling content."
+      }
+    ],
+    "motion": [
+      {
+        "name": "page-rise",
+        "value": "ons-rise .42s cubic-bezier(.2,.7,.3,1)",
+        "purpose": "Page enter: 12px rise + fade."
+      },
+      {
+        "name": "tap",
+        "value": "transform .12s, background .14s, border-color .14s, color .14s; :active scale(.97)",
+        "purpose": "Press feedback on buttons, pills, nav links."
+      },
+      {
+        "name": "row-hover",
+        "value": "background .12s",
+        "purpose": "Hoverable table rows tint to canvas."
+      },
+      {
+        "name": "ticker-marquee",
+        "value": "ons-marquee 90s linear infinite",
+        "purpose": "Top ticker scroll; pauses on hover/focus; static under reduced motion."
+      },
+      {
+        "name": "live-pulse",
+        "value": "ons-pulse 1.6s ease-out infinite",
+        "purpose": "Brick ring pulse on the live dot."
+      },
+      {
+        "name": "enter-exit-ceiling",
+        "value": "<=200ms ease-out",
+        "purpose": "Ceiling for new enter/exit motion; respect prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "max-width: 767px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Forest-filled action (Capture, Save).",
+      "html": "<button class=\"ds-btn-primary\">Capture</button> <button class=\"ds-btn-primary\" disabled>Capture</button>",
+      "css": ".ds-btn-primary{font-family:'Spline Sans',system-ui,sans-serif;font-weight:600;font-size:14px;padding:12px 22px;border-radius:8px;border:none;background:#1d5536;color:#fff;cursor:pointer;transition:transform .12s,background .14s,color .14s}.ds-btn-primary:hover{background:#2f6b43}.ds-btn-primary:active{transform:scale(.97)}.ds-btn-primary:focus-visible{outline:2px solid #1d5536;outline-offset:2px}.ds-btn-primary:disabled{background:#e6e3dc;color:#a39d8c;cursor:not-allowed}"
+    },
+    {
+      "name": "Outline Pill Button",
+      "kind": "button",
+      "refersTo": "button-outline-pill",
+      "description": "Secondary mono-caps action (Edit today's check-in).",
+      "html": "<button class=\"ds-btn-pill\">EDIT TODAY'S CHECK-IN</button>",
+      "css": ".ds-btn-pill{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:11px;color:#1d5536;background:#f6f5f2;border:1px solid rgba(29,85,54,.33);border-radius:999px;padding:8px 18px;cursor:pointer;transition:transform .12s,background .14s,border-color .14s}.ds-btn-pill:hover{border-color:#1d5536}.ds-btn-pill:active{transform:scale(.97)}.ds-btn-pill:focus-visible{outline:2px solid #1d5536;outline-offset:2px}"
+    },
+    {
+      "name": "Filter Pill",
+      "kind": "chip",
+      "refersTo": "pill-filter",
+      "description": "Rounded mono filter toggle; active fills forest.",
+      "html": "<div style=\"display:flex;gap:6px\"><button class=\"ds-pill is-active\">All</button><button class=\"ds-pill\">NFL</button><button class=\"ds-pill\">CFB</button></div>",
+      "css": ".ds-pill{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:10px;letter-spacing:.5px;text-transform:uppercase;border:1px solid #e6e3dc;background:#f6f5f2;color:#736e5f;border-radius:999px;padding:6px 13px;cursor:pointer;transition:transform .12s,background .14s,border-color .14s,color .14s}.ds-pill:hover{border-color:#a39d8c}.ds-pill:active{transform:scale(.97)}.ds-pill:focus-visible{outline:2px solid #1d5536;outline-offset:2px}.ds-pill.is-active{background:#1d5536;border-color:#1d5536;color:#fff}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Mono field on canvas with forest focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"Weight (lb)\" />",
+      "css": ".ds-input{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:13px;background:#f6f5f2;border:1px solid #e6e3dc;border-radius:6px;padding:9px 11px;color:#232a22;outline:none;transition:border-color .14s,box-shadow .14s}.ds-input::placeholder{color:#a39d8c}.ds-input:focus{border-color:#1d5536;box-shadow:0 0 0 3px rgb(29 85 54 / .13)}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Surface paper with hairline border; accent variant adds a forest top rule.",
+      "html": "<div class=\"ds-card ds-card-accent\"><div class=\"ds-k\">Reading · 2026</div><div class=\"ds-card-title\">14 books</div><p class=\"ds-card-body\">On pace for 30 by December.</p></div>",
+      "css": ".ds-card{background:#fbfaf5;border:1px solid #e6e3dc;border-radius:3px;padding:18px;max-width:300px}.ds-card-accent{border-top:2.5px solid #1d5536}.ds-k{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#1d5536}.ds-card-title{font-family:Spectral,Georgia,serif;font-weight:600;font-size:30px;line-height:1;color:#232a22;margin-top:8px}.ds-card-body{font-family:'Spline Sans',system-ui,sans-serif;font-size:13px;color:#736e5f;margin:8px 0 0}"
+    },
+    {
+      "name": "Sidebar Nav",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Canvas-deep sidebar; active item gets surface fill and inset forest tick.",
+      "html": "<nav class=\"ds-nav\"><div class=\"ds-nav-sec\">Life</div><a class=\"ds-nav-item is-active\" href=\"#\">Home</a><a class=\"ds-nav-item\" href=\"#\">Habits</a><a class=\"ds-nav-item\" href=\"#\">Fitness</a></nav>",
+      "css": ".ds-nav{background:#efebe1;width:232px;padding:8px 13px;border-right:1px solid #e6e3dc}.ds-nav-sec{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:1.8px;text-transform:uppercase;color:#a39d8c;padding:15px 9px 6px}.ds-nav-item{display:block;font-family:'Spline Sans',system-ui,sans-serif;font-size:13px;color:#232a22;text-decoration:none;padding:8px 10px;border-radius:7px;margin-bottom:1px;transition:transform .12s,background .14s,color .14s}.ds-nav-item:hover{background:#f6f5f2}.ds-nav-item:active{transform:scale(.97)}.ds-nav-item:focus-visible{outline:2px solid #1d5536;outline-offset:-2px}.ds-nav-item.is-active{background:#fbfaf5;color:#1d5536;font-weight:600;box-shadow:inset 2px 0 0 #1d5536}"
+    },
+    {
+      "name": "Stat Band",
+      "kind": "custom",
+      "refersTo": "stat-cell",
+      "description": "Signature: ink-ruled row of serif figures with mono kickers.",
+      "html": "<div class=\"ds-band\"><div class=\"ds-stat\"><div class=\"ds-k\">Streak</div><div class=\"ds-fig is-accent\">12<span class=\"ds-unit\">days</span></div></div><div class=\"ds-stat\"><div class=\"ds-k\">Sleep</div><div class=\"ds-fig\">7.4<span class=\"ds-unit\">hr</span></div></div><div class=\"ds-stat\"><div class=\"ds-k\">Books</div><div class=\"ds-fig\">14</div></div></div>",
+      "css": ".ds-band{display:grid;grid-template-columns:repeat(3,1fr);border-top:1.5px solid #232a22;border-bottom:1px solid #e6e3dc;max-width:520px}.ds-stat{padding:16px 18px;border-right:1px solid #ebe5d8}.ds-stat:last-child{border-right:none}.ds-k{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#736e5f}.ds-fig{font-family:Spectral,Georgia,serif;font-weight:600;font-size:30px;line-height:1;color:#232a22;margin-top:8px}.ds-fig.is-accent{color:#1d5536}.ds-unit{font-family:'Spline Sans Mono',ui-monospace,monospace;font-weight:400;font-size:11px;color:#a39d8c;margin-left:4px}"
+    },
+    {
+      "name": "Ticker Item",
+      "kind": "custom",
+      "refersTo": "ticker",
+      "description": "Signature: top-bar marquee item with mono tag, metadata and Spectral headline.",
+      "html": "<div class=\"ds-ticker\"><span class=\"ds-tk-label\"><span class=\"ds-tk-dot\"></span>Live</span><span class=\"ds-tk-tag\">My teams</span><a class=\"ds-tk-item\" href=\"#\"><span class=\"ds-tk-meta\">CFB</span><span class=\"ds-tk-head\">Ducks hold on late in Eugene</span><span class=\"ds-tk-res\">W</span></a></div>",
+      "css": ".ds-ticker{display:flex;align-items:center;height:38px;background:#fbfaf5;border-bottom:1px solid #e6e3dc;color:#232a22}.ds-tk-label{display:flex;align-items:center;gap:7px;padding:0 16px;border-right:1px solid #e6e3dc;height:100%;font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:1.7px;text-transform:uppercase;color:#1d5536}.ds-tk-dot{width:6px;height:6px;border-radius:999px;background:#a8473a}.ds-tk-tag{margin:0 6px 0 18px;padding:2px 8px;border-radius:999px;background:#e9efe7;color:#1d5536;font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:1.3px;text-transform:uppercase}.ds-tk-item{display:inline-flex;align-items:center;gap:7px;padding:3px 12px;text-decoration:none;color:#232a22}.ds-tk-item:hover .ds-tk-head{text-decoration:underline;text-underline-offset:3px;text-decoration-color:#a39d8c}.ds-tk-item:focus-visible{outline:2px solid #1d5536;outline-offset:-2px}.ds-tk-meta{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:9px;letter-spacing:.9px;text-transform:uppercase;color:#a39d8c}.ds-tk-head{font-family:Spectral,Georgia,serif;font-size:13.5px}.ds-tk-res{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px;background:#e9efe7;color:#1d5536}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Almanac",
+    "overview": "ONS should read like an almanac printed for one reader: dated, dense, factual, set on cream stock in forest ink. Every screen is a page of record. A serif headline names the page, a ruled stat band gives the numbers, and cards hold the tables beneath. Authority comes from typesetting rather than chrome. Mono caps label each fact, Spectral states it, and the green marks what matters.\n\nMost ONS surfaces are Operate surfaces: dashboards, slates, trackers and forms used every day. Read-heavy pages such as briefs, reviews and postmortems are Read. Precision, density and scanability outrank expression. The brand shows in small details: the tracking on a label, the 1.5px ink rule over a stat band, the globe watermark in an accent card. It does not show in big gestures.\n\nThe system is flat, warm and quiet. Its moving parts are the scrolling top ticker and a short page rise, and nothing that updates often animates.",
+    "keyCharacteristics": [
+      "Cream canvas in three tonal layers, with no drop shadows",
+      "Spectral serif for titles and big numbers, Spline Sans for running text, Spline Sans Mono for labels and figures",
+      "Forest green as the single voice, with ochre, brick and slate-blue reserved for status and data",
+      "Near-square cards (3px), hairline borders, and ink rules to divide sections",
+      "High density: small type (9–13px) at careful tracking, with generous gutters between blocks"
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Forest is the only accent. Ochre, brick and slate-blue carry meaning (status or series) and never decorate.",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper Stack Rule",
+        "body": "Depth is three tones of paper: canvas-2 (recessed), canvas (ground), surface (raised). Do not add a fourth tone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Clerk's Caps Rule",
+        "body": "Uppercase text is always mono and always tracked (≥0.5px; 1.3–1.8px for kickers). Never uppercase Spectral or Spline Sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Serif States, Mono Counts Rule",
+        "body": "Big headline figures are Spectral. Small inline figures, units and timestamps are Spline Sans Mono.",
+        "section": "typography"
+      },
+      {
+        "name": "The Printed Page Rule",
+        "body": "If something needs to stand apart, give it a surface tone and a hairline border. Never a shadow. The phone tab bar is the only exception.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take colors and fonts from web/tailwind.config.js and web/app/globals.css. Those are the token source; this file describes them.",
+      "Do open every page with PageHead (mono kicker in forest, 40px Spectral title, 13.5px Muted subtitle) and put the key numbers in a StatBand.",
+      "Do label facts with the K kicker: mono, uppercase, 9.5px, 1.7px tracking.",
+      "Do separate things with hairlines and paper tones. Use the 1.5px Ink rule only over stat bands.",
+      "Do keep motion quiet: enter and exit in ≤200ms ease-out, .ons-tap press feedback, and respect for prefers-reduced-motion.",
+      "Do reach for the existing marker classes (ons-stack, ons-band, ons-pagehead) so phone layouts reflow without new CSS."
+    ],
+    "donts": [
+      "Don't add drop shadows to cards, buttons, menus or popovers.",
+      "Don't introduce a second accent color, or use ochre, brick or slate-blue decoratively.",
+      "Don't round cards beyond 3px, or square off pills.",
+      "Don't uppercase serif or sans text. Caps belong to mono.",
+      "Don't animate data that updates, keyboard actions, or high-frequency surfaces such as the CFB slate and habit check-ins.",
+      "Don't use pure white as a page or card background. White is for text on forest."
+    ]
+  }
+}
