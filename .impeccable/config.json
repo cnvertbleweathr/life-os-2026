@@ -1,0 +1,50 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "geist",
+        "createdAt": "2026-11-04T04:48:20.429Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "geist mono",
+        "createdAt": "2026-11-04T04:48:20.466Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "ibm plex sans",
+        "createdAt": "2026-11-04T04:48:24.986Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "ibm plex mono",
+        "createdAt": "2026-11-04T04:48:25.025Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "manrope",
+        "createdAt": "2026-11-04T04:48:25.064Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "public sans",
+        "createdAt": "2026-11-04T04:48:25.103Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "jetbrains mono",
+        "createdAt": "2026-11-04T04:48:25.139Z",
+        "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      }
+    ]
+  }
+}

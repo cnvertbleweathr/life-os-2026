@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Status · ONS — Ops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--SPRITE--><svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-habits" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12.5l2.6 2.6L16 9.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-fitness" viewBox="0 0 24 24"><path d="M2 12h4l2.5-6 4 12 2.5-6H22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-reading" viewBox="0 0 24 24"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5V19c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5zM12 6v13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-goals" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></symbol>
+<symbol id="i-checkin" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-capture" viewBox="0 0 24 24"><path d="M3 13.5l2.5-8h13l2.5 8V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19zM3 13.5h5l1.2 2.5h5.6l1.2-2.5h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5.5l11-2v12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-sports" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5.5v13M3 9.5h3v5H3M21 9.5h-3v5h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-edge" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="6" transform="rotate(-35 12 12)" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 15.5l7-7M10 11l3 3M11.8 9.2l3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1" fill="currentColor"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 16h26M5 9.5h22M5 22.5h22" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+</svg><!--/SPRITE-->
+<div class="shell">
+  <nav class="rail" aria-label="Main">
+    <a class="mark" href="home.html" aria-label="ONS home"><svg><use href="#i-globe"/></svg></a>
+    <a href="home.html" aria-current="page" aria-label="Status" title="Status"><svg class="i"><use href="#i-today"/></svg></a>
+    <a href="#" aria-label="Habits" title="Habits"><svg class="i"><use href="#i-habits"/></svg></a>
+    <a href="#" aria-label="Check-in" title="Check-in"><svg class="i"><use href="#i-checkin"/></svg></a>
+    <a href="#" aria-label="Capture" title="Capture"><svg class="i"><use href="#i-capture"/></svg></a>
+    <hr>
+    <a href="#" aria-label="Goals" title="Goals"><svg class="i"><use href="#i-goals"/></svg></a>
+    <a href="#" aria-label="Fitness" title="Fitness"><svg class="i"><use href="#i-fitness"/></svg></a>
+    <a href="#" aria-label="Reading" title="Reading"><svg class="i"><use href="#i-reading"/></svg></a>
+    <hr>
+    <a href="cfb.html" aria-label="CFB slate" title="CFB slate"><svg class="i"><use href="#i-edge"/></svg></a>
+    <hr>
+    <a href="#" aria-label="Music" title="Music"><svg class="i"><use href="#i-music"/></svg></a>
+    <a href="#" aria-label="Sports" title="Sports"><svg class="i"><use href="#i-sports"/></svg></a>
+  </nav>
+
+  <main>
+    <div class="top">
+      <div>
+        <h1>Status</h1>
+        <p class="finding">Tue Nov 3. 4 of 6 wired goals are off pace. <span class="warnt">SugarWOD's newest record is Oct 27</span>, so CrossFit's zero this week may be stale data.</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center"><button class="cmd" type="button">Ask the system <kbd>⌘K</kbd></button><a class="btn" href="#">Check in</a></div>
+    </div>
+
+    <div class="grid">
+      <section class="strip s12" aria-label="Readings">
+        <div><div class="l">Miles, last 7 days</div><div class="v">10.2<small>mi</small></div><div class="d">need 10.0/wk</div></div>
+        <div><div class="l">Habits today</div><div class="v">0<small>/4</small></div><div class="d">resets 00:00</div></div>
+        <div><div class="l">Readiness</div><div class="v dim">–</div><div class="d">no check-in</div></div>
+        <div><div class="l">Books</div><div class="v">7<small>/10</small></div><div class="d">expected 8</div></div>
+        <div><div class="l">CFB units</div><div class="v">+4.45</div><div class="d">17–11 · +15.9%</div></div>
+        <div><div class="l">Next kick</div><div class="v">Sat 10:00</div><div class="d">6 picks</div></div>
+      </section>
+
+      <section class="card s8" aria-labelledby="mon-h">
+        <div class="ch"><h2 id="mon-h">Goal monitors</h2><span class="aside">58 days left · rate needed vs rate this year</span></div>
+        <div class="wrapx"><table>
+          <thead><tr><th>Goal</th><th class="hide-p">Progress</th><th class="r">Now</th><th class="r">Need</th><th class="r">Doing</th><th class="r">State</th></tr></thead>
+          <tbody>
+            <tr><td>Run 350 mi</td><td class="hide-p"><span class="gauge"><b style="width:76.3%"></b><i style="left:84%"></i></span></td><td class="r n">266.9</td><td class="r n">10.0/wk</td><td class="r n">10.2/wk<span class="sub hide-p">7d</span></td><td class="r st pos">ok</td></tr>
+            <tr><td>Read 5 fiction</td><td class="hide-p"><span class="gauge"><b style="width:80%"></b><i style="left:84%"></i></span></td><td class="r n">4</td><td class="r n">1 more</td><td class="r n">0.4/mo</td><td class="r st pos">ok</td></tr>
+            <tr><td>Read 10 books</td><td class="hide-p"><span class="gauge"><b style="width:70%"></b><i style="left:84%"></i></span></td><td class="r n">7</td><td class="r n">1/19 d</td><td class="r n">1/44 d</td><td class="r st warn">behind</td></tr>
+            <tr><td>160 CrossFit</td><td class="hide-p"><span class="gauge"><b style="width:52.5%"></b><i style="left:84%"></i></span></td><td class="r n">84</td><td class="r n">9.2/wk</td><td class="r n">1.9/wk</td><td class="r st neg">out of reach</td></tr>
+            <tr><td>Read 5 nonfiction</td><td class="hide-p"><span class="gauge"><b style="width:20%"></b><i style="left:84%"></i></span></td><td class="r n">1</td><td class="r n">1/15 d</td><td class="r n">1/307 d</td><td class="r st neg">out of reach</td></tr>
+            <tr><td>Listen 833 h</td><td class="hide-p"><span class="gauge"><b style="width:46.6%"></b><i style="left:84%"></i></span></td><td class="r n">388</td><td class="r n">53.7/wk</td><td class="r n">8.8/wk</td><td class="r st neg">out of reach</td></tr>
+            <tr><td class="dim">8 goals, no source</td><td class="hide-p dim">squat · bodyweight · savings · HSA · Roth · GitHub · migrations · PS revenue</td><td class="r n dim">–</td><td class="r n dim">–</td><td class="r n dim">–</td><td class="r st dim">not wired</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section class="card s4 first-p" aria-labelledby="q-h">
+        <div class="ch"><h2 id="q-h">Today's queue</h2><span class="aside">keys work anywhere</span></div>
+        <div class="q"><kbd>1</kbd><button class="box" aria-label="Meditation done"></button>Meditation<span class="r n dim">best 1d</span></div>
+        <div class="q"><kbd>2</kbd><button class="box" aria-label="100 pushups done"></button>100 pushups<span class="r n dim">best 1d</span></div>
+        <div class="q"><kbd>3</kbd><button class="box" aria-label="10 nonfiction pages done"></button>10 nonfiction pages<span class="r n dim">best 1d</span></div>
+        <div class="q"><kbd>4</kbd><button class="box" aria-label="10 fiction pages done"></button>10 fiction pages<span class="r n dim">best 1d</span></div>
+        <div class="q"><kbd>C</kbd><button class="box" aria-label="Open check-in"></button>Check-in<span class="r n dim">6 × 1–5</span></div>
+        <div class="prompt" role="textbox" aria-label="Capture"><span>capture ›</span> an idea, task or link</div>
+      </section>
+
+      <section class="card s7" aria-labelledby="src-h">
+        <div class="ch"><h2 id="src-h">Sources</h2><span class="aside">nightly sync · newest record per source</span></div>
+        <div class="wrapx"><table>
+          <thead><tr><th>Source</th><th class="hide-p">Feeds</th><th class="r">Newest record</th><th class="r hide-p">Age</th><th class="r">State</th></tr></thead>
+          <tbody>
+            <tr><td>Strava</td><td class="dim hide-p">Running</td><td class="r n">Nov 2 · 5.13 mi</td><td class="r n hide-p">1 d</td><td class="r st pos">fresh</td></tr>
+            <tr><td>SugarWOD</td><td class="dim hide-p">CrossFit, lifts</td><td class="r n">Oct 27 · Gym WOD</td><td class="r n hide-p">7 d</td><td class="r st warn">check export</td></tr>
+            <tr><td>Hardcover</td><td class="dim hide-p">Reading</td><td class="r n">Sep 5 · finished</td><td class="r n hide-p">59 d</td><td class="r st dim">quiet</td></tr>
+            <tr><td>Habits log</td><td class="dim hide-p">Habits, goals</td><td class="r n">Oct 21 · 4 of 4</td><td class="r n hide-p">13 d</td><td class="r st dim">quiet</td></tr>
+            <tr><td>CFBD + DraftKings</td><td class="dim hide-p">Slate, lines</td><td class="r n">Nov 3 · 09:01</td><td class="r n hide-p">today</td><td class="r st pos">fresh</td></tr>
+          </tbody>
+        </table></div>
+        <p class="note">Quiet means nothing new to load, not a failure. Hardcover only records finish dates.</p>
+      </section>
+
+      <section class="card s5" aria-labelledby="wk-h">
+        <div class="ch"><h2 id="wk-h">Calendar</h2><span class="aside">Nov 3–9</span></div>
+        <table><tbody>
+          <tr><td class="n dim" style="width:64px">Tue 03</td><td>Brand New</td></tr>
+          <tr><td class="n dim">Tue 03</td><td>Char drop-off <span class="sub">weekly</span></td></tr>
+          <tr><td class="n dim">Thu 05</td><td>Avalanche v Predators <span class="sub n">19:30</span></td></tr>
+          <tr><td class="n dim">Sat 07</td><td>Ma's birthday</td></tr>
+          <tr><td class="n dim">Sun 08</td><td>Tool tribute: Schism 25th</td></tr>
+          <tr><td class="n dim">Mon 09</td><td>The Damned</td></tr>
+        </tbody></table>
+      </section>
+    </div>
+  </main>
+</div>
+<nav class="tabbar" aria-label="Main"><a href="home.html" aria-current="page"><svg><use href="#i-today"/></svg>Status</a><a href="#"><svg><use href="#i-habits"/></svg>Habits</a><a href="#"><svg><use href="#i-checkin"/></svg>Check-in</a><a href="#"><svg><use href="#i-capture"/></svg>Capture</a><a href="#"><svg><use href="#i-more"/></svg>More</a></nav>
+</body>
+</html>
