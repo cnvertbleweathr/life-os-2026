@@ -36,6 +36,7 @@
 - **A page intro, so the page doesn't open straight onto dates.**
   - Each page opens with a 30px title ("This week", "College football picks"), then a muted line giving the span it covers, then one coach-voice paragraph saying what matters.
   - Home adds four **next steps** in their area colours: check in, log 4 habits, get a CrossFit class in, finish book 8 by Nov 22.
+  - The slate is titled **Degenerates Corner — College Football** (the sidebar group and breadcrumb match, ready for NBA/NHL to join). Its summary explains the system from README/ROADMAP: one deterministic scorer, seven walk-forward-validated signals, live 2026 strength from per-game PPA, and the grading loop. Then it says what this week holds and when picks are set and graded.
   - The slate adds a row of small counts: 3 underdogs, 3 favourites, 2 coach-change flags, 8 on the watch list.
   - A rule separates the intro from the data.
 - **Phone fixes along the way:**
