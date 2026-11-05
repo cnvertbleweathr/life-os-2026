@@ -1,4 +1,6 @@
-# ONS redesign: five directions
+# ONS redesign: five directions, one chosen
+
+**Chosen (Nov 4): 6 · Logbook Color**, which takes Logbook's layout, gives each life area its own colour as Pocket does, and adds a light/dark theme as Ops has. The comparison page's Light/Dark switch applies to it.
 
 Open **`index.html`** in a browser to compare all five side by side (switch between Home and CFB slate, and between phone and desktop). Every mockup also opens on its own from its folder.
 
@@ -9,6 +11,7 @@ Open **`index.html`** in a browser to compare all five side by side (switch betw
 | 3 | [Logbook](3-logbook/README.md) | The week is the unit: a lanes-by-days strip; Saturday as a kickoff strip | Light, green-grey frame |
 | 4 | [Pocket](4-pocket/README.md) | Phone-first: a toggle stack, then one pale tile per life area | Light, pastel |
 | 5 | [Ops](5-ops/README.md) | The planned dark terminal: monitors, a keyboard queue, data freshness | Dark |
+| **6** | **[Logbook Color](6-logbook-color/README.md)** | **Chosen.** Logbook's layout, Pocket's colour per life area, Ops' light/dark switch | Light + dark |
 
 ## How they were made
 

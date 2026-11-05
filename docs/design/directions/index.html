@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ONS redesign · five directions</title>
+<title>ONS redesign · directions</title>
 <style>
   :root { --bg: #ececea; --card: #fff; --ink: #161616; --muted: #5b5b58; --line: #dcdcd8; --sel: #161616; }
   * { box-sizing: border-box; }
@@ -16,10 +16,11 @@
   .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; font: 500 13px system-ui, sans-serif; color: #3a3a38; cursor: pointer; }
   .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
   .seg button:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
-  .row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; padding: 8px 32px 40px; }
+  .row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; padding: 8px 32px 40px; }
   body.desk .row { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: 32px; }
   .col { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-width: 0; display: flex; flex-direction: column; gap: 10px; scroll-snap-align: start; }
   body.desk .col { flex: 0 0 auto; }
+  .col.pick { border: 2px solid var(--sel); padding: 13px; }
   .col h2 { font-size: 16px; line-height: 22px; margin: 0; display: flex; justify-content: space-between; gap: 8px; }
   .col h2 small { font-weight: 400; color: var(--muted); font-size: 13px; }
   .col p { margin: 0; color: #33332f; font-size: 13px; line-height: 19px; min-height: 76px; }
@@ -34,11 +35,12 @@
 <body>
 <header>
   <div>
-    <h1>ONS redesign: five directions</h1>
-    <p>Static mockups of Home and the CFB slate, built from live ONS data captured Nov 3, 2026. Each direction answers the ranked problems in <a href="../critique.md">critique.md</a>. Click a column's links to open the full page or its brief.</p>
+    <h1>ONS redesign: Logbook Color chosen</h1>
+    <p>Static mockups of Home and the CFB slate, built from live ONS data captured Nov 3, 2026. Each direction answers the ranked problems in <a href="../critique.md">critique.md</a>. Click a column's links to open the full page or its brief. <b>Chosen:</b> Logbook's layout with Pocket's area colours and a light/dark theme (column 6). The theme switch applies to it only.</p>
   </div>
   <div class="controls">
     <div class="seg" role="group" aria-label="Screen"><button type="button" data-page="home" aria-pressed="true">Home</button><button type="button" data-page="cfb" aria-pressed="false">CFB slate</button></div>
+    <div class="seg" role="group" aria-label="Theme"><button type="button" data-theme="light" aria-pressed="true">Light</button><button type="button" data-theme="dark" aria-pressed="false">Dark</button></div>
     <div class="seg" role="group" aria-label="Width"><button type="button" data-w="390" aria-pressed="true">Phone 390</button><button type="button" data-w="1440" aria-pressed="false">Desktop 1440</button></div>
   </div>
 </header>
@@ -79,6 +81,13 @@
     <div class="frame"><iframe title="Ops mockup" loading="lazy"></iframe></div>
     <div class="links"><a data-open href="#">Open page</a><a href="5-ops/README.md">Brief</a></div>
   </section>
+  <section class="col pick" data-dir="6-logbook-color" data-themed>
+    <h2>6 · Logbook Color <small>chosen</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#dcefff"></i><i style="background:#fdecc8"></i><i style="background:#e0f3d5"></i><i style="background:#ebe5fc"></i><i style="background:#fbe3ea"></i><i style="background:#fde3cf"></i><i style="background:#171b18"></i></div>
+    <p>Logbook's week strip and L-frame, with each life area in its own tint (Pocket) and a light/dark switch (Ops). Forest stays the system colour for today, selection and focus.</p>
+    <div class="frame"><iframe title="Logbook Color mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="6-logbook-color/README.md">Brief</a></div>
+  </section>
 </main>
 
 <footer>
@@ -86,13 +95,13 @@
 </footer>
 
 <script>
-  const state = { page: 'home', w: 390 };
+  const state = { page: 'home', w: 390, theme: 'light' };
   const H = { 390: 844, 1440: 900 };
   function render() {
     document.body.classList.toggle('desk', state.w === 1440);
     document.querySelectorAll('.col').forEach(col => {
       const dir = col.dataset.dir, frame = col.querySelector('.frame'), iframe = frame.querySelector('iframe');
-      const src = `${dir}/${state.page}.html`;
+      const src = `${dir}/${state.page}.html` + ('themed' in col.dataset ? `?theme=${state.theme}` : '');
       const colW = state.w === 1440 ? 640 : col.clientWidth - 28;
       if (state.w === 1440) col.style.width = (colW + 30) + 'px'; else col.style.width = '';
       const scale = colW / state.w, viewH = state.w === 1440 ? 1200 : 1500;
@@ -104,9 +113,11 @@
     });
     document.querySelectorAll('[data-page]').forEach(b => b.setAttribute('aria-pressed', b.dataset.page === state.page));
     document.querySelectorAll('[data-w]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.w === state.w));
+    document.querySelectorAll('[data-theme]').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === state.theme));
   }
   document.querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { state.page = b.dataset.page; render(); }));
   document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => { state.w = +b.dataset.w; render(); }));
+  document.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => { state.theme = b.dataset.theme; render(); }));
   addEventListener('resize', render);
   render();
 </script>
