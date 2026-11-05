@@ -87,6 +87,27 @@ svg.i { width: 16px; height: 16px; flex: none; }
 .title { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 16px; }
 h1 { font: 600 22px/28px var(--sans); margin: 0; }
 .finding { margin: 4px 0 0; font-size: 15px; color: var(--ink-2); }
+
+/* Page intro: title, the span it covers, then one coach paragraph. Gives the page a way in
+   before the data starts. */
+.intro { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding: 4px 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.intro h1 { font: 600 30px/36px var(--sans); letter-spacing: -.01em; }
+.intro .span { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
+.intro .lede { margin: 12px 0 0; max-width: 68ch; font-size: 16px; line-height: 25px; color: var(--ink-2); }
+.intro .lede b { color: var(--ink); font-weight: 600; }
+.intro .acts { display: flex; gap: 8px; flex: none; padding-top: 4px; }
+
+/* Next steps: up to four things to do today, each in its area's colour */
+.next { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
+.next li { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 8px; background: var(--l); color: var(--l-ink); box-shadow: inset 3px 0 0 var(--l-mark); }
+.next b { font-size: 14px; font-weight: 600; }
+.next span { font-size: 13px; line-height: 18px; }
+.next .kick-n { font: 500 12px var(--mono); opacity: .85; }
+
+/* Facts row (CFB): small inline counts under the lede */
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.facts li { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 6px; background: var(--l, var(--raised)); color: var(--l-ink, var(--ink-2)); font-size: 13px; font-weight: 500; }
+.facts li .n { font-weight: 600; }
 .finding em { font-style: normal; font-weight: 600; padding: 0 4px; border-radius: 4px; }
 .btn { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--control); background: var(--sheet); color: var(--ink); font: 500 13px var(--sans); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: none; transition: transform .12s ease-out, background-color .15s ease-out; }
 .btn:hover { background: var(--raised); } .btn:active { transform: scale(.97); }
@@ -212,6 +233,11 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
   .top { padding: 0 12px 0 16px; justify-content: flex-end; }
   .sheet { grid-column: 1 / -1; margin: 0; border-radius: 0; border: 0; padding: 16px 16px 92px; }
   .title { flex-direction: column; align-items: stretch; }
+  .intro { flex-direction: column; gap: 14px; padding-top: 0; }
+  .intro h1 { font-size: 26px; line-height: 32px; }
+  .intro .lede { font-size: 15px; line-height: 23px; }
+  .next { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .next li { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 12px; }
   .grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .grid > * { grid-column: auto; }
   .card { padding: 16px; }

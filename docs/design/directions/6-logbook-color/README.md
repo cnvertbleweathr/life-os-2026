@@ -33,6 +33,11 @@
   - The switch is instant, with no transition. `theme.js` runs in `<head>`, so the page doesn't flash the wrong theme on load.
   - Dark mode uses true near-black greens (ground `#0f1210`, sheet `#171b18`). The tints become deep fills with pale inks, so lanes still read as colour rather than grey.
   - In real code this becomes a `data-theme` attribute on `<html>`, with tokens defined twice in `globals.css` and Tailwind colours mapped to CSS variables.
+- **A page intro, so the page doesn't open straight onto dates.**
+  - Each page opens with a 30px title ("This week", "College football picks"), then a muted line giving the span it covers, then one coach-voice paragraph saying what matters.
+  - Home adds four **next steps** in their area colours: check in, log 4 habits, get a CrossFit class in, finish book 8 by Nov 22.
+  - The slate adds a row of small counts: 3 underdogs, 3 favourites, 2 coach-change flags, 8 on the watch list.
+  - A rule separates the intro from the data.
 - **Phone fixes along the way:**
   - The kickoff strip turns into a list of games on phones, where it used to be an empty card.
   - Score bars keep the side's colour, so the side reads without the hidden Side column.
