@@ -100,6 +100,38 @@ h1 { font: 600 22px/28px var(--sans); margin: 0; }
 .intro .lede b { color: var(--ink); font-weight: 600; }
 .intro .acts { display: flex; gap: 8px; flex: none; padding-top: 4px; }
 
+.intro.compact { border-bottom: 0; padding-bottom: 0; margin-bottom: 20px; }
+
+/* Summary tiles (CFB): season, calendar, this week's pipeline, the model */
+.tiles { display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr; gap: 16px; margin-bottom: 24px; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; background: var(--sheet); }
+.tile.t { border-color: transparent; background: var(--t); color: var(--t-ink); }
+.tile h2 { font: 500 13px/18px var(--sans); margin: 0; color: var(--muted); }
+.tile.t h2 { color: var(--t-ink); opacity: .85; }
+.tile .tbig { font: 600 26px/32px var(--sans); letter-spacing: -.01em; }
+.tile .tbig.n { font-family: var(--mono); letter-spacing: 0; }
+.tile p { margin: 0; font-size: 13px; line-height: 19px; color: var(--ink-2); }
+.tile.t p { color: var(--t-ink); }
+.tile .tnote { color: var(--muted); margin-top: auto; }
+.tile .wk { margin-top: auto; height: 60px; }
+.tlink { margin-top: auto; font-size: 13px; font-weight: 500; color: var(--hue); text-underline-offset: 3px; }
+.seasonbar { display: grid; grid-template-columns: repeat(14, 1fr); gap: 3px; margin-top: 8px; }
+.seasonbar i { height: 10px; border-radius: 2px; background: var(--rule); }
+.seasonbar i.done { background: var(--edge-mark); }
+.seasonbar i.none { background: var(--edge); }
+.seasonbar i.now { background: var(--sheet); outline: 2px solid var(--edge-mark); outline-offset: -2px; }
+.seasonbar i.champ { background: transparent; outline: 1px dashed var(--control); outline-offset: -1px; }
+.seasonx { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.steps li { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 8px; font-size: 13px; line-height: 18px; }
+.steps li span { text-align: right; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.steps svg { width: 16px; height: 16px; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.steps li.ok svg circle { fill: var(--ok); stroke: var(--ok-ink); }
+.steps li.ok svg path { stroke: var(--ok-ink); }
+.steps li.ok b { font-weight: 500; }
+.steps li.todo svg circle { stroke: var(--control); stroke-dasharray: 2.5 2; }
+.steps li.todo b { font-weight: 400; color: var(--muted); }
+
 /* Next steps: up to four things to do today, each in its area's colour */
 .next { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0 0; padding: 0; list-style: none; }
 .next li { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 8px; background: var(--l); color: var(--l-ink); box-shadow: inset 3px 0 0 var(--l-mark); }
@@ -241,6 +273,9 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
   .intro h1 .h1-sub { display: block; font-size: 20px; line-height: 26px; }
   .intro .lede { font-size: 15px; line-height: 23px; }
   .next { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  /* Phone: tiles become one swipeable row so the slate stays near the top */
+  .tiles { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px 20px; padding: 0 16px 4px; scroll-padding: 0 16px; scrollbar-width: none; }
+  .tile { flex: 0 0 84%; scroll-snap-align: start; }
   .next li { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 12px; }
   .grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .grid > * { grid-column: auto; }
@@ -270,5 +305,6 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
   .grid > [class*="s"] { grid-column: 1 / -1; }
   .intro { flex-direction: column; gap: 14px; }
   .next { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .wrapx { overflow-x: auto; max-width: 100%; }

@@ -36,8 +36,13 @@
 - **A page intro, so the page doesn't open straight onto dates.**
   - Each page opens with a 30px title ("This week", "College football picks"), then a muted line giving the span it covers, then one coach-voice paragraph saying what matters.
   - Home adds four **next steps** in their area colours: check in, log 4 habits, get a CrossFit class in, finish book 8 by Nov 22.
-  - The slate is titled **Degenerates Corner — College Football** (the sidebar group and breadcrumb match, ready for NBA/NHL to join). Its summary explains the system from README/ROADMAP: one deterministic scorer, seven walk-forward-validated signals, live 2026 strength from per-game PPA, and the grading loop. Then it says what this week holds and when picks are set and graded.
-  - The slate adds a row of small counts: 3 underdogs, 3 favourites, 2 coach-change flags, 8 on the watch list.
+  - The slate is titled **Degenerates Corner — College Football** (the sidebar group and breadcrumb match, ready for NBA/NHL to join). The system details from README/ROADMAP now live in the tiles.
+  - The slate opens with a short title block (one sentence), then **four summary tiles**:
+    - **Season so far** (tangerine): +4.45 u, 17–11 · 60.7% · ROI +15.9%, and covered/missed for each week.
+    - **Where we are:** Week 10, a 14-segment season bar, and the Saturdays left.
+    - **This week's run:** the pipeline as a checklist (Week 9 graded, lines pulled, picks set, Thursday briefing, games, graded), "3 of 6 done".
+    - **The model:** 7 signals, walk-forward tested, 3 cut in the July audit, live PPA ratings, and the 70+ / 4+ bar.
+  - The old Season card moved into the first tile. On phones the tiles become a swipeable row so the slate stays near the top.
   - A rule separates the intro from the data.
 - **Phone fixes along the way:**
   - The kickoff strip turns into a list of games on phones, where it used to be an empty card.
@@ -55,3 +60,9 @@ IBM Plex Sans and Plex Mono, the medium density, the 228px sidebar, the 48px top
 - **Every colour in both themes needs checking whenever a token changes.** The ink-on-tint pairs here are all at least 7:1, and muted text is at least 4.5:1.
 
 Files: `home.html`, `cfb.html`, `style.css`, `theme.js`; screenshots `{home,cfb}-{light,dark}-{1440,390}.png`. Open a page with `?theme=dark` or `?theme=light` to force a theme.
+
+**Sample values in the tiles to confirm:**
+- "Three more regular-season weeks through Nov 28; championship week Dec 5" comes from the calendar, not the API.
+- The pipeline step times ("Tue 09:01", "Thursday briefing Nov 5") follow the cadence in the README; the API doesn't expose step status yet. A real version needs a small `/api/cfb/run-status` built from the daily-sync step logs.
+
+**Inspector note:** at 390px the inspector flags the second tile touching the right edge. That peek is deliberate, to show the row swipes. Everything else passes in both themes.
