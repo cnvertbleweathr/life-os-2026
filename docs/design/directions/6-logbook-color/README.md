@@ -66,3 +66,35 @@ Files: `home.html`, `cfb.html`, `style.css`, `theme.js`; screenshots `{home,cfb}
 - The pipeline step times ("Tue 09:01", "Thursday briefing Nov 5") follow the cadence in the README; the API doesn't expose step status yet. A real version needs a small `/api/cfb/run-status` built from the daily-sync step logs.
 
 **Inspector note:** at 390px the inspector flags the second tile touching the right edge. That peek is deliberate, to show the row swipes. Everything else passes in both themes.
+
+## Pixel scenes beside the title
+
+Each page gets a small pixel-art loop next to its title, in `px.js`.
+
+- **How it's drawn:** a canvas 32 logical pixels tall, scaled up with nearest-neighbour: ×3 (288×96) on desktop, and a 64px banner above the title on phones.
+- **Colours** come from `--px-*` theme variables plus the area marks, so each scene has a day version and a night version.
+
+**Built:**
+- **Degenerates Corner:** a ball carrier in tangerine (underdog colour) breaks upfield with a violet defender chasing. The stands have a crowd that bounces, stadium lights come on at night, and an end zone and goalpost scroll past, with a sparkle when he crosses the goal line.
+- **This week:** a jogger in the running blue on a trail, with parallax hills, trees and clouds. There's a sun by day and a moon with twinkling stars at night.
+
+**Motion rules.** These break CLAUDE.md's "quiet on daily screens" default because the owner asked for them. To keep them quiet anyway:
+- They run at 12fps and draw nothing between frames.
+- They stop when scrolled offscreen or when the tab is hidden.
+- Clicking a scene pauses every scene. The choice is saved as `ons-px-paused`.
+- With `prefers-reduced-motion` on, each scene shows a still frame and the button is disabled.
+- Nothing else on the page animates.
+
+**Ideas for the other pages** (not built):
+
+| Page | Loop |
+|---|---|
+| Habits | A little gardener waters a row of four sprouts, one per habit; a sprout blooms when it's ticked |
+| Check-in | A figure at a desk writes in a journal by lamplight |
+| Capture | A figure with a butterfly net catches falling notes |
+| Goals | A climber works up a switchback toward a flag |
+| Fitness | A lifter does a barbell squat, with chalk dust on the rep |
+| Reading | A reader in an armchair turns pages, with a cat on the armrest |
+| Music | A record spins while a listener in headphones nods along |
+| King Gizzard | An original pixel lizard in a wizard hat plays a tiny flute |
+| Sports | A hockey player skates past and taps a puck into the net |

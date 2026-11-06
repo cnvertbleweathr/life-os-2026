@@ -6,6 +6,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="theme.js"></script>
+<script src="px.js" defer></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -60,14 +61,15 @@
         <h1>This week</h1>
         <p class="span">Tuesday, November 3 · week of Nov 2–8 · 58 days left in 2026</p>
         <p class="lede">A slow start: <b>one run so far and no CrossFit</b>. Running is on pace if you keep up last week's 10 miles; reading is one book behind. Saturday is the big day, with <b>six picks from 10:00</b> and <b>Ma's birthday</b>.</p>
-        <ol class="next" aria-label="Next steps today">
+      </div>
+      <button type="button" class="scene" data-scene="week" aria-label="Pause animation: a jogger on the trail" aria-pressed="false"><canvas aria-hidden="true"></canvas></button>
+      <div class="acts"><a class="btn" href="#">Check in</a><a class="btn pri" href="#">Log today's habits</a></div>
+      <ol class="next" aria-label="Next steps today">
           <li class="l-check"><b>Check in</b><span>Today's check-in is due</span></li>
           <li class="l-habit"><b>Log 4 habits</b><span>None done yet today</span></li>
           <li class="l-lift"><b>Get a class in</b><span>No CrossFit logged since Oct 27</span></li>
           <li class="l-read"><b>Finish book 8</b><span>By Nov 22 to catch up</span></li>
         </ol>
-      </div>
-      <div class="acts"><a class="btn" href="#">Check in</a><a class="btn pri" href="#">Log today's habits</a></div>
     </header>
 
     <div class="grid">
