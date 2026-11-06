@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { inboxApi, type CaptureItem, type CaptureKind } from "@/lib/api";
+import { inboxApi, hasWriteKey, type CaptureItem, type CaptureKind } from "@/lib/api";
 import { Card, PageHead, K, Pill, Empty } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 
@@ -46,8 +46,12 @@ export default function CapturePage() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const box = useRef<HTMLTextAreaElement>(null);
 
+  const [keyed, setKeyed] = useState(true);
   useEffect(() => {
-    inboxApi.list(30).then(setItems).catch(() => setItems([]));
+    // The inbox is owner-only: read it only when this device already has the write key,
+    // so opening Capture never pops the key prompt. Saving asks once.
+    if (hasWriteKey()) inboxApi.list(30).then(setItems).catch(() => setItems([]));
+    else setKeyed(false);
     box.current?.focus();
   }, []);
 
@@ -74,13 +78,8 @@ export default function CapturePage() {
     <div className="ons-page" style={{ padding: "34px 24px 48px", maxWidth: 760, margin: "0 auto" }}>
       <PageHead
         title="Capture"
-        kicker="Get it out of your head · sort it later"
-        right={
-          <div className="font-mono text-right text-faint" style={{ fontSize: 9.5 }}>
-            {items ? `${items.length} IN INBOX` : ""}
-            <br />⌘↵ TO SAVE
-          </div>
-        }
+        kicker={`${items ? `${items.length} in the inbox · ` : ""}⌘↵ to save`}
+        sub={<>Get it out of your head and sort it later. Notes, tasks and links land in the inbox and load into ONS overnight.{!keyed && <> Your inbox shows here after you save once with your write key on this device.</>}</>}
       />
 
       <Card accent style={{ marginBottom: 22 }}>
@@ -144,9 +143,8 @@ export default function CapturePage() {
           </button>
           {message && (
             <span
-              className="font-mono"
               role={message.ok ? "status" : "alert"}
-              style={{ fontSize: 11, color: message.ok ? "var(--hue)" : "var(--neg)" }}
+              style={{ fontSize: 13, color: message.ok ? "var(--hue)" : "var(--neg)" }}
             >
               {message.text}
             </span>
@@ -181,9 +179,9 @@ export default function CapturePage() {
                     it.text
                   )}
                 </div>
-                <div className="font-mono text-faint mt-[5px]" style={{ fontSize: 9.5, letterSpacing: "0.5px" }}>
-                  {it.kind.toUpperCase()}
-                  {it.domain ? ` · ${it.domain.toUpperCase()}` : ""}
+                <div className="text-muted mt-[5px]" style={{ fontSize: 12 }}>
+                  {it.kind.charAt(0).toUpperCase() + it.kind.slice(1)}
+                  {it.domain ? ` · ${it.domain}` : ""}
                   {` · ${when(it.captured_at)}`}
                 </div>
               </li>

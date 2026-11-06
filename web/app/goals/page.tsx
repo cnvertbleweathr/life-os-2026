@@ -1,153 +1,128 @@
 "use client";
 
+// Goals (Logbook Color). Every goal from goals/2026.yaml via /goals/progress, grouped by domain.
+// Pace is computed only for goals with a live number (current_value + target); goals with no data
+// source say "Not wired", never "behind" (critique problem 1).
+
 import { useEffect, useState } from "react";
 import { goalsApi, type Goal } from "@/lib/api";
-import {
-  Card, PageHead, Stat, StatBand, K, Pace, Loading, ErrorState,
-} from "@/components/ui/primitives";
-import { OnsIcon } from "@/components/ui/icons";
+import { PageHead, Loading, ErrorState } from "@/components/ui/primitives";
 
-interface DomainGroup {
-  domain: string;
-  goals: Goal[];
-}
-
-const DOMAIN_ICON: Record<string, string> = {
-  fitness: "fitness",
-  professional: "goals",
-  personal: "reading",
-  finance: "goals",
-  family: "checkin",
+const DOMAIN: Record<string, [string, string]> = {
+  fitness: ["l-run", "Fitness"], personal: ["l-read", "Personal"], family: ["l-plan", "Family"],
+  finance: ["l-wx", "Finance"], professional: ["l-check", "Professional"],
 };
+const DAY = 86_400_000;
+const LABELS: Record<string, string> = {
+  date_night_per_week: "Date night every week", hsa: "HSA", monthly_savings_usd: "Save $2,000 a month", roth_ira: "Roth IRA",
+  bodyweight_lbs_max: "Bodyweight under 190 lb", crossfit_classes: "160 CrossFit classes", marathon_completed: "Run a marathon",
+  running_miles: "Run 350 miles", squat_max_lbs: "Squat 350 lb", fiction_books_goal: "Read 5 fiction", fiction_pages_10: "10 fiction pages a day",
+  meditation: "Meditate every day", nonfiction_pages_10: "10 nonfiction pages a day", pushups_100: "100 pushups a day",
+  spotify_minutes_goal: "50,000 Spotify minutes", github_commits: "100 GitHub commits", migrations_completed: "100 migrations",
+  nonfiction_books_goal: "Read 5 nonfiction", promotion: "Promotion", ps_revenue_usd: "PS revenue $1M",
+};
+const labelOf = (g: Goal) => LABELS[g.goal_key] ?? g.label;
 
-function paceColor(status?: string | null): string {
-  if (status === "behind") return "var(--neg)";
-  if (status === "at_risk") return "var(--warn)";
-  if (status === "unknown" || status === "binary") return "var(--faint)";
-  return "var(--hue)";
+function yearClock() {
+  const now = new Date(), y = now.getFullYear();
+  const start = new Date(y, 0, 1).getTime(), end = new Date(y + 1, 0, 1).getTime();
+  const frac = (now.getTime() - start) / (end - start);
+  return { y, frac, daysLeft: Math.ceil((end - now.getTime()) / DAY), weeksLeft: (end - now.getTime()) / DAY / 7, weeksGone: (now.getTime() - start) / DAY / 7 };
 }
+
+type State = { cls: "ok" | "risk" | "off" | "none"; label: string; needs: string };
+function pace(g: Goal, c: ReturnType<typeof yearClock>): State {
+  if (g.current_value == null || g.target_numeric == null) return { cls: "none", label: "Not wired", needs: "–" };
+  const target = g.target_numeric, cur = g.current_value, left = Math.max(0, target - cur);
+  if (left === 0) return { cls: "ok", label: "Done", needs: "–" };
+  if (target === 1) return { cls: "risk", label: "Not yet", needs: "1 to go" };
+  const perWeek = left / Math.max(c.weeksLeft, 0.1), avg = cur / Math.max(c.weeksGone, 0.1), expected = target * c.frac;
+  // Daily goals (one per day of the year): compare days needed with days left.
+  if (target >= 365) return left > c.daysLeft
+    ? { cls: "off", label: "Out of reach", needs: `${Math.round(left)} d, ${c.daysLeft} left` }
+    : { cls: cur >= expected ? "ok" : "risk", label: cur >= expected ? "On track" : "Behind", needs: `${Math.round(left)} of ${c.daysLeft} d` };
+  const needs = perWeek >= 1 ? `${perWeek >= 10 ? Math.round(perWeek) : perWeek.toFixed(1)}/wk` : `1 per ${Math.round(7 / perWeek)} d`;
+  if (cur >= expected) return { cls: "ok", label: "On track", needs };
+  if (avg > 0 ? perWeek > avg * 3 : left > target * 0.5) return { cls: "off", label: "Out of reach", needs };
+  return { cls: "risk", label: "Behind", needs };
+}
+const num = (x: number) => (Math.abs(x) >= 1000 ? x.toLocaleString("en-US", { maximumFractionDigits: 0 }) : String(+x.toFixed(2)));
+const source = (d?: string | null) => (d?.startsWith("auto:") ? d.slice(5).trim().replace(/^./, (m) => m.toUpperCase()) : "Manual");
 
 export default function GoalsPage() {
-  const [groups, setGroups] = useState<DomainGroup[] | null>(null);
+  const [goals, setGoals] = useState<Goal[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [clock, setClock] = useState<ReturnType<typeof yearClock> | null>(null);
 
   useEffect(() => {
-    goalsApi.byDomain().then(setGroups).catch((e) => setError(e.message));
+    setClock(yearClock()); // client-only, so server and client render the same markup
+    goalsApi.progress().then(setGoals).catch((e) => setError(e.message));
   }, []);
 
-  if (error) return <ErrorState message={error} />;
-  if (!groups) return <Loading />;
+  if (error) return <div className="ons-page" style={{ padding: "34px 44px 48px" }}><ErrorState message={error} /></div>;
+  if (!goals || !clock) return <Loading label="Loading goals…" />;
 
-  const all = groups.flatMap((g) => g.goals);
-  const tracked = all.filter(
-    (g) => g.goal_value_type !== "str" && g.progress_percent != null
-  );
-  const onTrack = tracked.filter(
-    (g) =>
-      g.pace_status === "on_track" ||
-      g.pace_status === "ahead" ||
-      g.pace_status === "complete"
-  ).length;
-  const avg = tracked.length
-    ? Math.round(tracked.reduce((s, g) => s + (g.progress_percent ?? 0), 0) / tracked.length)
-    : 0;
+  const states = goals.map((g) => [g, pace(g, clock)] as const);
+  const wired = states.filter(([, s]) => s.cls !== "none");
+  const count = (cls: State["cls"]) => wired.filter(([, s]) => s.cls === cls).length;
+  const domains = Array.from(new Set(goals.map((g) => g.domain)));
+  const worst = wired.filter(([, s]) => s.cls === "off").map(([g]) => labelOf(g));
+  const good = wired.filter(([, s]) => s.cls === "ok").map(([g]) => labelOf(g));
 
   return (
     <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
         title="Goals"
-        kicker="2026 annual goals · by domain"
-        right={
-          <div className="font-mono text-right text-faint" style={{ fontSize: 9.5 }}>
-            WHAT-IF PROJECTIONS<br />LIVE ON SCENARIOS →
-          </div>
+        kicker={`${clock.y} · ${goals.length} goals · ${clock.daysLeft} days left · ${Math.round(clock.frac * 100)}% of the year gone`}
+        sub={
+          <>
+            <b>{wired.length} of {goals.length} goals have live data:</b> {count("ok")} on track, {count("risk")} behind, {count("off")} out of reach.
+            {good.length > 0 && <> On track: {good.join(", ")}.</>}
+            {worst.length > 0 && <> Out of reach at this year&apos;s rate: {worst.join(", ")}.</>}
+            {goals.length - wired.length > 0 && <> The other {goals.length - wired.length} have no data source wired yet.</>}
+          </>
         }
       />
 
-      <StatBand>
-        <Stat label="Goals Tracked" value={all.length} />
-        <Stat label="On / Ahead" value={`${onTrack}/${tracked.length}`} accent={onTrack > 0} />
-        <Stat label="Avg Progress" value={avg} unit="%" />
-        <Stat label="Domains" value={groups.length} last />
-      </StatBand>
-
-      <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        {groups.map((grp) => (
-          <Card key={grp.domain} pad={0}>
-            <div
-              className="flex items-center gap-[9px] border-b border-border-2"
-              style={{ padding: "16px 18px 12px" }}
-            >
-              <span className="text-green flex">
-                <OnsIcon
-                  name={DOMAIN_ICON[grp.domain.toLowerCase()] ?? "goals"}
-                  size={17}
-                  stroke={1.6}
-                />
-              </span>
-              <K color="var(--ink)" style={{ fontSize: 11, letterSpacing: "1.5px" }}>
-                {grp.domain}
-              </K>
-              <span className="ml-auto font-mono text-faint" style={{ fontSize: 9 }}>
-                {grp.goals.length} GOALS
-              </span>
-            </div>
-            <div style={{ padding: "4px 18px 14px" }}>
-              {grp.goals.map((g) => {
-                const col = paceColor(g.pace_status);
-                const isStr = g.goal_value_type === "str";
-                const pct = g.progress_percent;
-
-                return (
-                  <div key={g.goal_key} style={{ padding: "14px 0", borderTop: "1px solid var(--rule)" }}>
-                    <div className="flex justify-between items-baseline gap-3">
-                      <span style={{ fontSize: 13.5, fontWeight: 500 }}>{g.label}</span>
-                      <Pace status={g.pace_status} />
-                    </div>
-                    {g.description && (
-                      <div className="text-faint mt-0.5" style={{ fontSize: 11 }}>{g.description}</div>
-                    )}
-
-                    {isStr ? (
-                      <div className="font-mono text-faint italic mt-[9px]" style={{ fontSize: 10.5 }}>
-                        Not numerically tracked
-                      </div>
-                    ) : pct == null ? (
-                      <div className="flex items-center gap-[7px] mt-[9px] font-mono text-muted" style={{ fontSize: 10.5 }}>
-                        <span className="rounded-full" style={{ width: 6, height: 6, background: "var(--hue)" }} />
-                        Logged when it happens
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-between items-baseline font-mono mt-[10px] mb-[6px]" style={{ fontSize: 11.5 }}>
-                          <span className="text-muted">
-                            {g.current_value ?? "—"}
-                            <span className="text-faint"> / {g.target_numeric ?? "—"}</span>
-                          </span>
-                          <span style={{ color: col, fontWeight: 600 }}>
-                            {Math.round(pct)}%
-                          </span>
-                        </div>
-                        <div className="rounded overflow-hidden" style={{ height: 4, background: "var(--frame)" }}>
-                          <div
-                            className="rounded"
-                            style={{
-                              width: `${Math.min(100, pct)}%`,
-                              height: "100%",
-                              background: col,
-                              transition: "width .6s",
-                            }}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
+      <div className="ons-tiles" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        {([["ok", "On track"], ["risk", "Behind"], ["off", "Out of reach"], ["none", "Not wired"]] as const).map(([cls, label]) => (
+          <section key={cls} className="ons-tile"><h2>{label}</h2><div className="big">{cls === "none" ? goals.length - wired.length : count(cls)}</div><p><span className={`ons-badge ${cls}`}>{label}</span></p></section>
         ))}
       </div>
+
+      <div className="ons-col">
+        {domains.map((d) => {
+          const [cls, name] = DOMAIN[d] ?? ["l-plan", d];
+          const rows = states.filter(([g]) => g.domain === d).sort((a, b) => Number(b[1].cls !== "none") - Number(a[1].cls !== "none"));
+          return (
+            <section key={d} className="ons-card" aria-labelledby={`d-${d}`}>
+              <div className="ons-ch"><h2 id={`d-${d}`}>{name}</h2><span className="aside">{rows.filter(([, s]) => s.cls !== "none").length} of {rows.length} with live data</span></div>
+              <div style={{ overflowX: "auto" }}>
+                <table className="ons-table">
+                  <thead><tr><th>Goal</th><th className="hide-p">Progress · line is today</th><th className="r">Now</th><th className="r">Needs</th><th className="r">State</th><th className="hide-p">Source</th></tr></thead>
+                  <tbody>
+                    {rows.map(([g, s]) => {
+                      const live = s.cls !== "none";
+                      const pct = live && g.target_numeric ? Math.min(100, (g.current_value! / g.target_numeric) * 100) : 0;
+                      return (
+                        <tr key={g.goal_key} className={cls}>
+                          <td><div className="ons-goal"><i style={live ? undefined : { background: "var(--control)" }} /><div>{labelOf(g)}</div></div></td>
+                          <td className="hide-p">{live ? <div className="ons-bar"><b style={{ width: `${pct}%` }} /><i style={{ left: `${clock.frac * 100}%` }} /></div> : <span className="text-muted">–</span>}</td>
+                          <td className="r ons-n">{live ? `${num(g.current_value!)} of ${num(g.target_numeric!)}` : g.target_numeric != null ? `– of ${num(g.target_numeric)}` : "–"}</td>
+                          <td className="r ons-n">{s.needs}</td>
+                          <td className="r"><span className={`ons-badge ${s.cls}`}>{s.label}</span></td>
+                          <td className="hide-p text-muted" style={{ fontSize: 13 }}>{source(g.description)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      <p className="ons-note">&ldquo;Out of reach&rdquo; means the rate needed is more than three times this year&apos;s average. Goals marked Manual have no pipeline yet; they stay &ldquo;Not wired&rdquo; until one feeds them. Targets come from goals/{clock.y}.yaml.</p>
     </div>
   );
 }
