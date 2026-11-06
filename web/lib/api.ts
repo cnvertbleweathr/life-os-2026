@@ -202,8 +202,12 @@ export interface HabitDay {
   [habitKey: string]: string | boolean | number;
 }
 
+/** /habits/ytd — per habit, days done out of days with a log entry this year. */
+export interface HabitYtd { habit: string; done_days: number; days_observed: number; completion_rate_pct: number; }
+
 export const habitsApi = {
   today: () => get<HabitToday>("/habits/today"),
+  ytd: () => get<HabitYtd[]>("/habits/ytd"),
   streaks: () => get<HabitStreak[]>("/habits/streaks"),
   recent: (days = 21) => get<HabitDay[]>(`/habits/recent?days=${days}`),
   /** Returns the day's full state after the write. */

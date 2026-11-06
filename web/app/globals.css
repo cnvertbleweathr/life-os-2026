@@ -418,3 +418,14 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
   .ons-mk { white-space: normal; }
   .ons-wx small { white-space: normal; }
 }
+
+/* Habits: 21-day strip */
+.ons-habit-strip th, .ons-habit-strip td { padding: 6px 2px; text-align: center; border-bottom: 1px solid var(--rule); }
+.ons-habit-strip th { font-size: 12px; } .ons-habit-strip th .sub { font-size: 11px; }
+.ons-habit-strip td.lab, .ons-habit-strip th:first-child { text-align: left; padding-right: 12px; white-space: nowrap; font-size: 13px; position: sticky; left: 0; background: var(--sheet); }
+.ons-habit-strip .is-today { background: color-mix(in srgb, var(--hue-soft) 55%, transparent); }
+.ons-habit-strip th.is-today { color: var(--hue); font-weight: 600; }
+.ons-habit-strip i { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: middle; }
+.ons-habit-strip i.on { background: var(--habit-mark); }
+.ons-habit-strip i.off { outline: 1.5px solid var(--habit-mark); outline-offset: -1.5px; opacity: .8; }
+.ons-habit-strip i.none { background: var(--rule); }
