@@ -9,10 +9,11 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from api.deps import get_db, query, query_one
 from api.store import HABITS_LOG as HABITS_STORE, today_local
+from api import weather as weather_mod
 
 router  = APIRouter()
 ROOT    = Path(__file__).resolve().parents[2]
@@ -209,3 +210,13 @@ async def get_calendar():
     return [{k: _clean(v) for k, v in row.items()} for row in raw_events]
 
 
+
+
+@router.get("/weather")
+async def home_weather():
+    """This week's weather (Monday–Sunday) plus current conditions, for the This Week
+    page's Weather lane and pixel scene. Open-Meteo, cached 30 min (api/weather.py)."""
+    try:
+        return await weather_mod.week_weather(today_local())
+    except Exception as e:  # network or upstream failure: the page shows the lane as unavailable
+        raise HTTPException(status_code=502, detail=f"Weather unavailable: {type(e).__name__}")
