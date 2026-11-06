@@ -1,5 +1,17 @@
 # ONS — notes for Claude
 
+## Git: branches and PRs only
+
+**Never commit to `main` or merge into `main` directly**, not even a fast-forward, and not even when asked to "merge and deploy". Work on a branch, push it, and open a PR; the owner merges. If `gh` isn't installed, push the branch and give the owner the compare URL (`https://github.com/cnvertbleweathr/life-os-2026/compare/main...<branch>?expand=1`). Deploy only from `main` after the owner has merged, following docs/MACMINI_RUNBOOK.md → "Deploy and roll back".
+
+## Dev and test servers never touch production
+
+- Start dev servers with `scripts/dev.sh`: the API on :8001 with `ONS_DEV=1`, so write logs (habits, check-ins, inbox) go to `.dev-data/`, seeded from `data/`; and `next dev` on :3001 building into `web/.next-dev`.
+- Production runs from launchd: `next start` on :3000 serving `web/.next`, and uvicorn on :8000 writing to `data/`.
+- **Never** run `next dev` or `next build` in `web/` with the default dist dir unless you are deliberately deploying. It overwrites the build narcisystem.com is serving.
+- Never run a second API without `ONS_DEV=1` or an explicit `ONS_DATA_DIR`. The API trusts local requests without a write key, so a test click would write to the real logs.
+- Tests set `ONS_DATA_DIR` to a temporary directory; keep it that way for any new test that writes.
+
 ## Design work (web/)
 
 ONS's UI is the **Logbook Color** design system, chosen by the owner in November 2026 to replace Almanac. It has five parts:
