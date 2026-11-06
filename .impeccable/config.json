@@ -44,6 +44,19 @@
         "value": "jetbrains mono",
         "createdAt": "2026-11-04T04:48:25.139Z",
         "reason": "User requested 5 replacement directions for the Almanac system (design/rehaul-2026-11); mockups under docs/design/directions intentionally use non-Almanac fonts"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "*",
+        "files": [
+          "docs/design/directions/1-almanac-ii/**",
+          "docs/design/directions/2-ledger/**",
+          "docs/design/directions/3-logbook/**",
+          "docs/design/directions/4-pocket/**",
+          "docs/design/directions/5-ops/**"
+        ],
+        "createdAt": "2026-11-06T20:33:33.402Z",
+        "reason": "Archived alternative directions keep their own fonts; DESIGN.md now documents the chosen Logbook Color (IBM Plex)."
       }
     ]
   }
