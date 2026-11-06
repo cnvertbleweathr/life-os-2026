@@ -6,123 +6,88 @@ import { OnsIcon, GlobeMark } from "@/components/ui/icons";
 
 type NavItem =
   | { kind: "section"; label: string }
-  | { kind: "link"; href: string; label: string; icon: string };
+  | { kind: "link"; href: string; label: string; icon: string; area?: string };
 
+// Logbook Color groups (DESIGN.md → Layout). `area` colours the icon with that life area's mark.
 export const NAV: NavItem[] = [
-  { kind: "section", label: "Life" },
-  { kind: "link", href: "/",        label: "Home",         icon: "home" },
-  { kind: "link", href: "/habits",  label: "Habits",       icon: "habits" },
-  { kind: "link", href: "/fitness", label: "Fitness",      icon: "fitness" },
-  { kind: "link", href: "/reading", label: "Reading",      icon: "reading" },
-  { kind: "link", href: "/goals",   label: "Goals",        icon: "goals" },
-  { kind: "link", href: "/checkin", label: "Check-in",     icon: "checkin" },
-  { kind: "link", href: "/capture", label: "Capture",      icon: "inbox" },
-  { kind: "section", label: "Entertainment" },
-  { kind: "link", href: "/music",   label: "Music",        icon: "music" },
-  { kind: "link", href: "/kglw",    label: "King Gizzard", icon: "kglw" },
-  { kind: "link", href: "/sports",  label: "Sports",       icon: "sports" },
-  { kind: "section", label: "Edge" },
-  { kind: "link", href: "/cfb",     label: "CFB Betting",  icon: "cfb" },
+  { kind: "section", label: "Today" },
+  { kind: "link", href: "/",        label: "This week",        icon: "home" },
+  { kind: "link", href: "/habits",  label: "Habits",           icon: "habits",  area: "habit" },
+  { kind: "link", href: "/checkin", label: "Check-in",         icon: "checkin", area: "check" },
+  { kind: "link", href: "/capture", label: "Capture",          icon: "inbox",   area: "check" },
+  { kind: "section", label: "Track" },
+  { kind: "link", href: "/goals",   label: "Goals",            icon: "goals" },
+  { kind: "link", href: "/fitness", label: "Fitness",          icon: "fitness", area: "run" },
+  { kind: "link", href: "/reading", label: "Reading",          icon: "reading", area: "read" },
+  { kind: "section", label: "Degenerates Corner" },
+  { kind: "link", href: "/cfb",     label: "College Football", icon: "cfb",     area: "edge" },
+  { kind: "section", label: "Play" },
+  { kind: "link", href: "/music",   label: "Music",            icon: "music" },
+  { kind: "link", href: "/kglw",    label: "King Gizzard",     icon: "kglw" },
+  { kind: "link", href: "/sports",  label: "Sports",           icon: "sports" },
 ];
 
-/** Shared by the sidebar and the phone nav so "active" means the same thing. */
+/** Shared by the sidebar, top bar and phone nav so "active" means the same thing. */
 export function isActive(path: string, href: string): boolean {
   return href === "/" ? path === "/" : path.startsWith(href);
+}
+
+/** The group and label for the current route, for the breadcrumb. */
+export function routeLabel(path: string): { group: string; label: string } {
+  let group = "";
+  for (const item of NAV) {
+    if (item.kind === "section") { group = item.label; continue; }
+    if (isActive(path, item.href)) return { group, label: item.label };
+  }
+  return { group: "", label: "" };
 }
 
 export function Sidebar() {
   const path = usePathname();
 
   return (
-    <aside
-      className="ons-sidebar w-[232px] shrink-0 bg-canvas-2 flex flex-col overflow-hidden"
-      style={{ borderRight: "1px solid #e6e3dc", padding: "24px 0 16px" }}
-    >
-      {/* Brand mark */}
-      <div className="px-[22px] pb-[18px] mb-[10px] flex gap-[11px] items-center">
-        <div className="text-green">
-          <GlobeMark size={34} stroke="#1d5536" sw={1.5} />
-        </div>
-        <div>
-          <div
-            className="font-serif font-bold text-green"
-            style={{ fontSize: 19, letterSpacing: "0.5px" }}
-          >
-            ONS
-          </div>
-          <div
-            className="font-mono uppercase text-faint"
-            style={{ fontSize: 7.5, letterSpacing: "1.3px" }}
-          >
-            Operating Narcisystem
-          </div>
-        </div>
-      </div>
+    <aside className="ons-sidebar bg-frame flex flex-col overflow-hidden">
+      <Link href="/" className="flex items-center gap-[10px] px-5 no-underline text-hue" style={{ height: 48, flex: "none" }}>
+        <GlobeMark size={24} stroke="currentColor" sw={1.5} />
+        <span className="font-semibold text-ink" style={{ fontSize: 15 }}>ONS</span>
+      </Link>
 
-      {/* Nav */}
-      <nav className="flex-1 px-[13px] overflow-y-auto ons-scroll">
+      <nav aria-label="Main" className="flex-1 overflow-y-auto ons-scroll" style={{ padding: "4px 12px 16px" }}>
         {NAV.map((item, i) => {
           if (item.kind === "section") {
             return (
-              <div
-                key={i}
-                className="font-mono uppercase text-faint"
-                style={{
-                  fontSize: 8.5,
-                  letterSpacing: "1.8px",
-                  padding: "15px 9px 6px",
-                }}
-              >
+              <div key={i} className="text-muted" style={{ fontSize: 12, padding: "16px 10px 4px" }}>
                 {item.label}
               </div>
             );
           }
-
           const active = isActive(path, item.href);
-
+          const iconColor = active ? "var(--hue)" : item.area ? `var(--${item.area}-mark)` : "var(--icon)";
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="ons-tap flex items-center gap-[11px] mb-px no-underline"
+              aria-current={active ? "page" : undefined}
+              className="flex items-center gap-[10px] no-underline hover:bg-[var(--hover)]"
               style={{
-                width: "100%",
-                textAlign: "left",
-                padding: "8px 10px",
-                borderRadius: 7,
-                fontSize: 13,
-                color: active ? "#1d5536" : "#232a22",
-                background: active ? "#fbfaf5" : "transparent",
-                fontWeight: active ? 600 : 400,
-                boxShadow: active ? "inset 2px 0 0 #1d5536" : "none",
-                textDecoration: "none",
+                height: 32,
+                marginBottom: 2,
+                padding: "0 10px",
+                borderRadius: 6,
+                fontSize: 14,
+                color: active ? "var(--ink)" : "var(--ink-2)",
+                background: active ? "var(--active)" : undefined,
+                fontWeight: active ? 500 : 400,
               }}
             >
-              <span
-                className="flex"
-                style={{ color: active ? "#1d5536" : "#736e5f" }}
-              >
-                <OnsIcon name={item.icon} size={17} stroke={1.5} />
+              <span className="flex" style={{ color: iconColor }}>
+                <OnsIcon name={item.icon} size={16} stroke={1.5} />
               </span>
               {item.label}
             </Link>
           );
         })}
       </nav>
-
-      {/* Footer */}
-      <div
-        className="font-mono flex justify-between text-faint"
-        style={{
-          padding: "12px 22px 0",
-          borderTop: "1px solid #e6e3dc",
-          fontSize: 8.5,
-          letterSpacing: "1px",
-        }}
-      >
-        <span>v3 walk-forward</span>
-        <span className="text-green">● live</span>
-      </div>
     </aside>
   );
 }

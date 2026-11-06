@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CFB slate · ONS — Almanac II</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--SPRITE--><svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-habits" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12.5l2.6 2.6L16 9.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-fitness" viewBox="0 0 24 24"><path d="M2 12h4l2.5-6 4 12 2.5-6H22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-reading" viewBox="0 0 24 24"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5V19c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5zM12 6v13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-goals" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></symbol>
+<symbol id="i-checkin" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-capture" viewBox="0 0 24 24"><path d="M3 13.5l2.5-8h13l2.5 8V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19zM3 13.5h5l1.2 2.5h5.6l1.2-2.5h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5.5l11-2v12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-sports" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5.5v13M3 9.5h3v5H3M21 9.5h-3v5h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-edge" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="6" transform="rotate(-35 12 12)" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 15.5l7-7M10 11l3 3M11.8 9.2l3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1" fill="currentColor"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 16h26M5 9.5h22M5 22.5h22" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-partly" viewBox="0 0 24 24"><path d="M9 4v1.5M3.5 9.5H5M5.3 5.8l1 1M12.7 5.8l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 11.5a3.2 3.2 0 0 1 5.9-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 19.5h9.5a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8 19.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-cloud" viewBox="0 0 24 24"><path d="M6.5 18.5h11a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6 3.2 3.2 0 0 0 .1 6.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-wind" viewBox="0 0 24 24"><path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-rain" viewBox="0 0 24 24"><path d="M6.5 14.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-snow" viewBox="0 0 24 24"><path d="M6.5 13.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="17.5" r="1" fill="currentColor"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/><circle cx="16" cy="17.5" r="1" fill="currentColor"/><circle cx="10" cy="21.5" r=".9" fill="currentColor"/><circle cx="14" cy="21.5" r=".9" fill="currentColor"/></symbol>
+</svg><!--/SPRITE-->
+<div class="shell">
+  <aside class="side" aria-label="Main">
+    <a class="brand" href="home.html"><svg><use href="#i-globe"/></svg><div><b>ONS</b><span>Operating Narcisystem</span></div></a>
+    <div class="grp">Today</div>
+    <a class="nav" href="home.html"><svg class="i"><use href="#i-today"/></svg>Today</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-habits"/></svg>Habits <span class="count">4 left</span></a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-checkin"/></svg>Check-in</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-capture"/></svg>Capture</a>
+    <div class="grp">Track</div>
+    <a class="nav" href="#"><svg class="i"><use href="#i-goals"/></svg>Goals</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-fitness"/></svg>Fitness</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-reading"/></svg>Reading</a>
+    <div class="grp">Edge</div>
+    <a class="nav" href="cfb.html" aria-current="page"><svg class="i"><use href="#i-edge"/></svg>CFB slate</a>
+    <div class="grp">Play</div>
+    <a class="nav" href="#"><svg class="i"><use href="#i-music"/></svg>Music</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-music"/></svg>King Gizzard</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-sports"/></svg>Sports</a>
+    <div class="foot"><span>Lines 09:01</span><b>Model v3</b></div>
+  </aside>
+
+  <main>
+    <div class="col">
+      <header class="mast">
+        <div>
+          <h1>Week 10: six picks, all Saturday.</h1>
+          <p class="sub">First kick 10:00 am, last 8:30 pm. The season is 17–11 at 1 unit a pick: +4.45 units, ROI +15.9%. Two picks carry a coach-change flag.</p>
+        </div>
+        <div class="meta">
+          <button class="ask" type="button">Week 10 · Nov 7</button><br>
+          DraftKings lines as of 09:01 today<br>Graded Sunday morning
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="CFB"><a href="cfb.html" aria-current="page">This week</a><a href="#">Matchup lab</a><a href="#">Teams</a><a href="#">How the model works</a></nav>
+
+      <div class="grid">
+        <section class="panel s9" aria-labelledby="slate-h">
+          <div class="ph"><h2 id="slate-h">Official picks</h2><span class="aside">Line shown from the side we're on</span></div>
+          <table class="slate">
+            <thead><tr><th>Kick (MT)</th><th>Matchup</th><th>Pick</th><th class="n">Total</th><th class="n">Score</th></tr></thead>
+            <tbody>
+              <tr><td class="kick num">Sat 10:00</td><td class="mt"><span class="m">North Carolina at UConn</span><span class="sig">Underdog edge · efficiency gap 0.25 · home efficiency beats talent gap</span><span class="flag"><svg><use href="#i-warn"/></svg>UConn changed coach this offseason</span></td><td class="pk pick">UConn +7.0</td><td class="n num hide-p">54.5</td><td class="n"><span class="score"><span class="meter"><b style="width:92%"></b></span><span class="num">92</span></span></td></tr>
+              <tr><td class="kick num">Sat 11:00</td><td class="mt"><span class="m">Oklahoma State at Kansas State</span><span class="sig">Underdog edge · efficiency gap 0.22 · success rate agrees</span><span class="flag"><svg><use href="#i-warn"/></svg>Coach change this offseason</span></td><td class="pk pick">Kansas State +4.5</td><td class="n num hide-p">61.5</td><td class="n"><span class="score"><span class="meter"><b style="width:85%"></b></span><span class="num">85</span></span></td></tr>
+              <tr><td class="kick num">Sat 2:15</td><td class="mt"><span class="m">Rutgers at Wisconsin</span><span class="sig">Underdog edge · efficiency gap 0.19 · even talent, better efficiency (71% hist.)</span></td><td class="pk pick">Rutgers +17.5</td><td class="n num hide-p">45.5</td><td class="n"><span class="score"><span class="meter"><b style="width:95%"></b></span><span class="num">95</span></span></td></tr>
+              <tr><td class="kick num">Sat 5:00</td><td class="mt"><span class="m">Sam Houston at Jacksonville State</span><span class="sig">Strong-tier history · efficiency gap 0.19 · home efficiency beats talent gap</span></td><td class="pk pick">Jacksonville State −16.5</td><td class="n num hide-p">48.5</td><td class="n"><span class="score"><span class="meter"><b style="width:90%"></b></span><span class="num">90</span></span></td></tr>
+              <tr><td class="kick num">Sat 7:30</td><td class="mt"><span class="m">West Virginia at Texas Tech</span><span class="sig">Strong-tier history · conference trend · efficiency gap 0.18 · even talent, better efficiency (71% hist.)</span></td><td class="pk pick">Texas Tech −16.5</td><td class="n num hide-p">65.5</td><td class="n"><span class="score"><span class="meter"><b style="width:97%"></b></span><span class="num">97</span></span></td></tr>
+              <tr><td class="kick num">Sat 8:30</td><td class="mt"><span class="m">Wyoming at UNLV</span><span class="sig">Strong-tier history · efficiency gap 0.25 · success rate agrees</span></td><td class="pk pick">UNLV −6.0</td><td class="n num hide-p">48.5</td><td class="n"><span class="score"><span class="meter"><b style="width:76%"></b></span><span class="num">76</span></span></td></tr>
+            </tbody>
+          </table>
+          <p class="foot-note">55 more games were scored; 8 came within reach of the publish bar (70+ score, 4+ edges). <a href="#">Show the watch list</a></p>
+        </section>
+
+        <section class="panel s3" aria-labelledby="season-h">
+          <div class="ph"><h2 id="season-h">Season so far</h2></div>
+          <div class="band" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+            <div><div class="l">Record</div><div class="v num" style="font-size:26px">17–11</div><div class="n">60.7% covered</div></div>
+            <div><div class="l">Units</div><div class="v num good" style="font-size:26px">+4.45</div><div class="n">ROI +15.9%</div></div>
+          </div>
+          <div class="wk"><span class="num">Wk 2</span><span class="track"><b class="n" style="width:22%"></b></span><span class="num">0–2</span></div>
+          <div class="wk"><span class="num">Wk 3</span><span class="track"><b class="p" style="width:20%"></b></span><span class="num">2–0</span></div>
+          <div class="wk"><span class="num">Wk 4</span><span class="track"><b class="n" style="width:2%"></b></span><span class="num">2–2</span></div>
+          <div class="wk"><span class="num">Wk 5</span><span class="track"><b class="p" style="width:49%"></b></span><span class="num">6–1</span></div>
+          <div class="wk"><span class="num">Wk 6</span><span class="track"><b class="n" style="width:12%"></b></span><span class="num">1–2</span></div>
+          <div class="wk"><span class="num">Wk 7</span><span class="track"><b class="p" style="width:9%"></b></span><span class="num">2–1</span></div>
+          <div class="wk"><span class="num">Wk 8</span><span class="track"><b class="n" style="width:1%"></b></span><span class="num">1–1</span></div>
+          <div class="wk"><span class="num">Wk 9</span><span class="track"><b class="p" style="width:8%"></b></span><span class="num">3–2</span></div>
+          <div class="ph" style="margin:18px 0 6px"><h2>Week 9 · 3–2</h2><span class="aside num">+0.73 u</span></div>
+          <div class="row"><span class="what">Sacramento State +10.0</span><span class="r"><span class="pill good">Covered</span></span></div>
+          <div class="row"><span class="what">Iowa State +9.5</span><span class="r"><span class="pill good">Covered</span></span></div>
+          <div class="row"><span class="what">UNLV −23.5</span><span class="r"><span class="pill bad">Missed</span></span></div>
+          <div class="row"><span class="what">Oregon −3.5</span><span class="r"><span class="pill good">Covered</span></span></div>
+          <div class="row"><span class="what">Tulane −10.0</span><span class="r"><span class="pill bad">Missed</span></span></div>
+          <p class="foot-note">Bars are each week's units won or lost. The 2022–25 backtest went 224–94 (+34.5% ROI); this season is the live test.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<nav class="tabbar" aria-label="Main"><a href="home.html"><svg><use href="#i-today"/></svg>Today</a><a href="#"><svg><use href="#i-habits"/></svg>Habits</a><a href="#"><svg><use href="#i-checkin"/></svg>Check-in</a><a href="#"><svg><use href="#i-capture"/></svg>Capture</a><a href="#" aria-current="page"><svg><use href="#i-more"/></svg>More</a></nav>
+</body>
+</html>

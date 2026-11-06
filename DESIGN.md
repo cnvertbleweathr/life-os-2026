@@ -1,281 +1,351 @@
 ---
 name: ONS — Operating Narcisystem
-description: A personal operating dashboard for life tracking and CFB analytics, set like an almanac.
+description: A personal operating dashboard for life tracking and CFB analytics, organised around the week, coloured by life area, in light and dark.
 colors:
-  forest: "#1d5536"
-  forest-bright: "#2f6b43"
-  forest-wash: "#e9efe7"
-  forest-light: "#7ec8a0"
-  canvas: "#f6f5f2"
-  canvas-2: "#efebe1"
-  surface: "#fbfaf5"
-  surface-hi: "#ffffff"
-  border: "#e6e3dc"
-  border-2: "#ebe5d8"
-  ink: "#232a22"
-  muted: "#736e5f"
-  faint: "#a39d8c"
-  ochre: "#9a6a1e"
-  brick: "#a8473a"
-  slate-blue: "#3a5f7a"
+  frame: "#edf1ee"
+  sheet: "#ffffff"
+  raised: "#f4f6f4"
+  active: "#dfe7e1"
+  border: "#e1e6e2"
+  rule: "#edf0ed"
+  control: "#c6cdc7"
+  ink: "#141714"
+  ink-2: "#2c312c"
+  muted: "#596059"
+  forest: "#1f6b46"
+  forest-soft: "#e1efe6"
+  neg: "#b3262b"
+  run: "#dcefff"
+  run-ink: "#0a3a80"
+  run-mark: "#2a6fd6"
+  lift: "#fdecc8"
+  lift-ink: "#663a00"
+  lift-mark: "#c27a12"
+  read: "#d4f2ea"
+  read-ink: "#0b4840"
+  read-mark: "#17907c"
+  habit: "#e0f3d5"
+  habit-ink: "#1f4a12"
+  habit-mark: "#3f8f2a"
+  check: "#ebe5fc"
+  check-ink: "#37217a"
+  check-mark: "#6d4fd1"
+  plan: "#fbe3ea"
+  plan-ink: "#6b1631"
+  plan-mark: "#c2456b"
+  edge: "#fde3cf"
+  edge-ink: "#6a2b06"
+  edge-mark: "#d9661c"
+  wx: "#e6ebf2"
+  wx-ink: "#263247"
+  wx-mark: "#5b6f8f"
 typography:
-  display:
-    fontFamily: "Spectral, Georgia, serif"
-    fontSize: "40px"
-    fontWeight: 700
-    lineHeight: 1
-    letterSpacing: "-0.8px"
-  headline:
-    fontFamily: "Spectral, Georgia, serif"
+  page-title:
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
     fontSize: "30px"
     fontWeight: 600
-    lineHeight: 1
-  title:
-    fontFamily: "Spectral, Georgia, serif"
-    fontSize: "22px"
-    fontWeight: 400
     lineHeight: 1.2
+    letterSpacing: "-0.01em"
+  lede:
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "16px"
+    fontWeight: 400
+    lineHeight: 1.56
+  card-title:
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "16px"
+    fontWeight: 600
+    lineHeight: 1.375
   body:
-    fontFamily: "Spline Sans, system-ui, sans-serif"
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.43
+  label:
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.33
+  tile-figure:
+    fontFamily: "IBM Plex Sans, system-ui, sans-serif"
+    fontSize: "26px"
+    fontWeight: 600
+    lineHeight: 1.23
+  numeric:
+    fontFamily: "IBM Plex Mono, ui-monospace, monospace"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: 1.5
-  body-sub:
-    fontFamily: "Spline Sans, system-ui, sans-serif"
-    fontSize: "13.5px"
-    fontWeight: 400
-    lineHeight: 1.5
-  label:
-    fontFamily: "Spline Sans Mono, ui-monospace, monospace"
-    fontSize: "9.5px"
-    fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: "1.7px"
-  numeric:
-    fontFamily: "Spline Sans Mono, ui-monospace, monospace"
-    fontSize: "12px"
-    fontWeight: 600
-    lineHeight: 1.3
 rounded:
-  card: "3px"
-  chip: "4px"
-  input: "6px"
-  nav: "7px"
-  button: "8px"
-  pill: "999px"
+  sheet: "16px"
+  card: "8px"
+  control: "6px"
+  mark: "5px"
+  pill: "4px"
 spacing:
-  xs: "6px"
-  sm: "10px"
-  md: "18px"
-  lg: "26px"
+  xs: "4px"
+  sm: "8px"
+  md: "12px"
+  lg: "16px"
+  xl: "20px"
+  gap: "24px"
   page-x-phone: "16px"
 components:
   button-primary:
-    backgroundColor: "{colors.forest}"
-    textColor: "{colors.surface-hi}"
-    rounded: "{rounded.button}"
-    padding: "12px 22px"
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.sheet}"
+    rounded: "{rounded.control}"
+    padding: "0 12px"
+    height: "32px"
     typography: "{typography.body}"
-  button-primary-disabled:
-    backgroundColor: "{colors.border}"
-    textColor: "{colors.faint}"
-    rounded: "{rounded.button}"
-    padding: "12px 22px"
-  button-outline-pill:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.forest}"
-    rounded: "{rounded.pill}"
-    padding: "8px 18px"
-    typography: "{typography.label}"
-  pill-filter:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.muted}"
-    rounded: "{rounded.pill}"
-    padding: "6px 13px"
-  pill-filter-active:
-    backgroundColor: "{colors.forest}"
-    textColor: "{colors.surface-hi}"
-    rounded: "{rounded.pill}"
-    padding: "6px 13px"
-  card:
-    backgroundColor: "{colors.surface}"
-    rounded: "{rounded.card}"
-    padding: "18px"
-  input:
-    backgroundColor: "{colors.canvas}"
+  button-secondary:
+    backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.input}"
-    padding: "9px 11px"
-    typography: "{typography.numeric}"
+    rounded: "{rounded.control}"
+    padding: "0 12px"
+    height: "32px"
+  card:
+    backgroundColor: "{colors.sheet}"
+    rounded: "{rounded.card}"
+    padding: "20px"
+  card-tinted-habit:
+    backgroundColor: "{colors.habit}"
+    textColor: "{colors.habit-ink}"
+    rounded: "{rounded.card}"
+    padding: "20px"
+  sheet:
+    backgroundColor: "{colors.sheet}"
+    rounded: "{rounded.sheet}"
+    padding: "24px"
   nav-item:
     backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.nav}"
-    padding: "8px 10px"
+    textColor: "{colors.ink-2}"
+    rounded: "{rounded.control}"
+    padding: "0 10px"
+    height: "32px"
   nav-item-active:
-    backgroundColor: "{colors.surface}"
-    textColor: "{colors.forest}"
-    rounded: "{rounded.nav}"
+    backgroundColor: "{colors.active}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.control}"
+    padding: "0 10px"
+    height: "32px"
+  lane-label-run:
+    backgroundColor: "{colors.run}"
+    textColor: "{colors.run-ink}"
+    rounded: "{rounded.control}"
+    padding: "0 10px"
+  mark-run:
+    backgroundColor: "{colors.run}"
+    textColor: "{colors.run-ink}"
+    rounded: "{rounded.mark}"
+    padding: "4px 7px"
+  pill-status:
+    rounded: "{rounded.pill}"
+    padding: "0 8px"
+    height: "20px"
+    typography: "{typography.label}"
+  input:
+    backgroundColor: "{colors.sheet}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.control}"
     padding: "8px 10px"
-  stat-cell:
-    padding: "16px 18px"
-    typography: "{typography.headline}"
+    typography: "{typography.body}"
 ---
 
-# Design System: ONS (Almanac)
+# Design System: ONS (Logbook Color)
 
 ## Overview
 
-**Creative North Star: "The Almanac"**
+**Creative North Star: "The Logbook"**
 
-ONS should read like an almanac printed for one reader: dated, dense, factual, set on cream stock in forest ink. Every screen is a page of record. A serif headline names the page, a ruled stat band gives the numbers, and cards hold the tables beneath. Authority comes from typesetting rather than chrome. Mono caps label each fact, Spectral states it, and the green marks what matters.
+ONS is a logbook for one person's year, and the week is the unit. Days are noisy and years are abstract; a week is the span you can steer. Home is the week itself, a strip of days across with the owner's lanes down the side (weather, running, CrossFit, habits, check-in, plans, CFB), so "what's left this week" is visible as empty cells. Every page opens with a plain title, the span it covers and one coach-voice paragraph, then the data.
 
-Most ONS surfaces are **Operate** surfaces: dashboards, slates, trackers and forms used every day. Read-heavy pages such as briefs, reviews and postmortems are **Read**. Precision, density and scanability outrank expression. The brand shows in small details: the tracking on a label, the 1.5px ink rule over a stat band, the globe watermark in an accent card. It does not show in big gestures.
+Each life area owns a colour and keeps it everywhere: running is blue, CrossFit amber, reading teal, habits green, things you write violet, plans rose, CFB tangerine, weather slate. Forest is the system's own voice: today, selection, focus. The colour is there to find things fast, not to decorate. The UI comes in light and dark, following the device until the owner picks.
 
-The system is flat, warm and quiet. Its moving parts are the scrolling top ticker and a short page rise, and nothing that updates often animates.
+Most ONS surfaces are **Operate** surfaces: dashboards, slates, trackers and forms used every day. Read-heavy pages such as briefs, reviews and postmortems are **Read**. Precision, density and scanability outrank expression. The one deliberate indulgence is a small pixel-art scene beside each page title, which the owner asked for. It is the only thing on a page that moves, and it follows strict rules (see Pixel Scenes).
+
+Tokens live in `web/app/globals.css` (CSS variables for both themes) and `web/tailwind.config.js` (Tailwind names mapped to those variables). The visual reference for pages not yet rebuilt is the static mockup in `docs/design/directions/6-logbook-color/`. The pixel scene engine is `web/lib/pixelScenes.js`, wrapped by `web/components/ui/PixelScene.tsx`.
 
 **Key Characteristics:**
-- Cream canvas in three tonal layers, with no drop shadows
-- Spectral serif for titles and big numbers, Spline Sans for running text, Spline Sans Mono for labels and figures
-- Forest green as the single voice, with ochre, brick and slate-blue reserved for status and data
-- Near-square cards (3px), hairline borders, and ink rules to divide sections
-- High density: small type (9–13px) at careful tracking, with generous gutters between blocks
+- A tinted L-frame (sidebar and 48px top bar) holding the work on a white sheet with 16px corners
+- The week strip: lanes by days, today marked by forest lines, missing items as dashed outlines
+- One colour per life area, as a tint, an ink and a mark, used the same way on every page
+- Forest for the system's own states only: today, selection, focus, active nav
+- Light and dark themes from one token set, switched instantly
+- IBM Plex Sans for words, IBM Plex Mono for figures in tables and marks
+- Flat: borders and tints, no shadows
+- A pixel-art title scene per page, the one moving thing
 
 ## Colors
 
-A warm paper palette with one forest accent. Status colors are muted, like pigment, never neon.
+Neutrals are a faintly green grey taken from the forest. Area colours come in threes. The tables give light values; dark values follow.
 
-### Primary
-- **Forest Ink** (`forest`): The voice of the system. Used for the brand mark, kickers, the active nav state, primary buttons, filled filter pills, "on track" pace text, the focus ring and text selection. It marks what the reader should act on or trust.
-- **Forest Bright** (`forest-bright`): Sparkline and chart strokes, where the deep ink would look heavy at 1.6px.
-- **Forest Wash** (`forest-wash`): Tinted backgrounds for positive chips (ticker tags, win badges). Never used as a page or card fill.
-- **Forest Light** (`forest-light`): A light green for data marks on darker or green grounds only.
+### System
+- **Frame** (`frame`): the L-frame (sidebar and top bar) ground. Dark `#0f1210`.
+- **Sheet** (`sheet`): the work surface and cards. Dark `#171b18`.
+- **Raised** (`raised`): hover fills and neutral marks. Dark `#1f2420`.
+- **Active** (`active`): the active nav item. Dark `#253029`.
+- **Border / Rule / Control** (`border`, `rule`, `control`): card borders, rows inside a card, and input or button outlines. Dark `#2a312c`, `#222823`, `#3b443d`.
+- **Ink / Ink 2 / Muted** (`ink`, `ink-2`, `muted`): primary text, secondary text, metadata. Dark `#edf1ee`, `#d3d9d4`, `#9ea7a0`. Muted stays at 4.5:1 or better on the sheet in both themes.
+- **Forest** (`forest`): today's column and header, the selected tab underline, the focus ring, selection, the active nav icon, the sync dot, links in tiles. Dark `#5cc290`. **Forest Soft** (`forest-soft`) washes today's column. Dark `#17301f`.
+- **Primary button:** ink on light (`#141714` with white text), inverted on dark (`#edf1ee` with `#111411` text).
+- **Negative** (`neg`): signed losses only. Dark `#ff8a8f`.
 
-### Secondary (status & data)
-- **Almanac Ochre** (`ochre`): "At risk", pending and pre-game states. Appears as text or a thin outline, rarely as a fill.
-- **Brick** (`brick`): "Behind", losses, live indicators and error text. The live dot pulses in brick.
-- **Slate Blue** (`slate-blue`): A second data series (for example nonfiction vs fiction). It is not a status color.
+### Life areas (tint / ink / mark)
+The *tint* fills lane labels, marks and tinted cards. The *ink* is text on that tint, at 7:1 or better. The *mark* is the solid used for bars, dots, lane edges and icons.
 
-### Neutral
-- **Canvas** (`canvas`): The page ground and the fill for inputs and inactive pills.
-- **Canvas Deep** (`canvas-2`): The sidebar and phone sheet. A recessed tone one step darker than the page.
-- **Surface** (`surface`): Cards, the ticker bar, the phone tab bar and the active nav item. The raised paper.
-- **Surface White** (`surface-hi`): Text on forest fills. Almost never used as a fill.
-- **Hairline** (`border`): Card borders, input borders and structural dividers.
-- **Hairline Warm** (`border-2`): Dividers inside a component (stat-band cells, ticker items).
-- **Ink** (`ink`): Primary text, plus the 1.5px rule over a stat band.
-- **Muted** (`muted`): Secondary text, kicker labels, inactive icons.
-- **Faint** (`faint`): Tertiary metadata, units, section labels, disabled text.
+| Area | Light tint / ink / mark | Dark tint / ink / mark |
+|---|---|---|
+| Running (`run`) | `#dcefff` / `#0a3a80` / `#2a6fd6` | `#142a45` / `#b8d8ff` / `#5d9ff2` |
+| CrossFit (`lift`) | `#fdecc8` / `#663a00` / `#c27a12` | `#352508` / `#f7d394` / `#e39d36` |
+| Reading (`read`) | `#d4f2ea` / `#0b4840` / `#17907c` | `#0e302a` / `#a2e6d6` / `#33b89f` |
+| Habits (`habit`) | `#e0f3d5` / `#1f4a12` / `#3f8f2a` | `#182c12` / `#c2e8ae` / `#63b549` |
+| Things you write: check-in, capture (`check`) | `#ebe5fc` / `#37217a` / `#6d4fd1` | `#251c42` / `#d2c6ff` / `#9479f2` |
+| Plans (`plan`) | `#fbe3ea` / `#6b1631` / `#c2456b` | `#371722` / `#ffc2d2` / `#e66b91` |
+| CFB / Degenerates Corner (`edge`) | `#fde3cf` / `#6a2b06` / `#d9661c` | `#3a1f0c` / `#ffcca4` / `#f08a45` |
+| Weather (`wx`) | `#e6ebf2` / `#263247` / `#5b6f8f` | `#1d2433` / `#c5d0e3` / `#7f95ba` |
+
+### Status pills
+On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6`/`#7d1c20`, not wired `#eef0ee`/`#3e443e`. Dark: `#143222`/`#a9e9c4`, `#382810`/`#f6cf8b`, `#3d191c`/`#ffb8bb`, `#232924`/`#c3cac4`.
 
 ### Named Rules
-**The One Voice Rule.** Forest is the only accent. Ochre, brick and slate-blue carry meaning (status or series) and never decorate.
+**The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. The one sanctioned overlap is violet: "things you write" on Home and "favourite picks" on the slate, which never share a page. Adding a ninth area reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
 
-**The Paper Stack Rule.** Depth is three tones of paper: canvas-2 (recessed), canvas (ground), surface (raised). Do not add a fourth tone.
+**The Forest Is The System Rule.** Forest marks what the system knows about you right now: today, selected, focused. Area colours never do those jobs.
+
+**The Two Themes, One Token Rule.** Every colour exists as a token in both themes. Never hard-code a hex in a component; a colour that only works in one theme is a bug.
 
 ## Typography
 
-**Display Font:** Spectral (with Georgia, serif)
-**Body Font:** Spline Sans (with system-ui, sans-serif)
-**Label/Mono Font:** Spline Sans Mono (with ui-monospace, monospace)
+**Sans:** IBM Plex Sans 400/500/600 (system-ui fallback)
+**Mono:** IBM Plex Mono 400/500 (ui-monospace fallback)
 
-**Character:** A bookish serif names things and states the numbers. A neutral grotesk carries running text. A tracked mono in small caps does the clerical work of labels, units and timestamps. Together they read like a printed ledger with a modern instrument panel.
+**Character:** an engineer's notebook. Plex is plain and legible at small sizes, and its mono stacks figures cleanly in tables.
 
 ### Hierarchy
-- **Display** (Spectral 700, 40px, line-height 1, −0.8px): Page titles in `PageHead`. 30px on phones, 34px for the Home masthead.
-- **Headline** (Spectral 600, 30px, line-height 1): Stat-band figures. 24px on phones.
-- **Title** (Spectral 400, 22px): Empty-state titles and card headings. Ticker headlines use Spectral at 13.5px.
-- **Body** (Spline Sans 400, 13px): Running UI text, nav items and table rows. Page subtitles use 13.5px in Muted.
-- **Label** (Spline Sans Mono 400, 9.5px, 1.7px tracking, uppercase): The `K` kicker. Section labels in the sidebar drop to 8.5px at 1.8px tracking. Units and metadata sit at 9–11px.
-- **Numeric** (Spline Sans Mono 600, 11–13px): Inline figures, scores, counts and input values.
+- **Page title** (Sans 600, 30px/36px, −0.01em; 26px on phones). An optional lighter second part ("Degenerates Corner — College Football") is Sans 400 in Muted, and drops to its own line at 20px on phones.
+- **Span line** (14px, Muted): the dates or week the page covers, directly under the title.
+- **Lede** (16px/25px, Ink 2, max 68ch): one coach-voice paragraph. **Bold** marks the two or three facts that matter.
+- **Card title** (Sans 600, 16px/22px), with an aside in 13px Muted on the right.
+- **Body** (14px/20px). Table rows, nav and controls.
+- **Label** (12px, Muted): table headers, legends, tile labels (13px). Sentence case. No tracked caps anywhere.
+- **Tile figure** (Sans 600, 26px/32px; Mono when it's a signed number such as `+4.45 u`).
+- **Numeric** (Mono 12–14px, tabular): figures in tables, marks, kick times, lines.
 
 ### Named Rules
-**The Clerk's Caps Rule.** Uppercase text is always mono and always tracked (≥0.5px; 1.3–1.8px for kickers). Never uppercase Spectral or Spline Sans.
+**The No Micro-Caps Rule.** Nothing is uppercase and tracked. Labels are sentence case at 12px or more.
 
-**The Serif States, Mono Counts Rule.** Big headline figures are Spectral. Small inline figures, units and timestamps are Spline Sans Mono.
+**The Mono Counts Rule.** Figures that line up in columns or marks are Plex Mono. Words are Plex Sans.
 
 ## Layout
 
-The shell is a fixed 232px sidebar (canvas-2), and to its right a scrolling main column. The top ticker (38px, 34px on phones) sits at the top of that column. Pages pad generously on desktop. Content stacks as a `PageHead` (26px bottom margin), then a full-width stat band, then one or more card grids.
+**The L-frame.** A 228px sidebar and a 48px top bar share the Frame ground. The work sits on a white Sheet inset 8px from the right and bottom, with 16px corners and a 1px border. The top bar holds the breadcrumb, a centred "Ask the system ⌘K" field, the sync status and the theme switch.
 
-The stat band is the signature layout device: an N-column grid with a 1.5px Ink rule above, a 1px Hairline rule below, and Hairline Warm dividers between cells. On phones it reflows to two columns ruled like a table.
+**Sidebar groups:** Today (This week, Habits, Check-in, Capture), Track (Goals, Fitness, Reading), Degenerates Corner (College Football; NBA and NHL join later), Play (Music, King Gizzard, Sports). Area pages show their area's mark on the nav icon.
 
-**Phones (<768px):** the sidebar is hidden and a fixed bottom tab bar (surface) takes over, with a slide-up sheet for the full nav. Pages pad at 18px/16px with 104px at the bottom to clear the tab bar. Every multi-column grid (`ons-stack`) collapses to one column. Inputs go to 16px to stop iOS zoom. The shell uses `100dvh`.
+**Page anatomy:**
+1. **Intro:** a title, span line and lede on the left; on the right, the page actions above the pixel scene (up to 460px wide). Home adds a row of up to four **next steps** in area colours. A 1px rule closes the intro unless summary tiles follow.
+2. **Summary tiles** (where a page has them, as on Degenerates Corner): four tiles in a row (`1fr 1fr 1.25fr 1fr`).
+3. **Tabs**, if the page has sub-views (2px forest underline).
+4. **A 12-column grid** with a 24px gap: a full-width signature block (the week strip, the kickoff strip), then an 8/4 split.
 
-Spacing is pixel-exact rather than scale-based. Common steps are 6, 10, 18 and 26px, and card padding defaults to 18px.
+**Phones (<768px):**
+- The frame drops away and the sheet goes edge to edge with 16px padding.
+- The pixel scene becomes a 64px banner above the title, and the actions follow the lede.
+- Grids go to one column. Summary tiles become a swipeable row (84% wide, with the next one peeking in).
+- The week strip scrolls sideways inside its card.
+- A bottom tab bar (Week, Habits, Check-in, Capture, More) with a 2px forest line over the active tab. 92px of bottom padding clears it.
+
+**Tablet (768–1100px):** blocks go full width, the intro stacks, and the week strip scrolls sideways.
 
 ## Elevation & Depth
 
-ONS is flat. Depth comes only from the paper stack (canvas-2 → canvas → surface) and from hairline borders and rules. There are no drop shadows on cards, buttons, menus or popovers.
+Flat. Depth comes from the Frame → Sheet step, 1px borders and area tints. There are no drop shadows anywhere, including menus and popovers, which take a border.
 
-### Shadow Vocabulary
-- **Focus ring** (`box-shadow: 0 0 0 3px rgb(29 85 54 / 0.13)`): Inputs on focus. A ring, not elevation.
-- **Active nav tick** (`box-shadow: inset 2px 0 0 #1d5536`): A 2px forest bar on the active sidebar item.
-- **Tab bar lift** (`box-shadow: 0 -4px 16px rgba(35,42,34,0.06)`): The single allowed lift, which separates the fixed phone tab bar from scrolling content.
+- **Focus:** 2px forest outline, 2px offset. Inputs add a 3px ring in their tint or forest at 14–22% alpha.
+- **Today:** 1px forest lines on both sides of today's column, a 3px forest cap on its header, and a Forest Soft wash.
+- **Selected weather day:** a 1px outline in the weather mark, not a shadow.
 
-### Named Rules
-**The Printed Page Rule.** If something needs to stand apart, give it a surface tone and a hairline border. Never a shadow. The phone tab bar is the only exception.
+**The Flat Sheet Rule.** If something needs to stand apart, give it a tint or a border. Never a shadow.
 
 ## Shapes
 
-Shapes are near-square and typeset. Cards use a 3px radius, close enough to square to read as printed matter. Interactive elements round progressively by role: chips 4px, inputs 6px, nav items 7px, buttons 8px. Filter pills, tags and status dots are fully round (999px). Borders are always 1px, except for a 1.5px rule over the stat band and an optional 2.5px forest accent rule across the top of a card.
+- **Radii:** sheet 16px; cards and tiles 8px; buttons, inputs, nav items and lane labels 6px; marks 5px; status pills and chips 4px.
+- **Borders:** always 1px. Area edges are 3px inset bars in the mark colour (lane labels, kickoff bars, next-step cards).
 
 ## Components
 
-Printed, not pressed. Components read as typeset matter, and interactivity shows only in small tap and hover cues.
-
 ### Buttons
-- **Shape:** Softly squared (8px) for primary actions; fully round for secondary pill actions.
-- **Primary:** Forest fill, white Spline Sans 600 at 14px, padded 12px × 22px. When disabled it drops to a Hairline fill with Faint text and a `not-allowed` cursor. There is no separate disabled color.
-- **Outline pill (secondary):** Canvas fill, forest mono caps at 11px, a 1px forest border at 33% alpha, padded 8px × 18px. Used for "edit" or "redo" actions.
-- **Press:** `.ons-tap`, which scales to 0.97 on `:active` over 120ms and transitions background, border and color over 140ms. There is no hover lift.
+32px high, 6px radius, Sans 500 at 13px. **Primary** is ink-filled (inverted in dark). **Secondary** is a sheet fill with a Control border. Inside a tinted card, primary takes that card's ink. Press is `scale(.97)` over 120ms and hover is a background change over 150ms. Nothing else moves.
 
-### Chips / Filter Pills
-- **Style:** Mono caps at 10px, 0.5px tracking, fully round, padded 6px × 13px.
-- **State:** Inactive is a canvas fill, a Hairline border and Muted text. Active is a filled pill (forest by default, or a passed status color) with white text.
-- **Tags & result badges:** Forest Wash or 10% brick backgrounds with 8.5–9px mono text. Tags use 999px radius, result badges 3px.
+### Cards
+Sheet fill, 1px border, 8px radius, 20px padding (16px on phones). **Tinted cards** (Today's habits in green, Capture in violet, the Season tile in tangerine) drop the border and take the area tint, with the area ink for all text and a darker wash of the ink for rules.
 
-### Cards / Containers
-- **Corner Style:** 3px.
-- **Background:** Surface.
-- **Shadow Strategy:** None (see Elevation & Depth).
-- **Border:** 1px Hairline. Accent cards add a 2.5px top rule in forest (or a status color) and may carry the faint globe `Watermark` at 5% opacity in the top-right.
-- **Internal Padding:** 18px by default.
+### The week strip (signature)
+- A grid of a 128px lane column plus seven day columns.
+- **Lane labels** are tinted chips with a 3px mark edge.
+- **Cells hold marks:** tint fill with the area ink; *solid* (mark fill) for the week's big events only; *outlined* for planned; *dashed* for missing or due ("Not logged", "Due").
+- **Habit dots:** 12px squares outlined in the habit mark, filled when done.
+- **Weekend columns** take a faint wash.
+- **The Weather lane** comes first. Each day is a button showing icon, high/low and conditions; pressing it previews that day in the title scene.
 
-### Inputs / Fields
-- **Style:** Spline Sans Mono at 13px, canvas fill, 1px Hairline border, 6px radius, padded 9px × 11px.
-- **Focus:** The border turns forest and a 3px forest ring at 13% alpha appears, over a 140ms transition.
-- **Phones:** 16px font, enforced, to prevent iOS zoom.
+### Goals on the clock
+A table of goal, progress bar, "Needs" (the rate required) and state pill. Each goal has a colour dot, and its bar is the area mark on the area tint, with a 2px ink tick for "today". "Not wired" is a state of its own, never "behind". "Out of reach" always comes with an explanation.
+
+### Summary tiles
+A 13px label, a 26px figure, a short line, then one visual: a per-week chart, a season bar, a pipeline checklist (green check circles for done, dashed circles for to-do, with right-aligned mono detail) or a link.
+
+### Kickoff strip (CFB signature)
+Games on a 9 am–midnight axis. Each bar is a tint with a 3px mark edge: tangerine for underdog picks, violet for favourites. Labels on the left give pick and line. On phones it becomes a list. The picks table repeats the side colour in its Side chip and score bar.
+
+### Status pills
+20px high, 4px radius, 12px Sans 500. They wrap to two lines on phones rather than truncating.
+
+### Inputs
+A sheet fill with a 1px border (Control, or a wash of the tint inside tinted cards), 6px radius, 14px text (16px on phones). Focus adds a ring in the card's mark.
 
 ### Navigation
-- **Sidebar:** Canvas-2 ground. The brand mark (globe, "ONS" in Spectral 19px forest, a mono 7.5px subtitle) sits above grouped links. Section labels are mono caps at 8.5px in Faint. Links are Spline Sans at 13px with 17px line icons in Muted. The active link gets a Surface fill, forest text and icon, 600 weight, and the inset 2px forest tick.
-- **Phone:** A fixed bottom tab bar on Surface, and a "more" sheet in canvas-2 with a drag handle that lists the full nav.
+Sidebar items are 32px with a 16px icon. The active item gets the Active fill, Ink text at 500 weight and a forest icon. The phone tab bar is described under Layout.
 
-### Stat Band (signature)
-A row of `Stat` cells under a 1.5px Ink rule. Each cell has a mono kicker, a 30px Spectral 600 figure (forest when accented), an optional mono unit in Faint, and an optional sparkline or a 32px spacer to keep the baselines aligned.
+### Theme switch
+A 32px square button in the top bar: a moon in light mode, a sun in dark. T toggles it. The choice is saved (`ons-theme`); with nothing saved, the page follows `prefers-color-scheme`. A head script sets the theme before paint, so there's no flash, and the switch is instant with no transition.
 
-### Top Ticker (signature)
-A 38px Surface bar. A mono "label" slot sits on the left, with a forest dot that pulses brick when something is live. Pinned live scores come next, then a masked marquee of items: tags, mono league and source metadata, and Spectral headlines. A CFB slot sits on the right. The marquee runs 90s linear, pauses on hover or focus, and becomes a static scroll under `prefers-reduced-motion`.
+## Pixel Scenes
 
-### Pace Text
-Mono status words at 9px: forest for on track, ahead and complete; ochre for at risk; brick for behind; Faint for untracked.
+One small looping pixel-art scene sits beside each page title. Scenes are built to the **pixel-art-sprites** skill (`.claude/skills/pixel-art-sprites`). The reference implementation is `px.js`.
 
-### Empty / Loading / Error
-Honest and quiet. Empty and loading states use a short Muted or Faint line centered in the card. `Stub` uses a 22px Spectral title for whole-page placeholders. Errors say "Couldn't load this." in brick, with the detail in Faint.
+- **Size:** a canvas 32 art-pixels tall, as wide as its box. Up to 460px wide on desktop; a 64px banner on phones.
+- **Integer scaling in device pixels**, with `image-rendering: pixelated`. Never a fractional scale.
+- **Characters:** 20×18 frames. Runs use 6 frames (contact, down, float, mirrored), with hip → knee → foot legs, arms opposite the legs and a 1px bob. Animals and small props use 2-frame gaits.
+- **No sliding:** the ground scrolls exactly one foot-travel per frame.
+- **One outline rule:** every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left.
+- **Closed palette:** `--px-*` tokens in both themes, separate from UI tokens. A character's fill never matches the outline colour (the silhouette test).
+- **Content:** the scene is about the page and uses its real data where it can:
+  - the season record on the CFB scoreboard;
+  - today's weather and temperature on This Week;
+  - the owner's own pets (a black dog, a chihuahua-beagle, a puggle, a brown tabby, a gray striped cat).
+- **Motion rules:**
+  - Draw only when the frame changes.
+  - Stop when scrolled offscreen or when the tab is hidden.
+  - Clicking a scene pauses all scenes, and the choice is saved (`ons-px-paused`).
+  - Under `prefers-reduced-motion`, show a still frame and disable the button.
+  - Nothing else on the page animates.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** take colors and fonts from `web/tailwind.config.js` and `web/app/globals.css`. Those are the token source; this file describes them.
-- **Do** open every page with `PageHead` (mono kicker in forest, 40px Spectral title, 13.5px Muted subtitle) and put the key numbers in a `StatBand`.
-- **Do** label facts with the `K` kicker: mono, uppercase, 9.5px, 1.7px tracking.
-- **Do** separate things with hairlines and paper tones. Use the 1.5px Ink rule only over stat bands.
-- **Do** keep motion quiet: enter and exit in ≤200ms ease-out, `.ons-tap` press feedback, and respect for `prefers-reduced-motion`.
-- **Do** reach for the existing marker classes (`ons-stack`, `ons-band`, `ons-pagehead`) so phone layouts reflow without new CSS.
+- **Do** open every page with a title, a span line and one coach-voice paragraph before any data.
+- **Do** colour by life area, using the tint, ink and mark the same way on every page.
+- **Do** reserve forest for today, selection, focus and the active nav.
+- **Do** define every colour in both themes, and check both themes at 1440 and 390 before calling a page done.
+- **Do** show missing, due, stale and "not wired" as designed states (dashed outlines, explicit pills), never as blanks.
+- **Do** label backtest figures as backtest and keep them apart from live results.
+- **Do** keep scenes to the Pixel Scenes rules, and grow a scene with things from the page's own world.
 
 ### Don't:
-- **Don't** add drop shadows to cards, buttons, menus or popovers.
-- **Don't** introduce a second accent color, or use ochre, brick or slate-blue decoratively.
-- **Don't** round cards beyond 3px, or square off pills.
-- **Don't** uppercase serif or sans text. Caps belong to mono.
-- **Don't** animate data that updates, keyboard actions, or high-frequency surfaces such as the CFB slate and habit check-ins.
-- **Don't** use pure white as a page or card background. White is for text on forest.
+- **Don't** add drop shadows to anything.
+- **Don't** invent a new hue for an area, or use an area colour for something unrelated.
+- **Don't** use uppercase tracked labels or text under 12px.
+- **Don't** animate data, keyboard actions, the slate or habit check-ins. The pixel scene is the only motion besides 120–150ms press and hover feedback.
+- **Don't** scale pixel art by fractions, smooth it, or give a character a fill that matches its outline.
+- **Don't** hard-code a colour that only works in one theme.

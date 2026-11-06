@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ONS redesign · directions</title>
+<style>
+  :root { --bg: #ececea; --card: #fff; --ink: #161616; --muted: #5b5b58; --line: #dcdcd8; --sel: #161616; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 28px 32px 16px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  h1 { font-size: 24px; line-height: 30px; margin: 0; }
+  header p { margin: 4px 0 0; color: var(--muted); max-width: 72ch; }
+  header a { color: inherit; }
+  .controls { display: flex; gap: 12px; flex-wrap: wrap; }
+  .seg { display: inline-flex; background: #dededa; border-radius: 8px; padding: 3px; }
+  .seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; font: 500 13px system-ui, sans-serif; color: #3a3a38; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+  .seg button:focus-visible { outline: 2px solid var(--sel); outline-offset: 1px; }
+  .row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; padding: 8px 32px 40px; }
+  body.desk .row { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: 32px; }
+  .col { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-width: 0; display: flex; flex-direction: column; gap: 10px; scroll-snap-align: start; }
+  body.desk .col { flex: 0 0 auto; }
+  .col.pick { border: 2px solid var(--sel); padding: 13px; }
+  .col h2 { font-size: 16px; line-height: 22px; margin: 0; display: flex; justify-content: space-between; gap: 8px; }
+  .col h2 small { font-weight: 400; color: var(--muted); font-size: 13px; }
+  .col p { margin: 0; color: #33332f; font-size: 13px; line-height: 19px; min-height: 76px; }
+  .frame { position: relative; overflow: hidden; border-radius: 8px; border: 1px solid var(--line); background: #f6f6f4; }
+  .frame iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff; }
+  .links { display: flex; gap: 12px; font-size: 13px; flex-wrap: wrap; }
+  .links a { color: var(--ink); text-underline-offset: 3px; }
+  .sw { display: flex; gap: 4px; } .sw i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgb(0 0 0 / .1); }
+  footer { padding: 0 32px 40px; color: var(--muted); font-size: 13px; max-width: 90ch; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>ONS redesign: Logbook Color chosen</h1>
+    <p>Static mockups of Home and the CFB slate, built from live ONS data captured Nov 3, 2026. Each direction answers the ranked problems in <a href="../critique.md">critique.md</a>. Click a column's links to open the full page or its brief. <b>Chosen:</b> Logbook's layout with Pocket's area colours and a light/dark theme (column 6). The theme switch applies to it only.</p>
+  </div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Screen"><button type="button" data-page="home" aria-pressed="true">Home</button><button type="button" data-page="cfb" aria-pressed="false">CFB slate</button></div>
+    <div class="seg" role="group" aria-label="Theme"><button type="button" data-theme="light" aria-pressed="true">Light</button><button type="button" data-theme="dark" aria-pressed="false">Dark</button></div>
+    <div class="seg" role="group" aria-label="Width"><button type="button" data-w="390" aria-pressed="true">Phone 390</button><button type="button" data-w="1440" aria-pressed="false">Desktop 1440</button></div>
+  </div>
+</header>
+
+<main class="row" id="row">
+  <section class="col" data-dir="1-almanac-ii">
+    <h2>1 · Almanac II <small>evolved</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#f6f5f2"></i><i style="background:#efebe1"></i><i style="background:#232a22"></i><i style="background:#1d5536"></i><i style="background:#85570f"></i></div>
+    <p>Keep the masthead and stat band; fix the system around them. Inputs on Today, "needs vs doing" on every goal, no tiny caps. Spectral, Spline Sans, figures in mono.</p>
+    <div class="frame"><iframe title="Almanac II mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="1-almanac-ii/README.md">Brief</a></div>
+  </section>
+  <section class="col" data-dir="2-ledger">
+    <h2>2 · Ledger <small>new, light</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#f2f4f7"></i><i style="background:#ffffff"></i><i style="background:#0b0c0e"></i><i style="background:#1d5fbf"></i><i style="background:#b8262c"></i></div>
+    <p>The year as a balance sheet. Colourless chrome, Geist with every figure in mono, one blue on the main data element: where each goal lands by Dec 31.</p>
+    <div class="frame"><iframe title="Ledger mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="2-ledger/README.md">Brief</a></div>
+  </section>
+  <section class="col" data-dir="3-logbook">
+    <h2>3 · Logbook <small>new, light</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#eef2ee"></i><i style="background:#ffffff"></i><i style="background:#141714"></i><i style="background:#1f6b46"></i><i style="background:#e4efe8"></i></div>
+    <p>The week is the unit. A Mon–Sun strip of lanes (runs, CrossFit, habits, check-in, plans, CFB) on a white sheet in a green-grey frame; Saturday as a kickoff strip. IBM Plex.</p>
+    <div class="frame"><iframe title="Logbook mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="3-logbook/README.md">Brief</a></div>
+  </section>
+  <section class="col" data-dir="4-pocket">
+    <h2>4 · Pocket <small>new, phone-first</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#dcefff"></i><i style="background:#fdeed2"></i><i style="background:#d7f2ec"></i><i style="background:#e2f4d9"></i><i style="background:#eeebe3"></i></div>
+    <p>Designed for the thumb. A To-do-today stack of toggles first, then one pale tile per life area with its sum and a coach line. Picks as big readable slips. Manrope.</p>
+    <div class="frame"><iframe title="Pocket mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="4-pocket/README.md">Brief</a></div>
+  </section>
+  <section class="col" data-dir="5-ops">
+    <h2>5 · Ops <small>dark terminal</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#161718"></i><i style="background:#111213"></i><i style="background:#f2f2f3"></i><i style="background:#4fbf86"></i><i style="background:#ef6b81"></i></div>
+    <p>A console for the life pipeline. Goal monitors, a keyboard queue, and a Sources panel that flags stale data. Every selection is one 1px green line. Public Sans with JetBrains Mono figures.</p>
+    <div class="frame"><iframe title="Ops mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="5-ops/README.md">Brief</a></div>
+  </section>
+  <section class="col pick" data-dir="6-logbook-color" data-themed>
+    <h2>6 · Logbook Color <small>chosen</small></h2>
+    <div class="sw" aria-hidden="true"><i style="background:#dcefff"></i><i style="background:#fdecc8"></i><i style="background:#e0f3d5"></i><i style="background:#ebe5fc"></i><i style="background:#fbe3ea"></i><i style="background:#fde3cf"></i><i style="background:#171b18"></i></div>
+    <p>Logbook's week strip and L-frame, with each life area in its own tint (Pocket) and a light/dark switch (Ops). Forest stays the system colour for today, selection and focus.</p>
+    <div class="frame"><iframe title="Logbook Color mockup" loading="lazy"></iframe></div>
+    <div class="links"><a data-open href="#">Open page</a><a href="6-logbook-color/README.md">Brief</a></div>
+  </section>
+</main>
+
+<footer>
+  Sample values are listed in <a href="README.md">README.md</a> (sync times, the habit log date, and the calendar beyond what the API returned). Every CFB figure, pick, line, kickoff and goal value comes from the live API or is computed from it.
+</footer>
+
+<script>
+  const state = { page: 'home', w: 390, theme: 'light' };
+  const H = { 390: 844, 1440: 900 };
+  function render() {
+    document.body.classList.toggle('desk', state.w === 1440);
+    document.querySelectorAll('.col').forEach(col => {
+      const dir = col.dataset.dir, frame = col.querySelector('.frame'), iframe = frame.querySelector('iframe');
+      const src = `${dir}/${state.page}.html` + ('themed' in col.dataset ? `?theme=${state.theme}` : '');
+      const colW = state.w === 1440 ? 640 : col.clientWidth - 28;
+      if (state.w === 1440) col.style.width = (colW + 30) + 'px'; else col.style.width = '';
+      const scale = colW / state.w, viewH = state.w === 1440 ? 1200 : 1500;
+      iframe.style.width = state.w + 'px'; iframe.style.height = viewH + 'px';
+      iframe.style.transform = `scale(${scale})`;
+      frame.style.width = colW + 'px'; frame.style.height = Math.round(viewH * scale) + 'px';
+      if (iframe.getAttribute('src') !== src) iframe.setAttribute('src', src);
+      col.querySelector('[data-open]').href = src;
+    });
+    document.querySelectorAll('[data-page]').forEach(b => b.setAttribute('aria-pressed', b.dataset.page === state.page));
+    document.querySelectorAll('[data-w]').forEach(b => b.setAttribute('aria-pressed', +b.dataset.w === state.w));
+    document.querySelectorAll('[data-theme]').forEach(b => b.setAttribute('aria-pressed', b.dataset.theme === state.theme));
+  }
+  document.querySelectorAll('[data-page]').forEach(b => b.addEventListener('click', () => { state.page = b.dataset.page; render(); }));
+  document.querySelectorAll('[data-w]').forEach(b => b.addEventListener('click', () => { state.w = +b.dataset.w; render(); }));
+  document.querySelectorAll('[data-theme]').forEach(b => b.addEventListener('click', () => { state.theme = b.dataset.theme; render(); }));
+  addEventListener('resize', render);
+  render();
+</script>
+</body>
+</html>

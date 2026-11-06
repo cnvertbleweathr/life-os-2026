@@ -51,6 +51,11 @@ async function ownerFetch(path: string, init: RequestInit = {}): Promise<Respons
   return fresh ? send(fresh) : res;
 }
 
+/** True when this device already has the write key, so owner-only reads won't prompt. */
+export function hasWriteKey(): boolean {
+  return !!storedToken();
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) {
@@ -149,9 +154,22 @@ export interface CalendarEvent {
   title: string;
 }
 
+export type WeatherCondition = "sun" | "partly" | "cloudy" | "wind" | "rain" | "snow";
+export interface WeatherDay {
+  date: string; condition: WeatherCondition; label: string; high_f: number; low_f: number;
+  precip_in: number | null; snow_in: number | null; gust_mph: number | null; past: boolean;
+}
+/** /home/weather — this Monday–Sunday week plus current conditions (Open-Meteo, api/weather.py). */
+export interface WeekWeather {
+  place: string; today: string;
+  current: { temp_f: number | null; condition: WeatherCondition; label: string; as_of: string | null };
+  days: WeatherDay[]; source: string;
+}
+
 export const homeApi = {
   summary: () => get<HomeSummary>("/home/summary"),
   calendar: () => get<CalendarEvent[]>("/home/calendar"),
+  weather: () => get<WeekWeather>("/home/weather"),
 };
 
 // ── Habits ───────────────────────────────────────────────────────────────────
@@ -184,8 +202,12 @@ export interface HabitDay {
   [habitKey: string]: string | boolean | number;
 }
 
+/** /habits/ytd — per habit, days done out of days with a log entry this year. */
+export interface HabitYtd { habit: string; done_days: number; days_observed: number; completion_rate_pct: number; }
+
 export const habitsApi = {
   today: () => get<HabitToday>("/habits/today"),
+  ytd: () => get<HabitYtd[]>("/habits/ytd"),
   streaks: () => get<HabitStreak[]>("/habits/streaks"),
   recent: (days = 21) => get<HabitDay[]>(`/habits/recent?days=${days}`),
   /** Returns the day's full state after the write. */

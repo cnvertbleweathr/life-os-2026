@@ -233,15 +233,17 @@ async def cfb_recruiting(team: str, request: Request):
 
 @router.get("/model-info")
 async def cfb_model_info():
-    """Model validation summary — static from last backtest run."""
+    """Model validation summary — static, quoted from docs/SYSTEM_EXPLAINER.md
+    ("The Numbers": 2021-2025 walk-forward backtest, post-fix). PRODUCT.md names
+    the explainer as the only source for backtest figures; update both together."""
     return {
         "version":            "v3 walk-forward",
-        "test_seasons":       [2022, 2023, 2024, 2025],
-        "total_bets":         318,
-        "record":             "224-94",
-        "win_rate_pct":       70.4,
-        "roi_pct":            34.5,
-        "profitable_seasons": "4/4",
+        "test_seasons":       [2021, 2022, 2023, 2024, 2025],
+        "total_bets":         365,
+        "record":             "250-115",
+        "win_rate_pct":       68.5,
+        "roi_pct":            30.8,
+        "profitable_seasons": "5/5",
         "min_model_score":    70,
         "min_edges":          4,
         "disabled_signals":   ["SP+ alignment", "Defensive havoc"],

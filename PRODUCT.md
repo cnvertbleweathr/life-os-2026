@@ -34,10 +34,10 @@ ONS is built for exactly one person, around their own goals file (`goals/2026.ya
 
 ## Capabilities and Constraints
 
-- Life routes: Home, Habits, Fitness, Reading, Goals, Check-in, Capture. Entertainment routes: Music, King Gizzard, Sports. Edge route: CFB Betting.
+- Life routes: Home (This week), Habits, Fitness, Reading, Goals, Check-in, Capture. Entertainment routes: Music, King Gizzard, Sports. Edge routes live under **Degenerates Corner**: College Football now, with NBA and NHL planned.
 - The top ticker shows the owner's scores, team news and headlines from ESPN.
 - Every surface is a working surface (dashboards, trackers, forms, slates). Briefs and reviews are the reading surfaces.
-- Daily use rules out slow or decorative interactions on high-frequency surfaces.
+- Daily use rules out slow or decorative interactions on high-frequency surfaces. The one owner-approved exception is the small pixel-art scene beside each page title, which can be paused and goes still under reduced motion (DESIGN.md → Pixel Scenes).
 - Data can be missing, stale or untracked. The UI has to show that honestly instead of hiding it.
 
 ## Brand Commitments

@@ -21,10 +21,10 @@ const DOMAIN_ICON: Record<string, string> = {
 };
 
 function paceColor(status?: string | null): string {
-  if (status === "behind") return "#a8473a";
-  if (status === "at_risk") return "#9a6a1e";
-  if (status === "unknown" || status === "binary") return "#a39d8c";
-  return "#1d5536";
+  if (status === "behind") return "var(--neg)";
+  if (status === "at_risk") return "var(--warn)";
+  if (status === "unknown" || status === "binary") return "var(--faint)";
+  return "var(--hue)";
 }
 
 export default function GoalsPage() {
@@ -85,7 +85,7 @@ export default function GoalsPage() {
                   stroke={1.6}
                 />
               </span>
-              <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>
+              <K color="var(--ink)" style={{ fontSize: 11, letterSpacing: "1.5px" }}>
                 {grp.domain}
               </K>
               <span className="ml-auto font-mono text-faint" style={{ fontSize: 9 }}>
@@ -99,7 +99,7 @@ export default function GoalsPage() {
                 const pct = g.progress_percent;
 
                 return (
-                  <div key={g.goal_key} style={{ padding: "14px 0", borderTop: "1px solid #ebe5d8" }}>
+                  <div key={g.goal_key} style={{ padding: "14px 0", borderTop: "1px solid var(--rule)" }}>
                     <div className="flex justify-between items-baseline gap-3">
                       <span style={{ fontSize: 13.5, fontWeight: 500 }}>{g.label}</span>
                       <Pace status={g.pace_status} />
@@ -114,7 +114,7 @@ export default function GoalsPage() {
                       </div>
                     ) : pct == null ? (
                       <div className="flex items-center gap-[7px] mt-[9px] font-mono text-muted" style={{ fontSize: 10.5 }}>
-                        <span className="rounded-full" style={{ width: 6, height: 6, background: "#1d5536" }} />
+                        <span className="rounded-full" style={{ width: 6, height: 6, background: "var(--hue)" }} />
                         Logged when it happens
                       </div>
                     ) : (
@@ -128,7 +128,7 @@ export default function GoalsPage() {
                             {Math.round(pct)}%
                           </span>
                         </div>
-                        <div className="rounded overflow-hidden" style={{ height: 4, background: "#efebe1" }}>
+                        <div className="rounded overflow-hidden" style={{ height: 4, background: "var(--frame)" }}>
                           <div
                             className="rounded"
                             style={{

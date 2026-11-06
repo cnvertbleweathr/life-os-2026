@@ -1,397 +1,370 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { API_BASE_URL, parseLocalDate, homeApi, habitsApi, sportsApi, type HomeSummary, type HabitToday, type SportsToday } from "@/lib/api";
+// This week — the Home page (Logbook Color, DESIGN.md). The week is the unit: a strip of days (Mon–Sun)
+// with the owner's lanes down the side, built only from real data:
+//   weather      /home/weather (Open-Meteo, api/weather.py)
+//   running      /fitness/run-days (Strava)
+//   crossfit     /fitness/crossfit (SugarWOD; newest record shown so stale data is visible)
+//   habits       /habits/recent + /habits/today (toggles write through /habits/log)
+//   check-in     /checkin/* — owner-only, read only when a write key is already saved (no prompt on load)
+//   plans        /home/calendar (today onward)
+//   cfb          /cfb/weeks + /cfb/slate + /cfb/schedule (kick days in Denver time)
+// Goals on the clock use /goals/progress; only wired goals get a pace, the rest say "not wired".
+
+import Link from "next/link";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  homeApi, habitsApi, fitnessApi, goalsApi, cfbApi, checkinApi, sportsApi, hasWriteKey, API_BASE_URL,
+  type HomeSummary, type HabitToday, type HabitDay, type RunDay, type CrossfitEntry, type CalendarEvent,
+  type Goal, type WeekWeather, type WeatherCondition, type CfbPick, type CfbScheduleGame, type Checkin, type SportsToday,
+} from "@/lib/api";
 import { GameLine } from "@/components/sports/GameRow";
-import { Card, K, Watermark, Loading, ErrorState } from "@/components/ui/primitives";
-import { OnsIcon } from "@/components/ui/icons";
+import { PageHead, Loading, ErrorState } from "@/components/ui/primitives";
+import { PixelScene } from "@/components/ui/PixelScene";
 
-const CFB_BACKTEST_ROI = "+34.5"; // confirmed 4-season walk-forward backtest, same fact as the CFB page header
+const TZ = "America/Denver";
+const READING_GOAL = 10; // books in 2026 (fiction 5 + nonfiction 5 in goals/2026.yaml)
+const DAY = 86_400_000;
 
+// ── Date helpers (all in Denver) ────────────────────────────────────────────
+const isoDenver = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const fromIso = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return new Date(Date.UTC(y, m - 1, d, 12)); };
+const addDays = (iso: string, n: number) => new Date(fromIso(iso).getTime() + n * DAY).toISOString().slice(0, 10);
+const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...o }).format(fromIso(iso));
+const fmtTime = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(" AM", "").replace(" PM", "");
+const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const join = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 
-function CalendarIcon({ title }: { title: string }) {
-  const t = title.toLowerCase();
-  if (/concert|show|fest/.test(t)) return <OnsIcon name="shows" size={13} stroke={1.6} style={{ color: "#a39d8c" }} />;
-  if (/trip|fly|dia|airport|hartford|rehoboth/.test(t)) return <OnsIcon name="pin" size={13} stroke={1.6} style={{ color: "#a39d8c" }} />;
-  if (/bday|birthday/.test(t)) return <span className="rounded-full" style={{ width: 5, height: 5, background: "#9a6a1e" }} />;
-  return null;
+function WxIcon({ c }: { c: WeatherCondition }) {
+  const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const cloud = "M6.5 18.5h11a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6 3.2 3.2 0 0 0 .1 6.4z";
+  const small = "M6.5 14h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z";
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {c === "sun" && <><circle cx="12" cy="12" r="4" {...p} /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" {...p} /></>}
+      {c === "partly" && <><path d="M9 4v1.5M3.5 9.5H5M5.3 5.8l1 1M12.7 5.8l-1 1M6.2 11.5a3.2 3.2 0 0 1 5.9-2.3" {...p} /><path d="M8 19.5h9.5a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8 19.5z" {...p} /></>}
+      {c === "cloudy" && <path d={cloud} {...p} />}
+      {c === "wind" && <path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" {...p} />}
+      {c === "rain" && <><path d={small} {...p} /><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5" {...p} /></>}
+      {c === "snow" && <><path d={small} {...p} /><path d="M8 18v.01M12 20v.01M16 18v.01M10 22v.01M14 22v.01" {...p} strokeWidth={2.4} /></>}
+    </svg>
+  );
+}
+
+/** The daily brief as text: paragraphs and **bold**, never injected HTML. */
+function Brief({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/\n{2,}/).map((para, i) => (
+        <p key={i} style={{ margin: i ? "10px 0 0" : 0 }}>
+          {para.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
+            seg.startsWith("**") && seg.endsWith("**") ? <b key={j}>{seg.slice(2, -2)}</b> : <Fragment key={j}>{seg.replace(/^#+\s*/gm, "").replace(/\n/g, " ")}</Fragment>,
+          )}
+        </p>
+      ))}
+    </>
+  );
+}
+
+// ── Goals: pace for the wired ones ──────────────────────────────────────────
+const GOAL_AREA: Record<string, [string, string, string]> = {
+  running_miles: ["l-run", "Run 350 miles", "mi"],
+  crossfit_classes: ["l-lift", "160 CrossFit classes", "classes"],
+  fiction_books_goal: ["l-read", "Read 5 fiction", "books"],
+  nonfiction_books_goal: ["l-read", "Read 5 nonfiction", "books"],
+  marathon_completed: ["l-run", "Run a marathon", ""],
+};
+function pace(g: Goal, yearFrac: number, weeksLeft: number, weeksGone: number) {
+  const target = g.target_numeric!, cur = g.current_value!;
+  const left = Math.max(0, target - cur), expected = target * yearFrac;
+  const perWeek = left / Math.max(weeksLeft, 0.1), avg = cur / Math.max(weeksGone, 0.1);
+  if (left === 0) return { state: "ok" as const, label: "Done", needs: "—" };
+  if (target === 1) return { state: "risk" as const, label: "Not yet", needs: "1 to go" };
+  const needs = g.goal_key === "running_miles" ? `${perWeek.toFixed(1)} mi/wk` : perWeek < 1 ? `1 per ${Math.round(7 / perWeek)} d` : `${perWeek.toFixed(1)}/wk`;
+  if (cur >= expected) return { state: "ok" as const, label: "On track", needs };
+  if (avg > 0 && perWeek > avg * 3) return { state: "off" as const, label: "Out of reach", needs };
+  const behind = expected - cur;
+  return { state: "risk" as const, label: g.goal_key === "running_miles" ? `${behind.toFixed(0)} mi behind` : `${Math.ceil(behind)} behind`, needs };
 }
 
 export default function HomePage() {
-  const [data, setData] = useState<HomeSummary | null>(null);
-  const [habitsToday, setHabitsToday] = useState<HabitToday | null>(null);
-  const [sports, setSports] = useState<SportsToday | null>(null);
-  const [done, setDone] = useState<Record<string, boolean>>({});
-  const [brief, setBrief] = useState<any>(null);
-  const [vote, setVote] = useState<string | null>(null);
+  const [summary, setSummary] = useState<HomeSummary | null>(null);
+  const [today, setToday] = useState<HabitToday | null>(null);
+  const [recent, setRecent] = useState<HabitDay[]>([]);
+  const [runs, setRuns] = useState<RunDay[]>([]);
+  const [cf, setCf] = useState<CrossfitEntry[]>([]);
+  const [cal, setCal] = useState<CalendarEvent[]>([]);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [wx, setWx] = useState<WeekWeather | null | false>(null);
+  const [brief, setBrief] = useState<string | null | false>(null);
+  const [sports, setSports] = useState<SportsToday | null | false>(null);
+  const [picks, setPicks] = useState<CfbPick[]>([]);
+  const [sched, setSched] = useState<CfbScheduleGame[]>([]);
+  const [checkins, setCheckins] = useState<Checkin[] | "private">("private");
+  const [wxDay, setWxDay] = useState<string | null>(null);
+  const [habitErr, setHabitErr] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sportsError, setSportsError] = useState<string | null>(null);
+  const weekRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const year = new Date().getFullYear();
     Promise.all([homeApi.summary(), habitsApi.today()])
-      .then(([h, t]) => {
-        setData(h);
-        setHabitsToday(t);
-        setDone(Object.fromEntries(t.habits.map((x) => [x.key, x.done])));
-      })
+      .then(([s, t]) => { setSummary(s); setToday(t); })
       .catch((e) => setError(e.message));
-  
-    // Fetch the latest daily brief. null = still loading, false = none
-    // available (no brief yet, or the API errored) -- never crash Home.
+    habitsApi.recent(14).then(setRecent).catch(() => {});
+    fitnessApi.runDays(year).then(setRuns).catch(() => {});
+    fitnessApi.crossfit(60).then(setCf).catch(() => {});
+    homeApi.calendar().then(setCal).catch(() => {});
+    goalsApi.progress().then(setGoals).catch(() => {});
+    homeApi.weather().then(setWx).catch(() => setWx(false));
+    sportsApi.today().then(setSports).catch(() => setSports(false));
     fetch(`${API_BASE_URL}/home/brief/latest?brief_type=daily`)
       .then(r => (r.ok ? r.json() : null))
-      .then(b => setBrief(b && typeof b.brief_content === "string" ? b : false))
+      .then(b => setBrief(b && typeof b.brief_content === "string" ? b.brief_content : false))
       .catch(() => setBrief(false));
-  
-    sportsApi.today()
-      .then(setSports)
-      .catch((e) => setSportsError(e.message));
+    cfbApi.weeks(year).then(async (w) => {
+      const wk = w.current_week; if (wk == null) return;
+      const [s, g] = await Promise.all([cfbApi.slate(year, wk), cfbApi.schedule(year, wk)]);
+      setPicks(s.filter(p => p.meets_publish_bar)); setSched(g);
+    }).catch(() => {});
+    if (hasWriteKey()) checkinApi.history(14).then(setCheckins).catch(() => setCheckins("private"));
   }, []);
 
-  if (error) return <ErrorState message={error} />;
-  if (!data || !habitsToday) return <Loading label="Loading today's summary..." />;
+  // On narrow screens the strip scrolls sideways: start it at today rather than Monday.
+  useEffect(() => {
+    const wrap = weekRef.current, cell = wrap?.querySelector<HTMLElement>(".hd.today"), lane = wrap?.querySelector<HTMLElement>(".hd.lane");
+    if (wrap && cell && lane && wrap.scrollWidth > wrap.clientWidth) wrap.scrollLeft += cell.getBoundingClientRect().left - lane.getBoundingClientRect().right - 4;
+  }, [summary, today]);
 
-  const { stat_cards: sc, calendar, daily10 } = data;
-  const todayLong = parseLocalDate(data.date).toLocaleDateString("en-US", {
-    weekday: "long", year: "numeric", month: "long", day: "numeric",
+  const todayIso = summary?.date ?? isoDenver(new Date());
+  const monday = addDays(todayIso, -((fromIso(todayIso).getUTCDay() + 6) % 7));
+  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(monday, i)), [monday]);
+  const inWeek = (iso: string) => iso >= days[0] && iso <= days[6];
+
+  if (error) return <div className="ons-page" style={{ padding: "34px 44px 48px" }}><ErrorState message={error} /></div>;
+  if (!summary || !today) return <Loading label="Loading this week…" />;
+
+  // ── Per-day facts ─────────────────────────────────────────────────────────
+  const runsBy = new Map<string, RunDay[]>();
+  runs.forEach(r => { const d = r.start_date.slice(0, 10); if (inWeek(d)) runsBy.set(d, [...(runsBy.get(d) ?? []), r]); });
+  const weekRuns = Array.from(runsBy.values()).flat();
+  const weekMiles = weekRuns.reduce((a, r) => a + r.distance_miles, 0);
+  const cfDays = new Set(cf.map(e => e.date));
+  const cfNewest = cf.map(e => e.date).sort().pop() ?? null;
+  const cfThisWeek = days.filter(d => cfDays.has(d)).length;
+  const daysSinceCf = cfNewest ? Math.round((fromIso(todayIso).getTime() - fromIso(cfNewest).getTime()) / DAY) : null;
+  const habitBy = new Map(recent.map(h => [h.date, h]));
+  const habitKeys = today.habits.map(h => h.key);
+  const doneToday = today.habits.filter(h => h.done).length;
+  const calBy = new Map<string, string[]>();
+  cal.forEach(e => { if (inWeek(e.date)) calBy.set(e.date, [...(calBy.get(e.date) ?? []), e.title]); });
+  const checkinBy = checkins === "private" ? null : new Map(checkins.map(c => [c.date, c]));
+  const kicks = picks.map(p => {
+    const [away, home] = p.matchup.split(" @ ");
+    const g = sched.find(s => s.away_team === away && s.home_team === home);
+    return g?.start_date ? new Date(g.start_date) : null;
   });
+  const cfbBy = new Map<string, Date[]>();
+  kicks.forEach(k => { if (k) { const d = isoDenver(k); cfbBy.set(d, [...(cfbBy.get(d) ?? []), k].sort((a, b) => +a - +b)); } });
+  const cfbDays = Array.from(cfbBy.keys()).sort();
+  const lastCfbDay = cfbDays[cfbDays.length - 1];
+  const graded = picks.filter(p => p.outcome === "win" || p.outcome === "loss" || p.outcome === "push").length;
+  const wxBy = new Map((wx ? wx.days : []).map(d => [d.date, d]));
 
-  const doneCount = habitsToday.habits.filter((h) => done[h.key]).length;
-  const habitsTotal = habitsToday.total_count;
+  // ── Year pace ─────────────────────────────────────────────────────────────
+  const y = +todayIso.slice(0, 4);
+  const daysInYear = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365;
+  const dayOfYear = Math.round((fromIso(todayIso).getTime() - fromIso(`${y}-01-01`).getTime()) / DAY) + 1;
+  const yearFrac = dayOfYear / daysInYear, daysLeft = daysInYear - dayOfYear;
+  const weeksLeft = daysLeft / 7, weeksGone = dayOfYear / 7;
+  const books = summary.stat_cards.books_read ?? 0;
+  const booksExpected = READING_GOAL * yearFrac;
+  const nextBookDue = addDays(`${y}-01-01`, Math.ceil(((books + 1) / READING_GOAL) * daysInYear) - 1);
+  const wired = goals.filter(g => GOAL_AREA[g.goal_key] && g.target_numeric != null && g.current_value != null);
+  const habitGoals = goals.filter(g => g.description?.includes("habits")).length;
+  const notWired = goals.filter(g => g.current_value == null).length;
 
-  // Streak: longest current streak across today's habits, if any are active
-  // (real streak data lives in /habits/streaks — not fetched here to keep
-  // Home to two calls; shows "—" rather than a guess if unavailable)
-  const streakDisplay = "—";
-
-  // Books-behind-pace, same math as the Reading page
-  const READING_GOAL = 10;
-  const now = new Date();
-  const dayOfYear = Math.floor(
-    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000
+  // ── Words ─────────────────────────────────────────────────────────────────
+  const dayName = (iso: string) => (iso === todayIso ? "today" : fmt(iso, { weekday: "long" }));
+  const ahead = (wx ? wx.days : []).filter(d => d.date >= todayIso);
+  const wet = ahead.find(d => d.condition === "rain" || d.condition === "snow");
+  const windy = ahead.find(d => d.condition === "wind");
+  const weatherLine = !wx ? null
+    : wet ? <><b>{wet.condition === "snow" ? "Snow" : "Rain"} {dayName(wet.date)}</b>{wet.date !== todayIso ? ", so get your run in before then" : ""}.</>
+    : windy ? <>{fmt(windy.date, { weekday: "long" })} is windy (gusts {Math.round(windy.gust_mph ?? 0)}); the rest of the week is dry.</>
+    : ahead.length ? <>Dry for the rest of the week, highs {Math.min(...ahead.map(d => d.high_f))}–{Math.max(...ahead.map(d => d.high_f))}°.</> : null;
+  const weekendBits = [
+    ...(picks.length && lastCfbDay && lastCfbDay >= todayIso ? [`${plural(picks.length, "pick")} ${fmt(cfbDays[0], { weekday: "long" })} from ${fmtTime(cfbBy.get(cfbDays[0])![0])}`] : []),
+    ...days.filter(d => d >= todayIso).flatMap(d => (calBy.get(d) ?? []).filter(t => /bday|birthday/i.test(t)).map(t => `${t.replace(/!$/, "")} ${d === todayIso ? "today" : `on ${dayName(d)}`}`)),
+  ];
+  const lede = (
+    <>
+      <b>{weekRuns.length ? `${plural(weekRuns.length, "run")} (${weekMiles.toFixed(1)} mi)` : "No runs yet"}</b> this week
+      {cfThisWeek ? `, ${plural(cfThisWeek, "CrossFit class", "CrossFit classes")}` : daysSinceCf != null && daysSinceCf > 6 ? <> and <b>no CrossFit logged since {fmt(cfNewest!, { month: "short", day: "numeric" })}</b></> : ""}.
+      {weatherLine && <> {weatherLine}</>}
+      {weekendBits.length > 0 && <> Coming up: {join(weekendBits)}.</>}
+    </>
   );
-  const ytdTarget = Math.round((READING_GOAL / 365) * dayOfYear);
-  const booksBehind = Math.max(0, ytdTarget - (sc.books_read ?? 0));
-  const readingOnPace = booksBehind === 0;
 
-  const toggleHabit = (key: string) => {
-    setDone((prev) => ({ ...prev, [key]: !prev[key] }));
-    // Note: optimistic UI only — POST /habits/log isn't wired yet.
-    // Mirrors the Habits page until that endpoint exists.
-  };
+  const steps: Array<{ cls: string; href: string; title: string; detail: string }> = [];
+  if (checkinBy && !checkinBy.get(todayIso)?.logged_at) steps.push({ cls: "l-check", href: "/checkin", title: "Check in", detail: "Today's check-in is due" });
+  if (doneToday < today.total_count) steps.push({ cls: "l-habit", href: "/habits", title: `Log ${plural(today.total_count - doneToday, "habit")}`, detail: doneToday ? `${doneToday} of ${today.total_count} done` : "None done yet today" });
+  if (daysSinceCf != null && daysSinceCf > 6) steps.push({ cls: "l-lift", href: "/fitness", title: "Get a class in", detail: `No CrossFit logged since ${fmt(cfNewest!, { month: "short", day: "numeric" })}` });
+  if (books < Math.floor(booksExpected)) steps.push({ cls: "l-read", href: "/reading", title: `Finish book ${books + 1}`, detail: nextBookDue > todayIso ? `By ${fmt(nextBookDue, { month: "short", day: "numeric" })} to catch up` : "You're behind pace; next one now" });
+  if (steps.length < 4 && wet && wet.date > todayIso) steps.push({ cls: "l-run", href: "/fitness", title: "Run before the weather", detail: `${wet.condition === "snow" ? "Snow" : "Rain"} ${fmt(wet.date, { weekday: "long" })}` });
+
+  // ── Scene weather: the selected day, or current conditions today ─────────
+  const sel = wxDay && wxBy.get(wxDay);
+  const sceneWx = sel ? sel.condition : wx ? wx.current.condition : "sun";
+  const sceneTemp = sel ? sel.high_f : wx ? wx.current.temp_f ?? "" : "";
+
+  async function toggleHabit(key: string, on: boolean) {
+    setHabitErr(null);
+    setToday(t => t && { ...t, habits: t.habits.map(h => (h.key === key ? { ...h, done: on } : h)) });
+    try { setToday(await habitsApi.log(key, on)); habitsApi.recent(14).then(setRecent).catch(() => {}); }
+    catch (e: any) { setToday(t => t && { ...t, habits: t.habits.map(h => (h.key === key ? { ...h, done: !on } : h)) }); setHabitErr(e.message ?? "Couldn't save"); }
+  }
+
+  const lane = (cls: string, label: string, cell: (d: string) => ReactNode) => (
+    <>
+      <div className={`lane ${cls}`}><span>{label}</span></div>
+      {days.map((d, i) => <div key={d} className={[cls, d === todayIso && "today", i >= 5 && "we"].filter(Boolean).join(" ")}>{cell(d)}</div>)}
+    </>
+  );
 
   return (
     <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
-      {/* Masthead */}
-      <div className="ons-pagehead ons-masthead flex justify-between items-start mb-7">
-        <div>
-          <K color="#1d5536">{todayLong} · Denver, CO</K>
-          <h1
-            className="font-serif font-bold leading-none m-0 mt-3"
-            style={{ fontSize: 50, letterSpacing: "-1px" }}
-          >
-            Good morning.<br />
-            <span className="text-muted">You ran </span>
-            <span className="text-green">{sc.weekly_miles ?? 0} miles</span>
-            <span className="text-muted"> this week.</span>
-          </h1>
-        </div>
-        <div className="text-right shrink-0 pt-1">
-          <div
-            className="ons-tap inline-flex items-center gap-[9px] text-muted cursor-text"
-            style={{
-              border: "1px solid #e6e3dc", background: "#fbfaf5", borderRadius: 999,
-              padding: "9px 15px", fontSize: 12.5,
-            }}
-          >
-            <OnsIcon name="search" size={15} stroke={1.6} /> Ask the system…
-            <span
-              className="font-mono"
-              style={{ fontSize: 9, border: "1px solid #e6e3dc", borderRadius: 4, padding: "1px 5px", marginLeft: 4 }}
-            >
-              ⌘K
-            </span>
-          </div>
-          <div className="font-mono text-faint mt-[11px]" style={{ fontSize: 9.5, letterSpacing: "0.5px" }}>
-            DATA AS OF {data.date}
-          </div>
-        </div>
-      </div>
+      <PageHead
+        title="This week"
+        kicker={`${fmt(todayIso, { weekday: "long", month: "long", day: "numeric" })} · week of ${fmt(days[0], { month: "short", day: "numeric" })}–${fmt(days[6], { day: "numeric" })} · ${plural(daysLeft, "day")} left in ${y} · ${wx ? wx.place : "Denver"}`}
+        sub={lede}
+        right={<div className="flex gap-2"><Link className="ons-tap ons-btn" href="/checkin">Check in</Link><Link className="ons-tap ons-btn pri" href="/habits">Log today's habits</Link></div>}
+        scene={<PixelScene scene="week" weather={sceneWx} temp={sceneTemp} label={`a jogger and the pets on the trail${wx ? `, ${sel ? sel.label : wx.current.label}` : ""}`} />}
+      />
 
-      {/* Stat band */}
-      <div
-        className="ons-band grid mb-7"
-        style={{ gridTemplateColumns: "repeat(6,1fr)", borderTop: "1.5px solid #232a22", borderBottom: "1px solid #e6e3dc" }}
-      >
-        {[
-          { l: "YTD Miles", v: sc.ytd_miles ?? 0, u: "mi", a: true },
-          { l: "Weekly Runs", v: sc.weekly_runs ?? 0, u: "" },
-          { l: "Books", v: sc.books_read ?? 0, u: `/${READING_GOAL}` },
-          { l: "Habits", v: `${doneCount}/${habitsTotal}`, u: "", a: doneCount > 0 },
-          { l: "Streak", v: streakDisplay, u: "" },
-          { l: "CFB Edge", v: CFB_BACKTEST_ROI, u: "%", a: true },
-        ].map((c, i) => (
-          <div
-            key={i}
-            style={{
-              padding: "16px 18px 16px 0",
-              borderRight: i < 5 ? "1px solid #ebe5d8" : "none",
-              paddingLeft: i ? 18 : 0,
-            }}
-          >
-            <K>{c.l}</K>
-            <div
-              className="font-serif font-semibold leading-none mt-2"
-              style={{ fontSize: 32, color: c.a ? "#1d5536" : "#232a22" }}
-            >
-              {c.v}
-              <span className="font-mono font-normal ml-1 text-faint" style={{ fontSize: 11 }}>{c.u}</span>
-            </div>
-            <div className="h-8" />
-          </div>
-        ))}
-      </div>
+      {steps.length > 0 && (
+        <ol className="ons-next" aria-label="Next steps">
+          {steps.slice(0, 4).map(s => <li key={s.title} className={s.cls}><Link href={s.href}><b>{s.title}</b><span>{s.detail}</span></Link></li>)}
+        </ol>
+      )}
 
-      {/* Brief + This Week */}
-      <div className="ons-stack grid gap-[22px] mb-[22px]" style={{ gridTemplateColumns: "1.62fr 1fr" }}>
-        <div
-          className="relative overflow-hidden"
-          style={{
-            background: "#fbfaf5", border: "1px solid #e6e3dc", borderTop: "2.5px solid #1d5536",
-            borderRadius: 3, padding: "22px 26px 20px",
-          }}
-        >
-          <Watermark spin />
-          <div className="relative">
-            <div className="flex justify-between items-center mb-[14px]">
-              <div className="flex items-center gap-[10px]">
-                <K color="#1d5536">Today's Brief</K>
-              </div>
-              <span className="font-mono text-faint" style={{ fontSize: 9 }}>UPDATED {data.date}</span>
-            </div>
-            {brief ? (
-              <p
-                className="font-serif m-0"
-                style={{ fontSize: 21, lineHeight: 1.4, color: "#232a22", maxWidth: 640, marginBottom: 18 }}
-                dangerouslySetInnerHTML={{ __html: brief.brief_content.replace(/\n/g, '<br/>') }}
-              />
-            ) : (
-              <p className="font-serif m-0 text-muted" style={{ fontSize: 21, lineHeight: 1.4, maxWidth: 640, marginBottom: 18 }}>
-                {brief === false ? "No brief yet today. It's written during the 9am sync." : "Loading brief…"}
-              </p>
-            )}
-            <div className="ons-stack grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid #ebe5d8" }}>
-              {[
-                {
-                  icon: "fitness", title: "What's happening",
-                  body: `${sc.ytd_miles ?? 0} mi YTD · ${sc.weekly_runs ?? 0} run${sc.weekly_runs === 1 ? "" : "s"} this week. Books at ${sc.books_read ?? 0}/${READING_GOAL}. Habits ${doneCount}/${habitsTotal} today.`,
-                },
-                {
-                  icon: "goals", title: "Why it matters",
-                  body: booksBehind > 0
-                    ? `Reading trails pace by ~${booksBehind} book${booksBehind === 1 ? "" : "s"}. Habits reset if not logged by midnight.`
-                    : `Reading is on pace. Habits reset if not logged by midnight.`,
-                },
-                {
-                  icon: "scenarios", title: "Do next",
-                  body: doneCount < habitsTotal
-                    ? `${habitsTotal - doneCount} habit${habitsTotal - doneCount === 1 ? "" : "s"} left today. Check the calendar for anything time-sensitive.`
-                    : `All habits logged. Check the calendar for anything time-sensitive.`,
-                },
-              ].map((f, i) => (
-                <div key={i} style={{ padding: "16px 16px 4px", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 16 : 0 }}>
-                  <div className="flex items-center gap-[7px] mb-[9px] text-green">
-                    <OnsIcon name={f.icon} size={15} stroke={1.6} />
-                    <span className="font-mono uppercase text-green" style={{ fontSize: 9.5, letterSpacing: "1px" }}>
-                      {f.title}
-                    </span>
-                  </div>
-                  <p className="m-0" style={{ fontSize: 12.5, lineHeight: 1.5, color: "#232a22" }}>{f.body}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between items-center mt-[18px] pt-[14px]" style={{ borderTop: "1px solid #ebe5d8" }}>
-              <span className="font-mono text-faint" style={{ fontSize: 9 }}>BUILT FROM TODAY'S DATA</span>
-              <div className="flex gap-2 items-center">
-                <span className="font-mono text-faint mr-0.5" style={{ fontSize: 9 }}>
-                  {vote ? "THANKS — LOGGED" : "HELPFUL?"}
-                </span>
-                {["Useful", "Not useful"].map((t) => (
-                  <button
-                    key={t}
-                    className="ons-tap cursor-pointer"
-                    onClick={() => setVote(t)}
-                    style={{
-                      fontSize: 11, color: vote === t ? "#fff" : "#736e5f",
-                      border: `1px solid ${vote === t ? "#1d5536" : "#e6e3dc"}`,
-                      background: vote === t ? "#1d5536" : "#f6f5f2",
-                      borderRadius: 999, padding: "4px 11px",
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="ons-grid">
+        <section className="ons-card s12" aria-labelledby="wk-h">
+          <div className="ons-ch"><h2 id="wk-h">The week</h2><span className="aside">{fmt(days[0], { weekday: "short", month: "short", day: "numeric" })} – {fmt(days[6], { weekday: "short", month: "short", day: "numeric" })} · {weekMiles.toFixed(1)} mi run{wx ? ` · weather ${wx.source}` : ""}</span></div>
+          <div className="ons-weekwrap" ref={weekRef}><div className="ons-week" role="table" aria-label="This week by day">
+            <div className="hd lane" />
+            {days.map((d, i) => <div key={d} className={["hd", d === todayIso && "today", i >= 5 && "we"].filter(Boolean).join(" ")}>{fmt(d, { weekday: "short" })}{d === todayIso ? " · today" : ""}<b>{fmt(d, { day: "numeric" })}</b></div>)}
 
-        {/* This Week */}
-        <Card pad={0}>
-          <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
-            <K>This Week</K>
-            <span className="font-mono text-faint" style={{ fontSize: 9 }}>{calendar.length} ENTRIES</span>
-          </div>
-          <div style={{ padding: "0 18px 10px" }}>
-            {calendar.length === 0 ? (
-              <div className="text-center text-muted py-8" style={{ fontSize: 13 }}>Nothing on the calendar.</div>
-            ) : (
-              calendar.slice(0, 9).map((e, i) => (
-                <div
-                  key={i}
-                  className="ons-row flex items-center gap-3 border-t border-border-2"
-                  style={{ padding: "8px 6px", margin: "0 -6px" }}
-                >
-                  <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: "#2f6b43", width: 42 }}>
-                    {e.date.toUpperCase()}
-                  </span>
-                  <span className="flex-1" style={{ fontSize: 13 }}>{e.title}</span>
-                  <CalendarIcon title={e.title} />
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Lower row: Habits · Daily 10 · Goals */}
-      <div className="ons-stack grid gap-[22px]" style={{ gridTemplateColumns: "1.2fr 1fr 1.2fr" }}>
-        <Card>
-          <div className="flex justify-between items-center mb-3">
-            <K>Today's Habits</K>
-            <span className="font-mono" style={{ fontSize: 9.5, color: doneCount === habitsTotal ? "#1d5536" : "#a39d8c" }}>
-              {doneCount}/{habitsTotal} DONE
-            </span>
-          </div>
-          <div className="flex flex-col gap-0.5">
-            {habitsToday.habits.map((h) => {
-              const on = !!done[h.key];
+            {lane("l-wx", "Weather", d => {
+              const w = wxBy.get(d);
+              if (wx === false) return d === todayIso ? <span className="ons-mk quiet">Unavailable</span> : null;
+              if (!w) return null;
+              const pressed = (wxDay ?? todayIso) === d;
               return (
-                <button
-                  key={h.key}
-                  className="ons-tap flex items-center gap-[11px] border-none cursor-pointer text-left"
-                  onClick={() => toggleHabit(h.key)}
-                  style={{ padding: "9px 8px", margin: "0 -8px", borderRadius: 6 }}
-                >
-                  <span
-                    className="grid place-items-center shrink-0"
-                    style={{
-                      width: 19, height: 19, borderRadius: 5,
-                      border: `1.5px solid ${on ? "#1d5536" : "#e6e3dc"}`,
-                      background: on ? "#1d5536" : "transparent",
-                      transition: "all .15s",
-                    }}
-                  >
-                    {on && <OnsIcon name="habits" size={12} stroke={2.2} style={{ color: "#fff" }} />}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 13.5, color: on ? "#a39d8c" : "#232a22",
-                      textDecoration: on ? "line-through" : "none", transition: "color .15s",
-                    }}
-                  >
-                    {h.label}
-                  </span>
+                <button type="button" className="ons-wx" aria-pressed={pressed} onClick={() => setWxDay(d === todayIso ? null : d)}
+                        aria-label={`${fmt(d, { weekday: "long" })}: ${w.label}, high ${w.high_f}, low ${w.low_f}. Show in the scene`}>
+                  <WxIcon c={w.condition} /><span className="n"><b>{w.high_f}°</b> {w.low_f}°</span><small>{w.label}</small>
                 </button>
               );
             })}
+            {lane("l-run", "Running", d => (runsBy.get(d) ?? []).map(r => <span key={r.strava_id} className="ons-mk ons-n">{r.distance_miles.toFixed(2)} mi · {Math.round(r.moving_time_s / 60)} m</span>))}
+            {lane("l-lift", "CrossFit", d => cfDays.has(d) ? <span className="ons-mk">Class</span> : d === todayIso ? <span className="ons-mk miss">Not logged</span> : null)}
+            {lane("l-habit", "Habits", d => {
+              if (d > todayIso) return null;
+              const h = d === todayIso ? Object.fromEntries(today.habits.map(x => [x.key, x.done])) : habitBy.get(d);
+              if (!h) return <span className="ons-mk quiet">–</span>;
+              const n = habitKeys.filter(k => h[k]).length;
+              return <span className="ons-dots" aria-label={`${n} of ${habitKeys.length}`}>{habitKeys.map(k => <i key={k} className={h[k] ? "d" : ""} />)}</span>;
+            })}
+            {lane("l-check", "Check-in", d => {
+              if (!checkinBy) return d === todayIso ? <Link href="/checkin" className="ons-mk quiet" style={{ textDecoration: "none" }}>Private</Link> : null;
+              if (d > todayIso) return null;
+              const c = checkinBy.get(d);
+              return c?.logged_at ? <span className="ons-mk ons-n">Readiness {c.readiness}</span> : d === todayIso ? <span className="ons-mk miss">Due</span> : <span className="ons-mk quiet">–</span>;
+            })}
+            {lane("l-plan", "Plans", d => (calBy.get(d) ?? []).map((t, i) => <span key={i} className={`ons-mk ${/bday|birthday/i.test(t) ? "solid" : ""}`} title={t}>{t}</span>))}
+            {lane("l-edge", "CFB", d => {
+              const ks = cfbBy.get(d);
+              if (ks?.length) { const s = ks; return <><span className="ons-mk solid">{plural(ks.length, "pick")}</span><span className="ons-mk ons-n">{fmtTime(s[0])}–{fmtTime(s[s.length - 1])}</span></>; }
+              if (lastCfbDay && todayIso > lastCfbDay && d === addDays(lastCfbDay, 1)) return <span className="ons-mk quiet">{graded === picks.length ? "Graded" : graded ? `${graded} of ${picks.length} graded` : "Grading"}</span>;
+              return null;
+            })}
+          </div></div>
+          <div className="ons-legend">
+            <span><i style={{ background: "var(--run-mark)" }} />Logged</span>
+            <span><i style={{ outline: "1px dashed var(--muted)", outlineOffset: -1 }} />Missing or due</span>
+            <span><i style={{ boxShadow: "inset 0 0 0 1px var(--hue)", background: "var(--hue-soft)" }} />Today</span>
+            {cfNewest && daysSinceCf != null && daysSinceCf > 6 && <span>SugarWOD's newest record is {fmt(cfNewest, { month: "short", day: "numeric" })}; if you've been going, the export may be stale.</span>}
           </div>
-        </Card>
+        </section>
 
-        <Card>
-          <K style={{ marginBottom: 12 }}>Daily 10 · Cover</K>
-          {daily10 ? (
-            <>
-              {daily10.cover_image_path ? (
-                <img
-                  src={`${process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000/api"}/music/daily10/cover`}
-                  alt="Today's Daily 10 cover art"
-                  className="mb-[11px]"
-                  style={{
-                    width: "100%", aspectRatio: "16/8", objectFit: "cover",
-                    display: "block", border: "1px solid #e6e3dc",
-                  }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              ) : (
-                <div
-                  className="grid place-items-center mb-[11px]"
-                  style={{
-                    aspectRatio: "16/8",
-                    background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 7px, #fbfaf5 7px, #fbfaf5 14px)",
-                    border: "1px solid #e6e3dc",
-                  }}
-                >
-                  <span className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "1px" }}>
-                    {daily10.date}
-                  </span>
-                </div>
-              )}
-              <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.45, color: "#232a22" }}>
-                {daily10.description}
-              </p>
-            </>
-          ) : (
-            <div className="text-center text-muted py-8" style={{ fontSize: 13 }}>
-              No playlist generated yet today.
-            </div>
+        <section className="ons-card s8" aria-labelledby="pace-h">
+          <div className="ons-ch"><h2 id="pace-h">Goals on the clock</h2><span className="aside">{plural(daysLeft, "day")} left · {Math.round(yearFrac * 100)}% of the year gone</span></div>
+          <table className="ons-table">
+            <thead><tr><th>Goal</th><th className="hide-p">Progress · line is today</th><th className="r">Needs</th><th className="r">State</th></tr></thead>
+            <tbody>
+              <tr className="l-read">
+                <td><div className="ons-goal"><i /><div>Read {READING_GOAL} books<span className="sub ons-n">{books} of {READING_GOAL}</span></div></div></td>
+                <td className="hide-p"><div className="ons-bar"><b style={{ width: `${Math.min(100, (books / READING_GOAL) * 100)}%` }} /><i style={{ left: `${yearFrac * 100}%` }} /></div></td>
+                <td className="r ons-n">{books >= READING_GOAL ? "—" : `1 per ${Math.max(1, Math.round(daysLeft / (READING_GOAL - books)))} d`}</td>
+                <td className="r">{books >= booksExpected ? <span className="ons-badge ok">On track</span> : <span className="ons-badge risk">{Math.ceil(booksExpected - books)} behind</span>}</td>
+              </tr>
+              {wired.map(g => {
+                const [cls, label, unit] = GOAL_AREA[g.goal_key];
+                const p = pace(g, yearFrac, weeksLeft, weeksGone);
+                return (
+                  <tr key={g.goal_key} className={cls}>
+                    <td><div className="ons-goal"><i /><div>{label}<span className="sub ons-n">{+g.current_value!.toFixed(2)} of {g.target_numeric}{unit ? ` ${unit}` : ""}</span></div></div></td>
+                    <td className="hide-p"><div className="ons-bar"><b style={{ width: `${Math.min(100, (g.current_value! / g.target_numeric!) * 100)}%` }} /><i style={{ left: `${yearFrac * 100}%` }} /></div></td>
+                    <td className="r ons-n">{p.needs}</td>
+                    <td className="r"><span className={`ons-badge ${p.state}`}>{p.label}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="ons-note">
+            "Out of reach" means the rate needed is more than three times this year's average. {habitGoals > 0 && <>{plural(habitGoals, "daily habit goal")} {habitGoals === 1 ? "is" : "are"} tracked on Habits. </>}
+            {notWired > 0 && <><Link href="/goals" className="text-hue">{plural(notWired, "more goal")}</Link> {notWired === 1 ? "has" : "have"} no data source wired yet.</>}
+          </p>
+        </section>
+
+        <div className="s4 ons-col">
+          <section className="ons-card t t-habit" aria-labelledby="hab-h">
+            <div className="ons-ch"><h2 id="hab-h">Today's habits</h2><span className="aside ons-n">{doneToday} of {today.total_count}</span></div>
+            {today.habits.map(h => (
+              <button key={h.key} type="button" className="ons-hb" aria-pressed={h.done} onClick={() => toggleHabit(h.key, !h.done)}>
+                <span className="box">{h.done && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}</span>
+                {h.label}
+              </button>
+            ))}
+            {habitErr && <p className="ons-note" role="alert">{habitErr}</p>}
+          </section>
+          <section className="ons-card" aria-labelledby="teams-h">
+            <div className="ons-ch"><h2 id="teams-h">My teams today</h2><Link href="/sports" className="aside" style={{ textDecoration: "none" }}>All sports</Link></div>
+            {sports === false ? <p className="ons-note m-0">Couldn't load scores.</p>
+              : !sports ? <p className="ons-note m-0">Loading…</p>
+              : sports.my_teams.length ? sports.my_teams.slice(0, 3).map(g => <GameLine key={g.id} g={g} label={g.my_team ?? undefined} />)
+              : sports.upcoming.length ? <>{<p className="ons-note" style={{ margin: "0 0 6px" }}>None today. Next up:</p>}{sports.upcoming.slice(0, 3).map(g => <GameLine key={g.id} g={g} withDay label={g.my_team ?? undefined} />)}</>
+              : <p className="ons-note m-0">None of your teams play today.</p>}
+          </section>
+        </div>
+
+        <section className="ons-card s8" aria-labelledby="brief-h">
+          <div className="ons-ch"><h2 id="brief-h">Today's brief</h2><span className="aside">Written during the morning sync</span></div>
+          <div style={{ fontSize: 15, lineHeight: "23px", color: "var(--ink-2)", maxWidth: "70ch" }}>
+            {brief ? <Brief text={brief} /> : <p className="m-0 text-muted">{brief === false ? "No brief yet today. It's written during the 9 am sync." : "Loading the brief…"}</p>}
+          </div>
+        </section>
+
+        <div className="s4 ons-col">
+          {summary.daily10 && (
+            <section className="ons-card" aria-labelledby="d10-h">
+              <div className="ons-ch"><h2 id="d10-h">Daily 10</h2><Link href="/music" className="aside" style={{ textDecoration: "none" }}>Music</Link></div>
+              <p className="m-0" style={{ fontSize: 13, lineHeight: "19px", color: "var(--ink-2)" }}>{summary.daily10.description}</p>
+            </section>
           )}
-        </Card>
-
-        <Card pad={0}>
-          <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
-            <K>My Teams Today</K>
-            <a href="/sports" className="font-mono text-faint no-underline" style={{ fontSize: 9 }}>
-              VIEW ALL →
-            </a>
-          </div>
-          <div style={{ padding: "0 18px 10px" }}>
-            {sportsError ? (
-              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>Couldn't load scores.</div>
-            ) : !sports ? (
-              <div className="text-center text-faint py-6" style={{ fontSize: 12.5 }}>Loading…</div>
-            ) : sports.my_teams.length > 0 ? (
-              sports.my_teams.slice(0, 3).map((g) => <GameLine key={g.id} g={g} label={g.my_team ?? undefined} />)
-            ) : sports.upcoming.length > 0 ? (
-              <>
-                <div className="font-mono text-faint" style={{ fontSize: 9, padding: "2px 0 6px" }}>NONE TODAY · NEXT UP</div>
-                {sports.upcoming.slice(0, 3).map((g) => <GameLine key={g.id} g={g} withDay label={g.my_team ?? undefined} />)}
-              </>
-            ) : (
-              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>
-                None of your teams are playing today.
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-between items-center border-t border-border-2" style={{ padding: "16px 18px 12px" }}>
-            <K>Top Games Today</K>
-            <span className="font-mono text-faint" style={{ fontSize: 9 }}>VIA ESPN</span>
-          </div>
-          <div style={{ padding: "0 18px 12px" }}>
-            {sportsError ? (
-              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>Couldn't load scores.</div>
-            ) : !sports ? (
-              <div className="text-center text-faint py-6" style={{ fontSize: 12.5 }}>Loading…</div>
-            ) : sports.top.length === 0 ? (
-              <div className="text-center text-muted py-6" style={{ fontSize: 12.5 }}>No games today.</div>
-            ) : (
-              sports.top.slice(0, 3).map((g) => <GameLine key={g.id} g={g} label={g.note ?? undefined} />)
-            )}
-          </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

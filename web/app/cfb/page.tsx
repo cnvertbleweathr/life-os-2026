@@ -1,27 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   cfbApi, parseSeasonRois,
   type CfbTeam, type CfbTeamDetail, type CfbMatchupResult, type CfbMatchupError,
-  type CfbPick, type CfbTeamTrend, type CfbTrendGame, type CfbWeeks,
+  type CfbPick, type CfbTeamTrend, type CfbTrendGame, type CfbWeeks, type CfbLiveTracker, type CfbScheduleGame,
 } from "@/lib/api";
 import {
   Card, PageHead, K, Pill, Watermark, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { PixelScene } from "@/components/ui/PixelScene";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const GOOD = "#1d5536";
-const WARN = "#9a6a1e";
-const BAD = "#a8473a";
-const FAINT = "#a39d8c";
-const EMPTY = "#d4cfc5";
-const OFF_COLOR = "#1d5536";
-const DEF_COLOR = "#a8473a";
+const GOOD = "var(--hue)";
+const WARN = "var(--warn)";
+const BAD = "var(--neg)";
+const FAINT = "var(--faint)";
+const EMPTY = "var(--control)";
+const OFF_COLOR = "var(--hue)";
+const DEF_COLOR = "var(--neg)";
 
-function Mono({ children, c = "#736e5f", s = 10 }: { children: React.ReactNode; c?: string; s?: number }) {
+function Mono({ children, c = "var(--muted)", s = 10 }: { children: React.ReactNode; c?: string; s?: number }) {
   return <span className="font-mono" style={{ fontSize: s, color: c }}>{children}</span>;
 }
 
@@ -81,7 +82,7 @@ function TrendChart({ games, w = 300, h = 70 }: { games: CfbTrendGame[]; w?: num
   return (
     <div>
       <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block", height: h }}>
-        <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="#d9d3c5" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="var(--control)" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         <path d={path(def)} fill="none" stroke={DEF_COLOR} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
         <path d={path(off)} fill="none" stroke={OFF_COLOR} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
         {off.map((v, i) => v != null && <circle key={`o${i}`} cx={x(i)} cy={y(v)} r={2} fill={OFF_COLOR} />)}
@@ -111,11 +112,11 @@ function ChartLegend() {
 
 // ── Shared stat tile ─────────────────────────────────────────────────────────
 
-function Tile({ label, main, mainColor = "#232a22", sub }: {
+function Tile({ label, main, mainColor = "var(--ink)", sub }: {
   label: string; main: React.ReactNode; mainColor?: string; sub?: React.ReactNode;
 }) {
   return (
-    <div style={{ background: "#faf8f4", border: "1px solid #ebe5d8", borderRadius: 8, padding: "9px 11px" }}>
+    <div style={{ background: "var(--raised)", border: "1px solid var(--rule)", borderRadius: 8, padding: "9px 11px" }}>
       <Mono s={8.5} c={FAINT}>{label}</Mono>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
         <span className="font-mono" style={{ fontSize: 17, fontWeight: 700, color: mainColor }}>{main}</span>
@@ -178,7 +179,7 @@ function GameDrill({ awayTeam, homeTeam, season, week, onClose }: {
   }, [season, throughWeek]);
 
   return (
-    <div style={{ background: "#ffffff", border: "1px solid #e6e3dc", borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
+    <div style={{ background: "var(--sheet)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div>
           <K>Season to date · entering Week {week}</K>
@@ -193,15 +194,15 @@ function GameDrill({ awayTeam, homeTeam, season, week, onClose }: {
         <Loading label="Loading season trends…" />
       ) : (
         <>
-          <div style={{ display: "flex", borderTop: "1px solid #ebe5d8", paddingTop: 14 }}>
+          <div style={{ display: "flex", borderTop: "1px solid var(--rule)", paddingTop: 14 }}>
             {[{ team: awayTeam, side: "AWAY" }, { team: homeTeam, side: "HOME" }].map(({ team, side }, i) => {
               const t = trends.get(team);
               return (
-                <div key={team} style={{ flex: 1, minWidth: 0, paddingLeft: i ? 14 : 0, paddingRight: i ? 0 : 14, borderLeft: i ? "1px solid #ebe5d8" : "none" }}>
+                <div key={team} style={{ flex: 1, minWidth: 0, paddingLeft: i ? 14 : 0, paddingRight: i ? 0 : 14, borderLeft: i ? "1px solid var(--rule)" : "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <Crest name={team} size={26} />
                     <div>
-                      <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "#1a2420" }}>{team}</div>
+                      <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{team}</div>
                       <Mono s={9} c={FAINT}>{side}{t ? ` · ${t.games} GAMES` : ""}</Mono>
                     </div>
                   </div>
@@ -241,7 +242,7 @@ function MetricBar({ label, value, lo, hi, fmt, invert }: {
           <span className="text-ink" style={{ fontSize: 12.5 }}>{label}</span>
           <Mono s={11} c={FAINT}>no data</Mono>
         </div>
-        <div className="rounded overflow-hidden" style={{ height: 5, background: "#efebe1" }} />
+        <div className="rounded overflow-hidden" style={{ height: 5, background: "var(--frame)" }} />
       </div>
     );
   }
@@ -254,7 +255,7 @@ function MetricBar({ label, value, lo, hi, fmt, invert }: {
         <span className="text-ink" style={{ fontSize: 12.5 }}>{label}</span>
         <Mono s={11} c={col}>{fmt ? fmt(value) : value.toFixed(2)}</Mono>
       </div>
-      <div className="rounded overflow-hidden" style={{ height: 5, background: "#efebe1" }}>
+      <div className="rounded overflow-hidden" style={{ height: 5, background: "var(--frame)" }}>
         <div className="rounded" style={{ width: `${pct * 100}%`, height: "100%", background: col, transition: "width .4s" }} />
       </div>
     </div>
@@ -265,7 +266,7 @@ function GameLog({ games }: { games: CfbTrendGame[] }) {
   const cols = "34px 1fr 64px 58px 58px";
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, paddingBottom: 4, borderBottom: "1px solid #ebe5d8" }}>
+      <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, paddingBottom: 4, borderBottom: "1px solid var(--rule)" }}>
         {["WK", "OPPONENT", "SCORE", "OFF", "DEF"].map((h, i) => (
           <div key={h} style={{ textAlign: i >= 2 ? "right" : "left" }}><Mono s={8} c={FAINT}>{h}</Mono></div>
         ))}
@@ -274,7 +275,7 @@ function GameLog({ games }: { games: CfbTrendGame[] }) {
         const has = g.points_for != null && g.points_against != null;
         const won = has && (g.points_for as number) > (g.points_against as number);
         return (
-          <div key={g.week} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, padding: "5px 0", borderBottom: "1px solid #f3efe6", alignItems: "center" }}>
+          <div key={g.week} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, padding: "5px 0", borderBottom: "1px solid var(--raised)", alignItems: "center" }}>
             <Mono s={10} c={FAINT}>{g.week}</Mono>
             <span style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {g.venue === "away" ? "@ " : g.venue === "home" ? "vs " : ""}{g.opponent ?? "—"}
@@ -354,9 +355,9 @@ function TeamProfile({ team, trend, trendsReady, season, onClose }: {
             ["PROFIT YRS", `${team.seasons_profitable}/4`, team.seasons_profitable >= 3],
             ["GAMES", String(team.total_bets), false],
           ].map(([l, v, hot], i) => (
-            <div key={i} style={{ padding: "12px 0", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 14 : 0 }}>
+            <div key={i} style={{ padding: "12px 0", borderLeft: i ? "1px solid var(--rule)" : "none", paddingLeft: i ? 14 : 0 }}>
               <Mono s={8.5} c={FAINT}>{l as string}</Mono>
-              <div className="font-serif font-bold mt-1" style={{ fontSize: 20, color: hot ? GOOD : "#232a22" }}>{v as string}</div>
+              <div className="font-serif font-bold mt-1" style={{ fontSize: 20, color: hot ? GOOD : "var(--ink)" }}>{v as string}</div>
             </div>
           ))}
         </div>
@@ -425,9 +426,9 @@ function TeamProfile({ team, trend, trendsReady, season, onClose }: {
                     className="w-full rounded-sm mt-[3px]"
                     style={{
                       height: Math.max(3, h),
-                      background: roi == null ? "#e6e3dc" : pos ? GOOD : BAD,
+                      background: roi == null ? "var(--border)" : pos ? GOOD : BAD,
                       opacity: isCurrent ? 0.6 : 0.85,
-                      border: isCurrent ? "1px dashed #a39d8c" : "none",
+                      border: isCurrent ? "1px dashed var(--faint)" : "none",
                     }}
                   />
                   <Mono s={8.5} c={isCurrent ? GOOD : FAINT}>'{String(r.season).slice(2)}</Mono>
@@ -468,7 +469,7 @@ const SORT_OPTS: [TeamSort, string][] = [
 function MiniBar({ pct, color }: { pct: number; color: string }) {
   const w = Math.max(4, Math.min(100, pct));
   return (
-    <div style={{ width: 40, height: 4, background: "#efebe1", borderRadius: 2, overflow: "hidden" }}>
+    <div style={{ width: 40, height: 4, background: "var(--frame)", borderRadius: 2, overflow: "hidden" }}>
       <div style={{ width: `${w}%`, height: "100%", background: color, borderRadius: 2 }} />
     </div>
   );
@@ -489,7 +490,7 @@ function PointsCell({ total, perGame }: { total: number | null | undefined; perG
   if (total == null) return <div style={{ textAlign: "right" }}><Mono s={10} c={EMPTY}>—</Mono></div>;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-      <span className="font-mono" style={{ fontSize: 11, color: "#232a22" }}>{total}</span>
+      <span className="font-mono" style={{ fontSize: 11, color: "var(--ink)" }}>{total}</span>
       <Mono s={8.5} c={FAINT}>{perGame != null ? `${perGame.toFixed(1)}/g` : ""}</Mono>
     </div>
   );
@@ -559,7 +560,7 @@ function TeamsView({ teams }: { teams: CfbTeam[] }) {
           <div style={{ minWidth: 720 }}>
             <div style={{
               display: "grid", gridTemplateColumns: TEAM_COLS, gap: 6,
-              padding: "6px 26px 6px 18px", borderTop: "1px solid #ebe5d8", borderBottom: "2px solid #ebe5d8",
+              padding: "6px 26px 6px 18px", borderTop: "1px solid var(--rule)", borderBottom: "2px solid var(--rule)",
             }}>
               <span /><span />
               <Mono s={8} c={FAINT}>TEAM</Mono>
@@ -585,8 +586,8 @@ function TeamsView({ teams }: { teams: CfbTeam[] }) {
                     style={{
                       display: "grid", alignItems: "center", gridTemplateColumns: TEAM_COLS, gap: 6,
                       width: "100%", textAlign: "left", padding: "8px 8px", margin: "0 -8px", borderRadius: 6,
-                      background: on ? "#e9efe7" : "transparent",
-                      boxShadow: on ? "inset 2px 0 0 #1d5536" : "none",
+                      background: on ? "var(--hue-soft)" : "transparent",
+                      boxShadow: on ? "inset 2px 0 0 var(--hue)" : "none",
                       border: "none", cursor: "pointer",
                     }}
                   >
@@ -645,7 +646,7 @@ function EdgeList({ items, color, label }: { items: string[]; color: string; lab
 }
 
 function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
-  const scoreColor = result.meets_publish_bar ? "#1d5536" : result.model_score > 0 ? "#9a6a1e" : "#a39d8c";
+  const scoreColor = result.meets_publish_bar ? "var(--hue)" : result.model_score > 0 ? "var(--warn)" : "var(--faint)";
   return (
     <Card accent={result.meets_publish_bar} style={{ position: "relative", overflow: "hidden" }}>
       {result.meets_publish_bar && <Watermark size={180} opacity={0.04} />}
@@ -656,7 +657,7 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             <span className="font-serif font-bold" style={{ fontSize: 17 }}>{result.matchup}</span>
             <Crest name={result.matchup.split(" @ ")[1]} size={28} />
           </div>
-          <span className="font-mono rounded-full" style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", padding: "3px 10px", background: result.meets_publish_bar ? "#1d5536" : "#efebe1", color: result.meets_publish_bar ? "#fff" : "#736e5f" }}>
+          <span className="font-mono rounded-full" style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", padding: "3px 10px", background: result.meets_publish_bar ? "var(--hue)" : "var(--frame)", color: result.meets_publish_bar ? "var(--hue-ink)" : "var(--muted)" }}>
             {result.meets_publish_bar ? "would publish" : "below publish bar"}
           </span>
         </div>
@@ -677,25 +678,25 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             ["RET GAP",     result.ret_gap     != null ? `${result.ret_gap >= 0 ? "+" : ""}${result.ret_gap.toFixed(3)}` : "—"],
             ["RECRUIT GAP", result.recruiting_gap != null ? `${result.recruiting_gap >= 0 ? "+" : ""}${result.recruiting_gap.toFixed(1)}` : "—"],
           ].map(([l, v], i) => (
-            <div key={i} style={{ padding: "10px 0", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 12 : 0 }}>
-              <Mono s={8.5} c="#a39d8c">{l}</Mono>
+            <div key={i} style={{ padding: "10px 0", borderLeft: i ? "1px solid var(--rule)" : "none", paddingLeft: i ? 12 : 0 }}>
+              <Mono s={8.5} c="var(--faint)">{l}</Mono>
               <div className="font-mono font-semibold mt-1" style={{ fontSize: 14 }}>{v}</div>
             </div>
           ))}
         </div>
-        <EdgeList items={result.edges} color="#1d5536" label={`SIGNALS (${result.n_edges})`} />
-        <EdgeList items={result.warnings} color="#9a6a1e" label="WARNINGS" />
+        <EdgeList items={result.edges} color="var(--hue)" label={`SIGNALS (${result.n_edges})`} />
+        <EdgeList items={result.warnings} color="var(--warn)" label="WARNINGS" />
         {result.edges.length === 0 && result.warnings.length === 0 && <Empty message="No qualifying signals for this matchup." />}
         {(result.home_coach || result.away_coach) && (
           <div className="mt-4 pt-4 border-t border-border-2">
-            <Mono s={9} c="#a39d8c">COACHES</Mono>
+            <Mono s={9} c="var(--faint)">COACHES</Mono>
             <div className="flex justify-between items-baseline mt-1.5" style={{ fontSize: 12.5 }}>
               <span>{result.home_coach ?? "—"} vs {result.away_coach ?? "—"}</span>
-              {result.coach_h2h && <Mono s={10.5} c="#736e5f">H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)</Mono>}
+              {result.coach_h2h && <Mono s={10.5} c="var(--muted)">H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)</Mono>}
             </div>
           </div>
         )}
-        <div className="mt-4"><Mono s={8.5} c="#a39d8c">score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only</Mono></div>
+        <div className="mt-4"><Mono s={8.5} c="var(--faint)">score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only</Mono></div>
       </div>
     </Card>
   );
@@ -728,28 +729,28 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
         <div className="flex flex-col gap-3">
           {[["HOME TEAM", home, setHome], ["AWAY TEAM", away, setAway]].map(([lbl, val, setter]) => (
             <div key={lbl as string}>
-              <Mono s={9} c="#a39d8c">{lbl as string}</Mono>
-              <select value={val as string} onChange={(e) => (setter as any)(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}>
+              <Mono s={9} c="var(--faint)">{lbl as string}</Mono>
+              <select value={val as string} onChange={(e) => (setter as any)(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }}>
                 {names.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
           ))}
           <div className="flex gap-3">
             <div className="flex-1">
-              <Mono s={9} c="#a39d8c">SPREAD (NEG = HOME FAV)</Mono>
-              <input value={spread} onChange={(e) => setSpread(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+              <Mono s={9} c="var(--faint)">SPREAD (NEG = HOME FAV)</Mono>
+              <input value={spread} onChange={(e) => setSpread(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             </div>
             <div className="flex-1">
-              <Mono s={9} c="#a39d8c">OVER/UNDER</Mono>
-              <input value={overUnder} onChange={(e) => setOverUnder(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+              <Mono s={9} c="var(--faint)">OVER/UNDER</Mono>
+              <input value={overUnder} onChange={(e) => setOverUnder(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             </div>
           </div>
           <div>
-            <Mono s={9} c="#a39d8c">SEASON</Mono>
-            <input value={season} onChange={(e) => setSeason(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+            <Mono s={9} c="var(--faint)">SEASON</Mono>
+            <input value={season} onChange={(e) => setSeason(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             <p className="text-faint mt-1.5 mb-0" style={{ fontSize: 10.5, lineHeight: 1.4 }}>Model uses prior-season stats (season − 1) — walk-forward, no lookahead.</p>
           </div>
-          <button onClick={run} disabled={loading || !home || !away} style={{ marginTop: 4, padding: "10px 0", borderRadius: 8, border: "none", background: loading ? "#a39d8c" : "#1d5536", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={run} disabled={loading || !home || !away} style={{ marginTop: 4, padding: "10px 0", borderRadius: 8, border: "none", background: loading ? "var(--faint)" : "var(--hue)", color: "var(--hue-ink)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Scoring…" : "Run Model"}
           </button>
         </div>
@@ -759,7 +760,7 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
         {!error && !result && <Card><Empty message="Pick two teams and run the model." detail="Calls the real score_game() walk-forward model directly." /></Card>}
         {result && "error" in result && (
           <Card accent>
-            <K color="#a8473a" style={{ marginBottom: 8 }}>{result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}</K>
+            <K color="var(--neg)" style={{ marginBottom: 8 }}>{result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}</K>
             <p style={{ fontSize: 13, lineHeight: 1.5 }}>{result.message}</p>
           </Card>
         )}
@@ -769,256 +770,255 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
   );
 }
 
-// ── This Week: picks for any 2026 week, with inline GameDrill ─────────────────
+// ── Degenerates Corner — College Football (Logbook Color) ───────────────────
+// Header, summary tiles and the slate are built from real data only:
+//   /cfb/weeks (which weeks exist), /cfb/slate per week (picks, outcomes, P&L),
+//   /cfb/schedule (kickoff times), /cfb/live-tracker (season totals).
+// Times are shown in Denver time. Backtest figures quote docs/SYSTEM_EXPLAINER.md.
 
-const WARNING_LABELS: Record<string, string> = {
-  "ret_low_home": "Low returning production for home team",
-  "ret_low_away": "Low returning production for away team",
-  "coach_change": "Head coach change this offseason",
-  "coach_change+low_ret": "Coach change + low returning production",
-  "SP+_disagrees": "SP+ rating disagrees with this bet",
-  "tier_FADE": "Bet team has a FADE historical tier",
-  "tier_STRONG_FADE": "Bet team has a STRONG FADE historical tier",
-  "home_havoc_vs_bet": "Home defense havoc rate works against this bet",
-  "away_havoc_vs_bet": "Away defense havoc rate works against this bet",
+const TZ = "America/Denver";
+const WARNING_SHORT: Record<string, string> = {
+  coach_change: "Coach change",
+  "coach_change+low_ret": "Coach change, low returning",
+  ret_low_home: "Low returning (home)",
+  ret_low_away: "Low returning (away)",
+  "SP+_disagrees": "SP+ disagrees",
+  tier_FADE: "Fade tier",
+  tier_STRONG_FADE: "Strong fade tier",
+  home_havoc_vs_bet: "Home havoc vs bet",
+  away_havoc_vs_bet: "Away havoc vs bet",
 };
 
-function OutcomeBadge({ p }: { p: CfbPick }) {
-  if (!p.outcome || p.outcome === "ungradeable") return null;
-  const map = {
-    win:     { label: "WIN",     bg: GOOD,      fg: "#fff" },
-    loss:    { label: "LOSS",    bg: BAD,       fg: "#fff" },
-    push:    { label: "PUSH",    bg: "#efebe1", fg: "#736e5f" },
-    pending: { label: "PENDING", bg: "#efebe1", fg: "#736e5f" },
-  } as const;
-  const m = map[p.outcome];
+type Side = "dog" | "fav" | null;
+interface ParsedPick {
+  p: CfbPick; team: string; line: string; side: Side; opp: string; away: string; home: string; atHome: boolean | null;
+  kick: Date | null; final: boolean;
+}
+
+function parsePick(p: CfbPick, kicks: Map<string, CfbScheduleGame>): ParsedPick {
   const [away, home] = p.matchup.split(" @ ");
-  const score = p.home_score != null && p.away_score != null ? `${away} ${p.away_score} – ${home} ${p.home_score}` : null;
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      {score && <Mono s={9.5} c="#736e5f">{score}</Mono>}
-      <span className="font-mono" style={{ fontSize: 9, letterSpacing: "0.5px", padding: "2px 7px", borderRadius: 9999, background: m.bg, color: m.fg }}>{m.label}</span>
-    </span>
-  );
-}
-
-function PickCardDrillable({ p, isOfficial = true, season, week }: { p: CfbPick; isOfficial?: boolean; season: number; week: number }) {
-  const [expanded, setExpanded] = useState(false);
-  const isTierRisk = p.bet_type === "FADE_TIER_RISK";
-  const accentColor = !isOfficial ? FAINT : isTierRisk ? WARN : GOOD;
-  const [awayName, homeName] = p.matchup.split(" @ ");
-
-  return (
-    <div>
-      <Card accent={isOfficial} accentColor={accentColor} style={{ position: "relative", overflow: "hidden", opacity: isOfficial ? 1 : 0.82, background: isOfficial ? undefined : "#faf8f4" }}>
-        <button
-          onClick={() => setExpanded(prev => !prev)}
-          style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Crest name={awayName} size={20} />
-              <span className="truncate font-serif font-bold" style={{ fontSize: 15 }}>{p.matchup}</span>
-              <Crest name={homeName} size={20} />
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {!isOfficial && (
-                <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: FAINT, border: "1px solid #d4cfc5", borderRadius: 3, padding: "1px 5px" }}>watch</span>
-              )}
-              <span className="font-mono" style={{ fontSize: 13, color: accentColor }}>{p.stars} Model: {p.model_score}</span>
-              <span style={{ fontSize: 14, color: expanded ? accentColor : "#c4bfb5" }}>{expanded ? "▾" : "▸"}</span>
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{p.bet}</span>
-            <span className="flex items-center gap-3">
-              <OutcomeBadge p={p} />
-              <Mono s={10.5}>{p.line}{p.ou && p.ou !== "N/A" ? ` · O/U ${p.ou}` : ""}</Mono>
-            </span>
-          </div>
-        </button>
-
-        {isTierRisk && <Mono s={9} c={accentColor}>⚠ Bet is on a team with a STRONG_FADE historical tier in this situation</Mono>}
-        <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.5, margin: "8px 0 0" }}>{p.edge}</p>
-
-        {p.warnings.length > 0 && (
-          <div className="flex flex-col gap-1 mt-2">
-            {p.warnings.map((w, i) => <Mono key={i} s={10} c={WARN}>⚠️ {WARNING_LABELS[w] ?? w}</Mono>)}
-          </div>
-        )}
-
-        {!expanded && (
-          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #ebe5d8" }}>
-            <Mono s={8.5} c="#c4bfb5">▸ CLICK TO SEE SEASON-TO-DATE STRENGTH COMPARISON</Mono>
-          </div>
-        )}
-      </Card>
-
-      {expanded && (
-        <div style={{ marginTop: -6 }}>
-          <GameDrill awayTeam={awayName} homeTeam={homeName} season={season} week={week} onClose={() => setExpanded(false)} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-const REGULAR_SEASON_WEEKS = 15;
-
-function WeekRecord({ picks }: { picks: CfbPick[] }) {
-  const graded = picks.filter(p => p.outcome === "win" || p.outcome === "loss" || p.outcome === "push");
-  if (graded.length === 0) return null;
-  const w = graded.filter(p => p.outcome === "win").length;
-  const l = graded.filter(p => p.outcome === "loss").length;
-  const push = graded.filter(p => p.outcome === "push").length;
-  const pnl = graded.reduce((a, p) => a + (p.pnl ?? 0), 0);
-  return (
-    <Mono s={10} c={pnl >= 0 ? GOOD : BAD}>
-      OFFICIAL {w}-{l}{push ? `-${push}` : ""} · {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}u
-    </Mono>
-  );
-}
-
-function SlateView() {
-  const season = new Date().getFullYear();
-  const [weeks, setWeeks] = useState<CfbWeeks | null>(null);
-  const [week, setWeek] = useState<number | null>(null);
-  const [picks, setPicks] = useState<CfbPick[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showAllWatch, setShowAllWatch] = useState(false);
-
-  // 1. Which weeks have archived slates, and which week is "current"?
-  useEffect(() => {
-    cfbApi.weeks(season)
-      .then(w => {
-        setWeeks(w);
-        const fallback = w.weeks.length ? w.weeks[w.weeks.length - 1].week : 1;
-        setWeek(w.current_week ?? fallback);
-      })
-      .catch((e: Error) => setError(e.message));
-  }, [season]);
-
-  // 2. Load the selected week. Archived slate first (has grades); fall back
-  //    to todays_picks.json for the current week if it hasn't been archived.
-  useEffect(() => {
-    if (week == null || !weeks) return;
-    setPicks(null);
-    setShowAllWatch(false);
-    setError(null);
-    cfbApi.slate(season, week)
-      .then(async (slate) => {
-        if (slate.length === 0 && week === weeks.current_week) return cfbApi.picks();
-        return slate;
-      })
-      .then(setPicks)
-      .catch((e: Error) => setError(e.message));
-  }, [season, week, weeks]);
-
-  const available = new Map((weeks?.weeks ?? []).map(w => [w.week, w]));
-  const maxWeek = Math.max(REGULAR_SEASON_WEEKS, ...Array.from(available.keys()));
-  const weekOptions = Array.from({ length: maxWeek }, (_, i) => i + 1);
-
-  const optionLabel = (wk: number) => {
-    const info = available.get(wk);
-    const cur = wk === weeks?.current_week ? " · current" : "";
-    if (!info) return `Week ${wk} — no slate`;
-    if (info.n_official == null) return `Week ${wk}${cur}`;
-    return `Week ${wk}${cur} · ${info.n_official} official${info.graded ? " · graded" : ""}`;
+  const m = p.bet.match(/^(.*?)\s+([+-]\d+(?:\.\d+)?|PK)\s*\((home|away)\s+(dog|fav)\)/i);
+  const g = kicks.get(`${away}@${home}`);
+  const kick = g?.start_date ? new Date(g.start_date) : null;
+  if (!m) return { p, team: p.bet, line: "", side: null, opp: "", away, home, atHome: null, kick, final: !!g?.is_final };
+  const where = m[3].toLowerCase();
+  return {
+    p, team: m[1], line: m[2].replace("-", "−"), side: m[4].toLowerCase() as Side,
+    opp: where === "home" ? `v ${away}` : `at ${home}`, away, home, atHome: where === "home", kick, final: !!g?.is_final,
   };
+}
 
-  const header = (
-    <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
-      <div className="flex items-center gap-3 flex-wrap">
-        <K color={GOOD} className="whitespace-nowrap">{season} ·</K>
-        <select
-          value={week ?? ""}
-          onChange={(e) => setWeek(parseInt(e.target.value, 10))}
-          disabled={!weeks}
-          aria-label="Select week"
-          className="font-mono"
-          style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #d9d3c5", background: "#fbfaf5", color: GOOD, fontSize: 11.5, letterSpacing: "0.04em", cursor: "pointer" }}
-        >
-          {weekOptions.map(wk => (
-            <option key={wk} value={wk} disabled={!available.has(wk)}>{optionLabel(wk)}</option>
-          ))}
-        </select>
-        <Mono s={9.5} c={FAINT}>MODEL V3 WALK-FORWARD</Mono>
+const fmtTime = (d: Date) =>
+  new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d).replace(" AM", " am").replace(" PM", " pm");
+const fmtDay = (d: Date, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: TZ, ...opts }).format(d);
+function denverHour(d: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(d);
+  const h = +(parts.find(x => x.type === "hour")?.value ?? 0), m = +(parts.find(x => x.type === "minute")?.value ?? 0);
+  return h + m / 60;
+}
+/** generated_at is a naive local (Denver) timestamp from the pipeline: show it as written. */
+function fmtGenerated(s?: string): string {
+  const m = s?.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const day = d.toLocaleDateString("en-US", { weekday: "short" });
+  const h = d.getHours(), ap = h < 12 ? "am" : "pm", hh = ((h + 11) % 12) + 1;
+  return `${day} ${hh}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+}
+const units = (x: number) => `${x >= 0 ? "+" : "−"}${Math.abs(x).toFixed(2)} u`;
+const isGraded = (p: CfbPick) => p.outcome === "win" || p.outcome === "loss" || p.outcome === "push";
+function record(ps: CfbPick[]) {
+  const g = ps.filter(isGraded);
+  const w = g.filter(p => p.outcome === "win").length, l = g.filter(p => p.outcome === "loss").length, push = g.filter(p => p.outcome === "push").length;
+  return { n: ps.length, graded: g.length, w, l, push, pnl: g.reduce((a, p) => a + (p.pnl ?? 0), 0), label: `${w}–${l}${push ? `–${push}` : ""}` };
+}
+/** Signal text from the scorer, with raw keys such as "underdog_edge" turned into words. */
+const edgeText = (e: string) => (/^[a-z]+(_[a-z+]+)+$/i.test(e) ? (e.charAt(0).toUpperCase() + e.slice(1)).replace(/_/g, " ") : e);
+const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+
+function ResultBadge({ p }: { p: CfbPick }) {
+  if (p.outcome === "win") return <span className="ons-badge ok">Covered</span>;
+  if (p.outcome === "loss") return <span className="ons-badge off">Missed</span>;
+  if (p.outcome === "push") return <span className="ons-badge none">Push</span>;
+  return <span className="ons-badge none">Pending</span>;
+}
+
+function Check({ done }: { done: boolean }) {
+  return done
+    ? <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" /><path d="M4.8 8.3l2.2 2.2 4.2-4.6" /></svg>
+    : <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" /></svg>;
+}
+
+// ── Kickoff strip ───────────────────────────────────────────────────────────
+
+function KickoffStrip({ picks }: { picks: ParsedPick[] }) {
+  const timed = picks.filter(x => x.kick).sort((a, b) => +a.kick! - +b.kick!);
+  if (!timed.length) return <p className="ons-note" style={{ marginTop: 0 }}>Kickoff times aren't in the schedule yet.</p>;
+  // Draw the busiest day; list any picks on other days underneath.
+  const byDay = new Map<string, ParsedPick[]>();
+  timed.forEach(x => { const k = fmtDay(x.kick!, { year: "numeric", month: "2-digit", day: "2-digit" }); byDay.set(k, [...(byDay.get(k) ?? []), x]); });
+  const main = Array.from(byDay.values()).sort((a, b) => b.length - a.length)[0];
+  const others = timed.filter(x => !main.includes(x));
+  const hours = main.map(x => denverHour(x.kick!));
+  const start = Math.min(9, Math.floor(Math.min(...hours))), end = Math.max(24, Math.ceil(Math.max(...hours) + 3.5));
+  const span = end - start, pct = (h: number) => ((h - start) / span) * 100;
+  const ticks: number[] = []; for (let h = start; h <= end; h += 3) ticks.push(h);
+  const tickLabel = (h: number) => (h % 24 === 0 ? "midnight" : h === 12 ? "noon" : h < 12 ? `${h} am` : `${h - 12} pm`);
+  return (
+    <>
+      <div className="ons-kick" style={{ height: main.length * 36 + 20 }} aria-label="Official picks by kickoff, Mountain time">
+        {ticks.map(h => <div key={h} className="hr" style={{ left: `${pct(h)}%` }}><span style={h === ticks[ticks.length - 1] ? { transform: "translateX(-100%)" } : undefined}>{tickLabel(h)}</span></div>)}
+        {main.map((x, i) => {
+          const left = pct(denverHour(x.kick!));
+          return (
+            <Fragment key={i}>
+              <div className="lab" style={{ top: i * 36 }}>{x.team} {x.line}</div>
+              <div className={`g ${x.side ?? "fav"}`} style={{ top: i * 36, left: `${left}%`, width: `${Math.min(100 - left, (3.5 / span) * 100)}%` }}>
+                <b>{fmtTime(x.kick!)}</b> {x.opp}
+              </div>
+            </Fragment>
+          );
+        })}
       </div>
-      {picks && <WeekRecord picks={picks.filter(p => p.meets_publish_bar)} />}
+      <div className="ons-legend">
+        <span><i style={{ background: "var(--edge-mark)" }} />Underdog pick</span>
+        <span><i style={{ background: "var(--check-mark)" }} />Favorite pick</span>
+        {others.length > 0 && <span>Also: {others.map(x => `${fmtDay(x.kick!, { weekday: "short" })} ${fmtTime(x.kick!)} ${x.team}`).join(" · ")}</span>}
+      </div>
+    </>
+  );
+}
+
+// ── Picks table (official or watch list), rows open the strength comparison ─
+
+function PicksTable({ rows, season, week, watch = false }: { rows: ParsedPick[]; season: number; week: number; watch?: boolean }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const anyGraded = rows.some(x => isGraded(x.p));
+  const cols = 6 + (anyGraded ? 1 : 0) + (watch ? 1 : 0);
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table className="ons-table">
+        <thead>
+          <tr>
+            <th>Kick</th><th>Pick</th><th className="r">Line</th><th className="hide-p">Side</th>
+            <th className="r hide-p">Total</th><th className="r">Score</th>
+            {watch && <th className="r hide-p">Signals</th>}
+            <th className="hide-p">Why</th>
+            {anyGraded && <th className="r">Result</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((x, i) => {
+            const edges = x.p.edge.split(" · ").filter(Boolean).map(edgeText);
+            const isOpen = open === i;
+            return (
+              <Fragment key={i}>
+                <tr className={`click ${x.side ?? "fav"} ${isOpen ? "open" : ""}`} onClick={() => setOpen(isOpen ? null : i)}
+                    aria-expanded={isOpen} tabIndex={0} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setOpen(isOpen ? null : i))}>
+                  <td className="ons-n">{x.kick ? <>{fmtTime(x.kick).replace(/ (am|pm)$/, "")}<span className="sub">{fmtDay(x.kick, { weekday: "short" })}</span></> : "–"}</td>
+                  <td><span className="flex items-center gap-2"><Crest name={x.team} size={18} /><span>{x.team}<span className="sub">{x.opp}</span></span></span></td>
+                  <td className="r ons-n">{x.line || "–"}</td>
+                  <td className="hide-p">{x.side && <span className="ons-side">{x.side === "dog" ? "Underdog" : "Favorite"}</span>}</td>
+                  <td className="r ons-n hide-p">{x.p.ou && x.p.ou !== "N/A" ? x.p.ou : "–"}</td>
+                  <td className="r"><span className="ons-score"><s><b style={{ width: `${Math.min(100, x.p.model_score)}%` }} /></s><span className="ons-n">{x.p.model_score}</span></span></td>
+                  {watch && <td className="r ons-n hide-p">{x.p.n_edges}</td>}
+                  <td className="hide-p" style={{ fontSize: 13, color: "var(--ink-2)" }}>
+                    {edges.slice(0, 2).join(" · ")}{edges.length > 2 ? ` +${edges.length - 2}` : ""}
+                    {x.p.warnings.map(w => <span key={w} className="ons-badge risk" style={{ marginLeft: 6 }}>{WARNING_SHORT[w] ?? w}</span>)}
+                  </td>
+                  {anyGraded && (
+                    <td className="r">
+                      <ResultBadge p={x.p} />
+                      {x.p.home_score != null && x.p.away_score != null && x.atHome != null && (() => {
+                        const us = x.atHome ? x.p.home_score : x.p.away_score, them = x.atHome ? x.p.away_score : x.p.home_score;
+                        return <span className="sub ons-n">{us > them ? "Won" : us < them ? "Lost" : "Tied"} {us}–{them}</span>;
+                      })()}
+                    </td>
+                  )}
+                </tr>
+                {isOpen && (
+                  <tr><td colSpan={cols} style={{ padding: "4px 0 12px", background: "transparent" }}>
+                    <GameDrill awayTeam={x.away} homeTeam={x.home} season={season} week={week} onClose={() => setOpen(null)} />
+                  </td></tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
+}
 
-  const body = (() => {
-    if (error) return <ErrorState message={error} />;
-    if (!weeks || week == null || !picks) return <Loading label="Loading picks…" />;
-    if (picks.length === 0) {
-      return (
-        <Card>
-          <Empty
-            message={available.has(week) ? "No games scored this week." : "No slate archived for this week."}
-            detail={
-              available.has(week)
-                ? "Nothing cleared the model's publish threshold — that's the model saying 'no strong signal,' not missing data."
-                : "generate_picks.py hasn't been run for this week (future week, or the archive isn't on this machine)."
-            }
-          />
-        </Card>
-      );
-    }
+// ── Summary tiles ───────────────────────────────────────────────────────────
 
-    const official = picks.filter(p => p.meets_publish_bar);
-    const watchAll = picks
-      .filter(p => !p.meets_publish_bar && (p.model_score ?? 0) > 0)
-      .sort((a, b) => b.model_score - a.model_score);
-    const defaultWatch = Math.max(0, 5 - official.length);
-    const watchlist = showAllWatch ? watchAll : watchAll.slice(0, defaultWatch);
-
-    const Divider = ({ label }: { label: string }) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 6px" }}>
-        <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-        <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", color: FAINT }}>{label}</span>
-        <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
-      </div>
-    );
-
-    return (
-      <>
-        {official.length > 0 ? (
-          <>
-            <Divider label={`Official Picks (${official.length})`} />
-            <div className="flex flex-col gap-3">
-              {official.map((p, i) => <PickCardDrillable key={`off-${week}-${i}`} p={p} isOfficial season={season} week={week} />)}
-            </div>
-          </>
-        ) : (
-          <Divider label="No official picks this week" />
-        )}
-
-        {watchAll.length > 0 && (
-          <>
-            <Divider label={`Watch List · Below Publish Bar (${showAllWatch ? watchAll.length : `${watchlist.length} of ${watchAll.length}`})`} />
-            <div className="flex flex-col gap-3">
-              {watchlist.map((p, i) => <PickCardDrillable key={`watch-${week}-${i}`} p={p} isOfficial={false} season={season} week={week} />)}
-            </div>
-            {watchAll.length > watchlist.length || showAllWatch ? (
-              <button
-                onClick={() => setShowAllWatch(v => !v)}
-                className="font-mono"
-                style={{ display: "block", margin: "12px auto 0", fontSize: 10, color: GOOD, background: "none", border: "1px solid #d9d3c5", borderRadius: 9999, padding: "5px 14px", cursor: "pointer" }}
-              >
-                {showAllWatch ? "SHOW TOP ONLY" : `SHOW ALL ${watchAll.length} SCORED GAMES`}
-              </button>
-            ) : null}
-          </>
-        )}
-      </>
-    );
-  })();
-
+function SummaryTiles({ tracker, weeks, official, current, lastGraded, curPicks, curGenerated }: {
+  tracker: CfbLiveTracker | null; weeks: CfbWeeks; official: Map<number, CfbPick[]>; current: number; lastGraded: number | null;
+  curPicks: ParsedPick[]; curGenerated: string;
+}) {
+  const chartWeeks = Array.from(official.entries()).filter(([wk, ps]) => ps.length && wk <= (lastGraded ?? 0)).sort((a, b) => a[0] - b[0]);
+  const maxStack = Math.max(1, ...chartWeeks.map(([, ps]) => record(ps).w + record(ps).l));
+  const firstPickWeek = weeks.weeks.find(w => (w.n_official ?? 0) > 0)?.week;
+  const lastWeek = Math.max(14, current);
+  const prev = lastGraded != null ? record(official.get(lastGraded) ?? []) : null;
+  const cur = record(curPicks.map(x => x.p));
+  const finals = curPicks.filter(x => x.final).length;
+  const firstKick = curPicks.filter(x => x.kick).sort((a, b) => +a.kick! - +b.kick!)[0]?.kick;
+  const watchCount = weeks.weeks.find(w => w.week === current)?.n_scored;
+  const steps: Array<[boolean, string, string]> = [
+    ...(prev && lastGraded !== current ? [[prev.graded === prev.n, `Week ${lastGraded} graded`, `${prev.label} · ${units(prev.pnl)}`] as [boolean, string, string]] : []),
+    [curPicks.length > 0, "Picks set", curPicks.length ? `${curPicks.length} official${curGenerated ? ` · ${curGenerated}` : ""}` : "not yet"],
+    [curPicks.length > 0 && finals === curPicks.length, "Games final", curPicks.length ? (finals ? `${finals} of ${curPicks.length}` : firstKick ? `first kick ${fmtDay(firstKick, { weekday: "short" })} ${fmtTime(firstKick)}` : "–") : "–"],
+    [curPicks.length > 0 && cur.graded === curPicks.length, "Graded", curPicks.length ? `${cur.graded} of ${curPicks.length}${cur.graded ? ` · ${cur.label}` : ""}` : "–"],
+  ];
+  const done = steps.filter(s => s[0]).length;
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto" }}>
-      {header}
-      {body}
+    <div className="ons-tiles">
+      <section className="ons-tile t t-edge" aria-labelledby="t-season">
+        <h2 id="t-season">Season so far</h2>
+        <div className="big n">{tracker?.total_pnl != null ? units(tracker.total_pnl) : "–"}</div>
+        <p className="ons-n">{tracker && tracker.graded_picks ? `${tracker.wins}–${tracker.losses}${tracker.pushes ? `–${tracker.pushes}` : ""} · ${tracker.win_rate_pct}% · ROI ${tracker.roi_pct! >= 0 ? "+" : ""}${tracker.roi_pct}%` : "No graded picks yet"}</p>
+        {chartWeeks.length > 0 && (
+          <>
+            <div className="ons-wk" style={{ height: Math.max(40, maxStack * 8) }} role="img"
+                 aria-label={`Covered and missed picks by week: ${chartWeeks.map(([wk, ps]) => `week ${wk} ${record(ps).label}`).join(", ")}`}>
+              {chartWeeks.map(([wk, ps]) => { const r = record(ps); return <div key={wk}>{Array.from({ length: r.w }, (_, i) => <i key={`w${i}`} className="w" />)}{Array.from({ length: r.l }, (_, i) => <i key={`l${i}`} className="l" />)}</div>; })}
+            </div>
+            <div className="ons-wkx" aria-hidden="true">{chartWeeks.map(([wk]) => <span key={wk}>{wk}</span>)}</div>
+          </>
+        )}
+      </section>
+
+      <section className="ons-tile" aria-labelledby="t-cal">
+        <h2 id="t-cal">Where we are</h2>
+        <div className="big">Week {current}</div>
+        <p>{lastGraded ? `Weeks 1–${lastGraded} graded` : "Nothing graded yet"}{firstPickWeek ? `; picks began in Week ${firstPickWeek}.` : "."}</p>
+        <div className="ons-seasonbar" role="img" aria-label={`Week ${current} of ${lastWeek}`}>
+          {Array.from({ length: lastWeek }, (_, i) => {
+            const wk = i + 1, info = weeks.weeks.find(w => w.week === wk);
+            const cls = wk === current ? "now" : wk < current ? ((info?.n_official ?? 0) > 0 ? "done" : "none") : "";
+            return <i key={wk} className={cls} title={`Week ${wk}`} />;
+          })}
+        </div>
+        <div className="ons-seasonx" aria-hidden="true"><span>Wk 1</span><span>Wk {lastWeek}</span></div>
+        <p className="tnote">{Array.from(official.values()).reduce((a, ps) => a + ps.length, 0)} official picks this season{watchCount ? ` · ${watchCount} games scored this week` : ""}</p>
+      </section>
+
+      <section className="ons-tile" aria-labelledby="t-run">
+        <h2 id="t-run">This week's run</h2>
+        <div className="big">{done} of {steps.length} done</div>
+        <ol className="ons-steps">
+          {steps.map(([ok, label, detail]) => <li key={label} className={ok ? "ok" : "todo"}><Check done={ok} /><b>{label}</b><span>{detail}</span></li>)}
+        </ol>
+      </section>
+
+      <section className="ons-tile" aria-labelledby="t-model">
+        <h2 id="t-model">The model</h2>
+        <div className="big">7 signals</div>
+        {/* Active signals and backtest: README "CFB Betting System" and docs/SYSTEM_EXPLAINER.md "The Numbers". */}
+        <p>One deterministic scorer. Each signal was walk-forward tested on 2021–25 with no lookahead; 3 were cut in the July 2026 audit.</p>
+        <p>A pick needs a score of 70+ and 4+ signals. Backtest 2021–25: 250–115 (68.5%), for reference only.</p>
+      </section>
     </div>
   );
 }
@@ -1026,46 +1026,172 @@ function SlateView() {
 // ── Page root ─────────────────────────────────────────────────────────────────
 
 export default function CfbPage() {
+  const season = new Date().getFullYear();
+  const [tab, setTab] = useState<"slate" | "watch" | "lab" | "teams">("slate");
   const [teams, setTeams] = useState<CfbTeam[] | null>(null);
-  const [tab, setTab] = useState<"slate" | "lab" | "teams">("slate");
+  const [weeks, setWeeks] = useState<CfbWeeks | null>(null);
+  const [slates, setSlates] = useState<Map<number, CfbPick[]> | null>(null);
+  const [tracker, setTracker] = useState<CfbLiveTracker | null>(null);
+  const [week, setWeek] = useState<number | null>(null);
+  const [schedule, setSchedule] = useState<Map<number, CfbScheduleGame[]>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    cfbApi.teams().then(setTeams).catch((e) => setError(e.message));
-  }, []);
+    cfbApi.teams().then(setTeams).catch(() => {});
+    cfbApi.liveTracker(season).then(setTracker).catch(() => {});
+    cfbApi.weeks(season).then(async (w) => {
+      setWeeks(w);
+      const cur = w.current_week ?? (w.weeks.length ? w.weeks[w.weeks.length - 1].week : 1);
+      setWeek(cur);
+      const entries = await Promise.all(
+        w.weeks.filter(x => (x.n_scored ?? 0) > 0 || x.week === cur).map(async (x) => {
+          let s = await cfbApi.slate(season, x.week).catch(() => [] as CfbPick[]);
+          if (!s.length && x.week === cur) s = await cfbApi.picks().catch(() => [] as CfbPick[]);
+          return [x.week, s] as [number, CfbPick[]];
+        }),
+      );
+      setSlates(new Map(entries));
+    }).catch((e: Error) => setError(e.message));
+  }, [season]);
 
-  if (error) return <ErrorState message={error} />;
-  if (!teams) return <Loading />;
+  // Kickoff times for the current week (header) and the week being viewed.
+  useEffect(() => {
+    if (!weeks) return;
+    const need = [weeks.current_week, week].filter((x): x is number => x != null && !schedule.has(x));
+    need.forEach(wk => cfbApi.schedule(season, wk).then(g => setSchedule(m => new Map(m).set(wk, g))).catch(() => setSchedule(m => new Map(m).set(wk, []))));
+  }, [weeks, week]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const TABS: Array<[string, string]> = [
-    ["slate", "This Week"],
-    ["lab",   "Matchup Lab"],
-    ["teams", "Teams"],
-  ];
+  if (error) return <div className="ons-page" style={{ padding: "34px 44px 48px" }}><ErrorState message={error} /></div>;
+  if (!weeks || !slates || week == null) return <Loading label="Loading the slate…" />;
+
+  const current = weeks.current_week ?? week;
+  const official = new Map(Array.from(slates.entries()).map(([wk, ps]) => [wk, ps.filter(p => p.meets_publish_bar)]));
+  const lastGraded = Array.from(official.entries()).filter(([, ps]) => ps.length && ps.every(isGraded)).map(([wk]) => wk).sort((a, b) => b - a)[0] ?? null;
+  const parse = (wk: number, ps: CfbPick[]) => {
+    const kicks = new Map((schedule.get(wk) ?? []).map(g => [`${g.away_team}@${g.home_team}`, g]));
+    return ps.map(p => parsePick(p, kicks)).sort((a, b) => (a.kick && b.kick ? +a.kick - +b.kick : 0));
+  };
+  const curPicks = parse(current, official.get(current) ?? []);
+  const curGenerated = fmtGenerated((slates.get(current) ?? []).map(p => p.generated_at).filter(Boolean).sort().pop());
+  const dogs = curPicks.filter(x => x.side === "dog").length, favs = curPicks.filter(x => x.side === "fav").length;
+  const kickDays = curPicks.filter(x => x.kick).map(x => fmtDay(x.kick!, { weekday: "long", month: "long", day: "numeric" }));
+  const mainDay = kickDays.sort((a, b) => kickDays.filter(d => d === b).length - kickDays.filter(d => d === a).length)[0];
+  const cur = record(curPicks.map(x => x.p));
+  const seasonUnits = tracker?.total_pnl;
+
+  const lede = !curPicks.length
+    ? <>No official picks yet for Week {current}. Picks are set Monday to Wednesday.</>
+    : <>
+        {plural(curPicks.length, "pick")} {mainDay ? `for ${mainDay.split(",")[0]}` : "this week"}, <b>{plural(dogs, "underdog")} and {plural(favs, "favorite")}</b>, all from one deterministic model.
+        {cur.graded > 0 && <> {cur.graded} of {curPicks.length} graded so far ({cur.label}, {units(cur.pnl)}).</>}
+        {seasonUnits != null && <> The season is {seasonUnits >= 0 ? "up" : "down"} <b>{Math.abs(seasonUnits).toFixed(2)} units</b>{lastGraded ? <> through Week {lastGraded}</> : null}.</>}
+      </>;
+
+  const copySlate = async () => {
+    const lines = [`Degenerates Corner · Week ${current}${mainDay ? ` · ${mainDay}` : ""}`,
+      ...curPicks.map(x => `${x.kick ? fmtTime(x.kick) + "  " : ""}${x.team} ${x.line} ${x.opp} · score ${x.p.model_score}`)];
+    try { await navigator.clipboard.writeText(lines.join("\n")); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
+  };
+
+  const viewAll = slates.get(week) ?? [];
+  const viewOfficial = parse(week, viewAll.filter(p => p.meets_publish_bar));
+  const viewWatch = parse(week, viewAll.filter(p => !p.meets_publish_bar && (p.model_score ?? 0) > 0)).sort((a, b) => b.p.model_score - a.p.model_score);
+  const prevWeek = Array.from(official.entries()).filter(([wk, ps]) => wk < week && ps.length).map(([wk]) => wk).sort((a, b) => b - a)[0];
+  const prevRows = prevWeek != null ? parse(prevWeek, official.get(prevWeek) ?? []) : [];
+  const prevRec = record(prevRows.map(x => x.p));
+  const weekInfo = new Map(weeks.weeks.map(w => [w.week, w]));
+  const byWeek = Array.from(official.entries()).filter(([, ps]) => ps.length && ps.every(isGraded)).sort((a, b) => a[0] - b[0]).map(([wk, ps]) => [wk, record(ps)] as const);
 
   return (
-    <div style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
+    <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
-        title="CFB Betting"
-        kicker="The Degenerates' Corner · walk-forward validated"
+        title="Degenerates Corner"
+        titleSub="— College Football"
+        kicker={`Week ${current}${mainDay ? ` · ${mainDay}` : ""} · DraftKings lines${curGenerated ? ` · picks set ${curGenerated}` : ""}`}
+        sub={lede}
         right={
-          <div className="flex gap-1 rounded-full" style={{ background: "#fbfaf5", border: "1px solid #e6e3dc", padding: 4 }}>
-            {TABS.map(([k, l]) => (
-              <button
-                key={k}
-                onClick={() => setTab(k as any)}
-                style={{ fontSize: 12, fontWeight: 500, padding: "7px 15px", background: tab === k ? "#1d5536" : "transparent", color: tab === k ? "#fff" : "#736e5f", border: "none", cursor: "pointer", borderRadius: "9999px" }}
-              >
-                {l}
-              </button>
-            ))}
+          <div className="flex gap-2">
+            {lastGraded != null && <button className="ons-tap ons-btn" onClick={() => { setTab("slate"); setWeek(lastGraded); }}>Week {lastGraded} results</button>}
+            <button className="ons-tap ons-btn pri" onClick={copySlate} disabled={!curPicks.length}>{copied ? "Copied" : "Copy slate"}</button>
           </div>
         }
+        scene={<PixelScene scene="cfb" record={tracker && tracker.graded_picks ? `${tracker.wins}-${tracker.losses}` : ""} label="a ball carrier breaking upfield, the season record on the scoreboard" />}
       />
 
-      {tab === "slate" && <SlateView />}
-      {tab === "lab"   && <MatchupLab teams={teams} />}
-      {tab === "teams" && <TeamsView teams={teams} />}
+      <SummaryTiles tracker={tracker} weeks={weeks} official={official} current={current} lastGraded={lastGraded} curPicks={curPicks} curGenerated={curGenerated} />
+
+      <div className="ons-tabs" role="tablist" aria-label="Degenerates Corner">
+        {([["slate", "Slate"], ["watch", `Watch list · ${viewWatch.length}`], ["lab", "Matchup Lab"], ["teams", "Teams"]] as const).map(([k, l]) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
+        ))}
+        {(tab === "slate" || tab === "watch") && (
+          <div className="ons-tabs-end">
+            <select className="ons-select" value={week} onChange={(e) => setWeek(parseInt(e.target.value, 10))} aria-label="Week">
+              {Array.from({ length: Math.max(15, current) }, (_, i) => i + 1).map(wk => {
+                const info = weekInfo.get(wk);
+                return <option key={wk} value={wk} disabled={!slates.has(wk)}>Week {wk}{wk === current ? " (current)" : ""}{info?.n_official ? ` · ${info.n_official} picks` : ""}</option>;
+              })}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {tab === "slate" && (
+        viewAll.length === 0 ? (
+          <div className="ons-card"><Empty message="No slate archived for this week." detail="generate_picks.py hasn't run for this week yet." /></div>
+        ) : (
+          <div className="ons-grid">
+            <section className="ons-card s12" aria-labelledby="kick-h">
+              <div className="ons-ch"><h2 id="kick-h">Week {week}, by kickoff</h2><span className="aside">Mountain time · bars are about 3½ hours</span></div>
+              {viewOfficial.length ? <KickoffStrip picks={viewOfficial} /> : <p className="ons-note" style={{ marginTop: 0 }}>No game cleared the publish bar this week. That's the model saying there's no strong signal, not missing data.</p>}
+            </section>
+
+            <section className="ons-card s8" aria-labelledby="picks-h">
+              <div className="ons-ch"><h2 id="picks-h">Official picks</h2><span className="aside">Line from our side · DraftKings · select a row for the strength comparison</span></div>
+              {viewOfficial.length ? <PicksTable rows={viewOfficial} season={season} week={week} /> : <Empty message="No official picks this week." />}
+              <p className="ons-note">Scores rank picks (70+ with 4+ signals publishes); they aren't probabilities.</p>
+            </section>
+
+            <div className="s4 ons-col">
+              {prevWeek != null && (
+                <section className="ons-card" aria-labelledby="prev-h">
+                  <div className="ons-ch"><h2 id="prev-h">Week {prevWeek}</h2><span className="aside ons-n">{prevRec.label} · {units(prevRec.pnl)}</span></div>
+                  <table className="ons-table"><tbody>
+                    {prevRows.map((x, i) => <tr key={i}><td>{x.team} <span className="ons-n">{x.line}</span></td><td className="r"><ResultBadge p={x.p} /></td></tr>)}
+                  </tbody></table>
+                </section>
+              )}
+              {byWeek.length > 0 && (
+                <section className="ons-card" aria-labelledby="wbw-h">
+                  <div className="ons-ch"><h2 id="wbw-h">Week by week</h2><span className="aside">Official picks, 1 unit each</span></div>
+                  <table className="ons-table">
+                    <thead><tr><th>Week</th><th className="r">Record</th><th className="r">Units</th></tr></thead>
+                    <tbody>
+                      {byWeek.map(([wk, r]) => (
+                        <tr key={wk} className="click" onClick={() => setWeek(wk)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && setWeek(wk)}>
+                          <td>Week {wk}</td><td className="r ons-n">{r.label}</td>
+                          <td className="r ons-n" style={{ color: r.pnl >= 0 ? "var(--pos)" : "var(--neg)" }}>{units(r.pnl)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              )}
+            </div>
+          </div>
+        )
+      )}
+
+      {tab === "watch" && (
+        <section className="ons-card" aria-labelledby="watch-h">
+          <div className="ons-ch"><h2 id="watch-h">Watch list · Week {week}</h2><span className="aside">Scored, but under the publish bar (score 65–69, or only 3 signals)</span></div>
+          {viewWatch.length ? <PicksTable rows={viewWatch} season={season} week={week} watch /> : <Empty message="Nothing on the watch list this week." />}
+        </section>
+      )}
+
+      {tab === "lab" && (teams ? <MatchupLab teams={teams} /> : <Loading label="Loading teams…" />)}
+      {tab === "teams" && (teams ? <TeamsView teams={teams} /> : <Loading label="Loading teams…" />)}
     </div>
   );
 }

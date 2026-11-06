@@ -120,7 +120,7 @@ export default function CapturePage() {
             <Pill
               key={d}
               active={domain === d}
-              color="#2f6b43"
+              color="var(--hue)"
               onClick={() => setDomain(domain === d ? null : d)}
             >
               {d}
@@ -136,8 +136,8 @@ export default function CapturePage() {
             style={{
               padding: "12px 22px", borderRadius: 8, border: "none", fontSize: 14,
               cursor: canSave ? "pointer" : "not-allowed",
-              background: canSave ? "#1d5536" : "#e6e3dc",
-              color: canSave ? "#fff" : "#a39d8c",
+              background: canSave ? "var(--hue)" : "var(--border)",
+              color: canSave ? "var(--hue-ink)" : "var(--faint)",
             }}
           >
             {saving ? "Saving…" : "Capture"}
@@ -146,7 +146,7 @@ export default function CapturePage() {
             <span
               className="font-mono"
               role={message.ok ? "status" : "alert"}
-              style={{ fontSize: 11, color: message.ok ? "#1d5536" : "#a8473a" }}
+              style={{ fontSize: 11, color: message.ok ? "var(--hue)" : "var(--neg)" }}
             >
               {message.text}
             </span>
@@ -168,7 +168,7 @@ export default function CapturePage() {
             {items.map((it) => (
               <li
                 key={it.capture_id}
-                style={{ padding: "12px 18px", borderTop: "1px solid #ebe5d8" }}
+                style={{ padding: "12px 18px", borderTop: "1px solid var(--rule)" }}
               >
                 <div
                   style={{ fontSize: 14, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}

@@ -304,7 +304,7 @@ function CfbChip({ tracker }: { tracker: CfbLiveTracker | null }) {
           <span className="font-serif font-semibold">{record}</span>
           <span
             className="font-serif font-semibold"
-            style={{ color: (tracker?.roi_pct ?? 0) >= 0 ? "#1d5536" : "#a8473a" }}
+            style={{ color: (tracker?.roi_pct ?? 0) >= 0 ? "var(--hue)" : "var(--neg)" }}
           >
             {roi}
           </span>

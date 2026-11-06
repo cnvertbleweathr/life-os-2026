@@ -84,7 +84,7 @@ function ShowExplorer({ shows: allShows, musicVideos }: { shows: KglwShow[]; mus
           <div className="border-b border-border-2" style={{ padding: "16px 18px 14px" }}>
             <K style={{ marginBottom: 10 }}>Live shows & music videos</K>
             <div className="flex items-center gap-2 mb-[11px]">
-              <OnsIcon name="search" size={15} stroke={1.7} style={{ color: "#a39d8c" }} />
+              <OnsIcon name="search" size={15} stroke={1.7} style={{ color: "var(--faint)" }} />
               <input
                 className="ons-input flex-1"
                 value={q}
@@ -123,12 +123,12 @@ function ShowExplorer({ shows: allShows, musicVideos }: { shows: KglwShow[]; mus
                   onClick={() => setSelKey(e.key)}
                   style={{
                     padding: "11px 18px",
-                    background: active ? "#e9efe7" : "transparent",
-                    borderLeft: active ? "2px solid #1d5536" : "2px solid transparent",
-                    borderBottom: "1px solid #ebe5d8",
+                    background: active ? "var(--hue-soft)" : "transparent",
+                    borderLeft: active ? "2px solid var(--hue)" : "2px solid transparent",
+                    borderBottom: "1px solid var(--rule)",
                   }}
                 >
-                  <div className="font-mono shrink-0" style={{ fontSize: 10, color: active ? "#1d5536" : "#736e5f", width: 70 }}>
+                  <div className="font-mono shrink-0" style={{ fontSize: 10, color: active ? "var(--hue)" : "var(--muted)", width: 70 }}>
                     {e.date}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -138,16 +138,16 @@ function ShowExplorer({ shows: allShows, musicVideos }: { shows: KglwShow[]; mus
                     <div className="font-mono text-faint mt-px truncate" style={{ fontSize: 11 }}>{sub}</div>
                   </div>
                   {e.kind === "show" && e.show.upcoming && (
-                    <span className="font-mono" style={{ fontSize: 8, letterSpacing: "0.5px", color: "#9a6a1e", border: "1px solid rgba(154,106,30,0.33)", borderRadius: 999, padding: "2px 7px" }}>
+                    <span className="font-mono" style={{ fontSize: 8, letterSpacing: "0.5px", color: "var(--warn)", border: "1px solid color-mix(in srgb, var(--warn) 33%, transparent)", borderRadius: 999, padding: "2px 7px" }}>
                       SOON
                     </span>
                   )}
                   {e.kind === "mv" && (
-                    <span className="font-mono" style={{ fontSize: 8, letterSpacing: "0.5px", color: "#1d5536", border: "1px solid rgba(29,85,54,0.27)", borderRadius: 999, padding: "2px 7px" }}>
+                    <span className="font-mono" style={{ fontSize: 8, letterSpacing: "0.5px", color: "var(--hue)", border: "1px solid color-mix(in srgb, var(--hue) 27%, transparent)", borderRadius: 999, padding: "2px 7px" }}>
                       MV
                     </span>
                   )}
-                  {watchable && <OnsIcon name="play" size={17} stroke={1.6} style={{ color: active ? "#1d5536" : "#a39d8c" }} />}
+                  {watchable && <OnsIcon name="play" size={17} stroke={1.6} style={{ color: active ? "var(--hue)" : "var(--faint)" }} />}
                 </button>
               );
             })}
@@ -185,7 +185,7 @@ function Player({ videoId, title }: { videoId: string; title: string }) {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="font-mono text-green shrink-0" style={{ fontSize: 9, border: "1px solid rgba(29,85,54,0.27)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>
+    <span className="font-mono text-green shrink-0" style={{ fontSize: 9, border: "1px solid color-mix(in srgb, var(--hue) 27%, transparent)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>
       {children}
     </span>
   );
@@ -241,7 +241,7 @@ function EntryDetail({ entry }: { entry: Entry }) {
 
   return (
     <div>
-      <div style={{ aspectRatio: "16/9", background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 9px, #fbfaf5 9px, #fbfaf5 18px)" }} className="grid place-items-center">
+      <div style={{ aspectRatio: "16/9", background: "repeating-linear-gradient(135deg, var(--frame), var(--frame) 9px, var(--sheet) 9px, var(--sheet) 18px)" }} className="grid place-items-center">
         <div className="text-center">
           <div className="text-faint mb-[10px]"><OnsIcon name="kglw" size={34} stroke={1.3} /></div>
           <div className="font-mono text-faint" style={{ fontSize: 10, letterSpacing: "1px" }}>
@@ -284,7 +284,7 @@ function SongExplorer({ songs: catalog }: { songs: KglwSong[] }) {
           <div className="border-b border-border-2" style={{ padding: "16px 18px 14px" }}>
             <K style={{ marginBottom: 10 }}>Scan the catalog · {catalog.length} songs</K>
             <div className="flex items-center gap-2">
-              <OnsIcon name="search" size={15} stroke={1.7} style={{ color: "#a39d8c" }} />
+              <OnsIcon name="search" size={15} stroke={1.7} style={{ color: "var(--faint)" }} />
               <input className="ons-input flex-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder='Search "Rattlesnake", "River"…' />
               <span className="font-mono text-faint whitespace-nowrap" style={{ fontSize: 9.5 }}>{songs.length}</span>
             </div>
@@ -299,9 +299,9 @@ function SongExplorer({ songs: catalog }: { songs: KglwSong[] }) {
                   onClick={() => setSongName(s.name)}
                   style={{
                     padding: "12px 18px",
-                    background: active ? "#e9efe7" : "transparent",
-                    borderLeft: active ? "2px solid #1d5536" : "2px solid transparent",
-                    borderBottom: "1px solid #ebe5d8",
+                    background: active ? "var(--hue-soft)" : "transparent",
+                    borderLeft: active ? "2px solid var(--hue)" : "2px solid transparent",
+                    borderBottom: "1px solid var(--rule)",
                   }}
                 >
                   <div className="flex-1 min-w-0">
@@ -310,8 +310,8 @@ function SongExplorer({ songs: catalog }: { songs: KglwSong[] }) {
                       {s.versions} versions
                     </div>
                   </div>
-                  <div className="shrink-0 rounded overflow-hidden" style={{ width: 54, height: 4, background: "#efebe1" }}>
-                    <div className="rounded" style={{ width: `${((s.versions ?? 0) / maxV) * 100}%`, height: "100%", background: active ? "#1d5536" : "#e6e3dc" }} />
+                  <div className="shrink-0 rounded overflow-hidden" style={{ width: 54, height: 4, background: "var(--frame)" }}>
+                    <div className="rounded" style={{ width: `${((s.versions ?? 0) / maxV) * 100}%`, height: "100%", background: active ? "var(--hue)" : "var(--border)" }} />
                   </div>
                 </button>
               );
@@ -325,7 +325,7 @@ function SongExplorer({ songs: catalog }: { songs: KglwSong[] }) {
           {song ? (
             <div>
               <div
-                style={{ aspectRatio: "16/9", background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 9px, #fbfaf5 9px, #fbfaf5 18px)" }}
+                style={{ aspectRatio: "16/9", background: "repeating-linear-gradient(135deg, var(--frame), var(--frame) 9px, var(--sheet) 9px, var(--sheet) 18px)" }}
                 className="grid place-items-center"
               >
                 <div className="text-center">
@@ -379,7 +379,7 @@ export default function KglwPage() {
         title="King Gizzard"
         kicker="Live catalog · via kglw.net + YouTube"
         right={
-          <div className="flex gap-1 rounded-full" style={{ background: "#fbfaf5", border: "1px solid #e6e3dc", padding: 4 }}>
+          <div className="flex gap-1 rounded-full" style={{ background: "var(--sheet)", border: "1px solid var(--border)", padding: 4 }}>
             {TABS.map(([k, l, icon]) => (
               <button
                 key={k}
@@ -387,8 +387,8 @@ export default function KglwPage() {
                 onClick={() => setMode(k as "shows" | "songs")}
                 style={{
                   fontSize: 12, fontWeight: 500, padding: "7px 15px",
-                  background: mode === k ? "#1d5536" : "transparent",
-                  color: mode === k ? "#fff" : "#736e5f",
+                  background: mode === k ? "var(--hue)" : "transparent",
+                  color: mode === k ? "var(--hue-ink)" : "var(--muted)",
                 }}
               >
                 <OnsIcon name={icon} size={14} stroke={1.7} />

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today · ONS — Almanac II</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600;700&family=Spline+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--SPRITE--><svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-habits" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 12.5l2.6 2.6L16 9.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-fitness" viewBox="0 0 24 24"><path d="M2 12h4l2.5-6 4 12 2.5-6H22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-reading" viewBox="0 0 24 24"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5V19c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5zM12 6v13.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-goals" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></symbol>
+<symbol id="i-checkin" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-capture" viewBox="0 0 24 24"><path d="M3 13.5l2.5-8h13l2.5 8V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19zM3 13.5h5l1.2 2.5h5.6l1.2-2.5h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5.5l11-2v12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-sports" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 5.5v13M3 9.5h3v5H3M21 9.5h-3v5h3" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-edge" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9.5" ry="6" transform="rotate(-35 12 12)" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 15.5l7-7M10 11l3 3M11.8 9.2l3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 10v4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1" fill="currentColor"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 16h26M5 9.5h22M5 22.5h22" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-partly" viewBox="0 0 24 24"><path d="M9 4v1.5M3.5 9.5H5M5.3 5.8l1 1M12.7 5.8l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 11.5a3.2 3.2 0 0 1 5.9-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 19.5h9.5a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8 19.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-cloud" viewBox="0 0 24 24"><path d="M6.5 18.5h11a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6 3.2 3.2 0 0 0 .1 6.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-wind" viewBox="0 0 24 24"><path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-rain" viewBox="0 0 24 24"><path d="M6.5 14.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-snow" viewBox="0 0 24 24"><path d="M6.5 13.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="17.5" r="1" fill="currentColor"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/><circle cx="16" cy="17.5" r="1" fill="currentColor"/><circle cx="10" cy="21.5" r=".9" fill="currentColor"/><circle cx="14" cy="21.5" r=".9" fill="currentColor"/></symbol>
+</svg><!--/SPRITE-->
+<div class="shell">
+  <aside class="side" aria-label="Main">
+    <a class="brand" href="home.html"><svg><use href="#i-globe"/></svg><div><b>ONS</b><span>Operating Narcisystem</span></div></a>
+    <div class="grp">Today</div>
+    <a class="nav" href="home.html" aria-current="page"><svg class="i"><use href="#i-today"/></svg>Today</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-habits"/></svg>Habits <span class="count">4 left</span></a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-checkin"/></svg>Check-in</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-capture"/></svg>Capture</a>
+    <div class="grp">Track</div>
+    <a class="nav" href="#"><svg class="i"><use href="#i-goals"/></svg>Goals</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-fitness"/></svg>Fitness</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-reading"/></svg>Reading</a>
+    <div class="grp">Edge</div>
+    <a class="nav" href="cfb.html"><svg class="i"><use href="#i-edge"/></svg>CFB slate</a>
+    <div class="grp">Play</div>
+    <a class="nav" href="#"><svg class="i"><use href="#i-music"/></svg>Music</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-music"/></svg>King Gizzard</a>
+    <a class="nav" href="#"><svg class="i"><use href="#i-sports"/></svg>Sports</a>
+    <div class="foot"><span>Synced 06:10</span><b>All sources</b></div>
+  </aside>
+
+  <main>
+    <div class="col">
+      <header class="mast">
+        <div>
+          <h1>Good morning. You ran <em>10.2 miles</em> this week.</h1>
+          <p class="sub">That's the pace 350 needs: 83.1 miles in 58 days is 10.0 a week, and your year average is 6.1. CrossFit is the slipping one: no classes yet this week.</p>
+        </div>
+        <div class="meta">
+          <button class="ask" type="button"><svg class="i"><use href="#i-search"/></svg>Ask the system <kbd>⌘K</kbd></button><br>
+          Tuesday 3 November · Denver<br>Data as of 06:10 today
+        </div>
+      </header>
+
+      <section class="band" aria-label="This week">
+        <div><div class="l">Miles this week</div><div class="v num">10.2<small>of 10.0 needed</small></div><div class="n good">On pace for 350</div></div>
+        <div><div class="l">Habits today</div><div class="v num">0<small>of 4</small></div><div class="n">Resets at midnight</div></div>
+        <div><div class="l">Books</div><div class="v num">7<small>of 10</small></div><div class="n risk">1 behind · 8 by now</div></div>
+        <div><div class="l">CFB 2026, live</div><div class="v num">17–11<small>+4.45 u</small></div><div class="n">ROI +15.9% · 6 picks Saturday</div></div>
+      </section>
+
+      <div class="grid">
+        <div class="s8 stack">
+        <section class="panel" aria-labelledby="today-h">
+          <div class="ph"><h2 id="today-h">Today's list</h2><span class="aside">Tap to log · last 21 days</span></div>
+          <div class="habit"><button class="tick" aria-label="Log Meditation"></button><span class="name">Meditation</span><span class="why">Feeds “Meditation” goal</span><span class="strip" aria-label="Done 1 of the last 21 days"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="t"></i></span></div>
+          <div class="habit"><button class="tick" aria-label="Log 100 pushups"></button><span class="name">100 pushups</span><span class="why">Feeds “Pushups” goal</span><span class="strip" aria-label="Done 1 of the last 21 days"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="t"></i></span></div>
+          <div class="habit"><button class="tick" aria-label="Log 10 nonfiction pages"></button><span class="name">10 nonfiction pages</span><span class="why">Feeds “Nonfiction pages” goal</span><span class="strip" aria-label="Done 1 of the last 21 days"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="t"></i></span></div>
+          <div class="habit"><button class="tick" aria-label="Log 10 fiction pages"></button><span class="name">10 fiction pages</span><span class="why">Feeds “Fiction pages” goal</span><span class="strip" aria-label="Done 1 of the last 21 days"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="d"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="t"></i></span></div>
+          <div class="divider"></div>
+          <div class="ph" style="margin-bottom:4px"><h2>Check-in</h2><span class="aside">0 of 6 · sets today's training readiness</span></div>
+          <div class="ci"><span class="lab">Energy</span><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button></div>
+          <div class="ci"><span class="lab">Sleep</span><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button></div>
+          <div class="ci"><span class="lab">Soreness<small>5 is worst</small></span><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button></div>
+          <p class="foot-note">Mood, focus and stress are on the full check-in. <a href="#">Open check-in</a></p>
+        </section>
+
+        <section class="panel" aria-labelledby="pace-h">
+          <div class="ph"><h2 id="pace-h">Where the year lands</h2><a class="aside" href="#">All 20 goals</a></div>
+          <table class="pace">
+            <thead><tr><th>Goal</th><th class="n">Now</th><th class="n">Needs</th><th class="n">Doing</th></tr></thead>
+            <tbody>
+              <tr><td>Run 350 miles<div class="bar"><b style="width:76.3%"></b><i style="left:84%"></i></div></td><td class="num">266.9</td><td class="num">10.0/wk</td><td class="num good">10.2/wk</td></tr>
+              <tr><td>160 CrossFit classes<div class="bar bad"><b style="width:52.5%"></b><i style="left:84%"></i></div></td><td class="num">84</td><td class="num">9.1/wk</td><td class="num bad">0 this wk</td></tr>
+              <tr><td>Read 10 books<div class="bar risk"><b style="width:70%"></b><i style="left:84%"></i></div></td><td class="num">7</td><td class="num">1 per 19 d</td><td class="num risk">1 per 44 d</td></tr>
+              <tr><td>Read 5 fiction<div class="bar"><b style="width:80%"></b><i style="left:84%"></i></div></td><td class="num">4</td><td class="num">1 by Dec 31</td><td class="num good">On track</td></tr>
+            </tbody>
+          </table>
+          <p class="foot-note">The tick on each bar is today, 84% through the year. 8 goals aren't wired to a source yet, so they're left off this list.</p>
+        </section>
+
+        </div>
+        <div class="s4 stack">
+        <section class="panel" aria-labelledby="week-h">
+          <div class="ph"><h2 id="week-h">This week</h2><span class="aside">Nov 3–9</span></div>
+          <div class="row"><span class="when">Tue 3</span><span class="what">Brand New</span></div>
+          <div class="row"><span class="when">Tue 3</span><span class="what">Char drop-off<small>Every Tuesday</small></span></div>
+          <div class="row"><span class="when">Sat 7</span><span class="what">Ma's birthday</span></div>
+          <div class="row"><span class="when">Sat 7</span><span class="what">CFB: 6 picks<small>First kick 10:00 am</small></span></div>
+          <div class="row"><span class="when">Sun 8</span><span class="what">Tool tribute: Schism 25th</span></div>
+          <div class="row"><span class="when">Mon 9</span><span class="what">The Damned</span></div>
+        </section>
+
+        <section class="panel" aria-labelledby="edge-h">
+          <div class="ph"><h2 id="edge-h">Saturday's slate</h2><a class="aside" href="cfb.html">Open slate</a></div>
+          <div class="row"><span class="when">10:00</span><span class="what">UConn +7.0<small>vs North Carolina</small></span><span class="r num">92</span></div>
+          <div class="row"><span class="when">11:00</span><span class="what">Kansas State +4.5<small>vs Oklahoma State</small></span><span class="r num">85</span></div>
+          <div class="row"><span class="when">2:15</span><span class="what">Rutgers +17.5<small>at Wisconsin</small></span><span class="r num">95</span></div>
+          <div class="row"><span class="when">5:00</span><span class="what">Jacksonville State −16.5<small>vs Sam Houston</small></span><span class="r num">90</span></div>
+          <div class="row"><span class="when">7:30</span><span class="what">Texas Tech −16.5<small>vs West Virginia</small></span><span class="r num">97</span></div>
+          <div class="row"><span class="when">8:30</span><span class="what">UNLV −6.0<small>vs Wyoming</small></span><span class="r num">76</span></div>
+          <p class="foot-note">Model scores rank picks; they aren't probabilities.</p>
+        </section>
+      </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav class="tabbar" aria-label="Main"><a href="home.html" aria-current="page"><svg><use href="#i-today"/></svg>Today</a><a href="#"><svg><use href="#i-habits"/></svg>Habits</a><a href="#"><svg><use href="#i-checkin"/></svg>Check-in</a><a href="#"><svg><use href="#i-capture"/></svg>Capture</a><a href="#"><svg><use href="#i-more"/></svg>More</a></nav>
+</body>
+</html>

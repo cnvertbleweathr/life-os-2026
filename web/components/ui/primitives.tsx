@@ -2,7 +2,8 @@ import clsx from "clsx";
 import type { ReactNode, CSSProperties } from "react";
 import { GlobeMark } from "./icons";
 
-// ── K — mono kicker label ─────────────────────────────────────────────────
+// ── K — section label ────────────────────────────────────────────────────────
+// Logbook Color: sentence case, 12px, no tracked caps (DESIGN.md "No Micro-Caps Rule").
 
 export function K({
   children,
@@ -17,11 +18,12 @@ export function K({
 }) {
   return (
     <div
-      className={clsx("font-mono uppercase", className)}
+      className={clsx("font-sans", className)}
       style={{
-        fontSize: 9.5,
-        letterSpacing: "1.7px",
-        color: color ?? "#736e5f",
+        fontSize: 12,
+        lineHeight: "16px",
+        fontWeight: 500,
+        color: color ?? "var(--muted)",
         ...style,
       }}
     >
@@ -37,7 +39,7 @@ export function Card({
   className,
   accent,
   accentColor,
-  pad = 18,
+  pad = 20,
   style,
 }: {
   children: ReactNode;
@@ -49,12 +51,10 @@ export function Card({
 }) {
   return (
     <div
-      className={clsx("bg-surface border border-border rounded-card", className)}
+      className={clsx("bg-sheet border border-border rounded-card min-w-0", className)}
       style={{
         padding: pad,
-        borderTop: accent
-          ? `2.5px solid ${accentColor ?? "#1d5536"}`
-          : undefined,
+        boxShadow: accent ? `inset 0 3px 0 ${accentColor ?? "var(--hue)"}` : undefined,
         ...style,
       }}
     >
@@ -64,42 +64,48 @@ export function Card({
 }
 
 // ── PageHead ─────────────────────────────────────────────────────────────────
+// Logbook Color page intro: title, the span it covers, one coach-voice paragraph.
+// Right column: page actions above an optional pixel scene.
 
 export function PageHead({
   title,
+  titleSub,
   kicker,
   sub,
   right,
+  scene,
 }: {
   title: string;
-  kicker?: string;
-  sub?: string;
+  /** Lighter second part of the title, e.g. "— College Football". */
+  titleSub?: string;
+  /** The span line under the title (dates, week). */
+  kicker?: ReactNode;
+  /** The lede: one coach-voice paragraph. */
+  sub?: ReactNode;
   right?: ReactNode;
+  scene?: ReactNode;
 }) {
   return (
-    <div className="ons-pagehead flex justify-between items-end mb-[26px]">
-      <div>
-        {kicker && (
-          <K color="#1d5536" style={{ marginBottom: 10 }}>
-            {kicker}
-          </K>
-        )}
-        <h1
-          className="font-serif font-bold text-ink leading-none m-0"
-          style={{ fontSize: 40, letterSpacing: "-0.8px" }}
-        >
+    <div className="ons-pagehead flex justify-between items-start gap-6 mb-6">
+      <div className="min-w-0" style={{ flex: "1 1 0" }}>
+        <h1 className="font-sans font-semibold text-ink m-0" style={{ fontSize: 30, lineHeight: "36px", letterSpacing: "-0.01em" }}>
           {title}
+          {titleSub && <span className="font-normal text-muted"> {titleSub}</span>}
         </h1>
-        {sub && (
-          <p className="text-[13.5px] text-muted mt-[9px]">{sub}</p>
-        )}
+        {kicker && <p className="text-[14px] text-muted mt-1 m-0">{kicker}</p>}
+        {sub && <p className="text-[16px] leading-[25px] text-ink-2 mt-3 m-0" style={{ maxWidth: "68ch" }}>{sub}</p>}
       </div>
-      {right}
+      {(right || scene) && (
+        <div className="flex flex-col items-end gap-3" style={{ flex: scene ? "0 1 460px" : "none", minWidth: scene ? 300 : undefined }}>
+          {right}
+          {scene}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Stat — editorial stat-band cell ──────────────────────────────────────────
+// ── Stat — one figure in a StatBand ─────────────────────────────────────────
 
 export function Stat({
   label,
@@ -117,85 +123,58 @@ export function Stat({
   last?: boolean;
 }) {
   return (
-    <div
-      style={{
-        padding: "16px 18px",
-        borderRight: last ? "none" : "1px solid #ebe5d8",
-      }}
-    >
+    <div style={{ padding: "16px 18px", borderRight: last ? "none" : "1px solid var(--rule)" }}>
       <K>{label}</K>
-      <div
-        className="font-serif font-semibold leading-none mt-2"
-        style={{ fontSize: 30, color: accent ? "#1d5536" : "#232a22" }}
-      >
+      <div className="font-sans font-semibold mt-1" style={{ fontSize: 26, lineHeight: "32px", color: accent ? "var(--hue)" : "var(--ink)" }}>
         {value}
-        {unit && (
-          <span
-            className="font-mono font-normal ml-1"
-            style={{ fontSize: 11, color: "#a39d8c" }}
-          >
-            {unit}
-          </span>
-        )}
+        {unit && <span className="font-mono font-normal ml-1" style={{ fontSize: 12, color: "var(--muted)" }}>{unit}</span>}
       </div>
-      {spark ? (
-        <div className="mt-[10px] text-green-bright">{spark}</div>
-      ) : (
-        <div className="h-8" />
-      )}
+      {spark ? <div className="mt-[10px] text-hue">{spark}</div> : <div className="h-8" />}
     </div>
   );
 }
 
-// ── StatBand — wraps N Stat cells in the editorial band ──────────────────────
+// ── StatBand — a row of Stat cells in one bordered card ─────────────────────
 
 export function StatBand({ children }: { children: ReactNode }) {
   return (
     <div
-      className="ons-band grid mb-7"
-      style={{
-        gridTemplateColumns: `repeat(${
-          Array.isArray(children) ? children.length : 1
-        }, 1fr)`,
-        borderTop: "1.5px solid #232a22",
-        borderBottom: "1px solid #e6e3dc",
-      }}
+      className="ons-band grid mb-6 bg-sheet border border-border rounded-card"
+      style={{ gridTemplateColumns: `repeat(${Array.isArray(children) ? children.length : 1}, minmax(0, 1fr))` }}
     >
       {children}
     </div>
   );
 }
 
-// ── Pace badge ───────────────────────────────────────────────────────────────
+// ── Pace badge — status pill ────────────────────────────────────────────────
+// Untracked goals read "Not wired", never "behind" (critique problem 1).
 
-const PACE_MAP: Record<string, [string, string]> = {
-  on_track: ["#1d5536", "On track"],
-  ahead:    ["#1d5536", "Ahead"],
-  behind:   ["#a8473a", "Behind"],
-  at_risk:  ["#9a6a1e", "At risk"],
-  unknown:  ["#a39d8c", "Untracked"],
-  binary:   ["#a39d8c", "Logged"],
-  complete: ["#1d5536", "Complete"],
+const PACE_MAP: Record<string, [string, string, string]> = {
+  on_track: ["var(--ok)", "var(--ok-ink)", "On track"],
+  ahead:    ["var(--ok)", "var(--ok-ink)", "Ahead"],
+  complete: ["var(--ok)", "var(--ok-ink)", "Complete"],
+  at_risk:  ["var(--risk)", "var(--risk-ink)", "At risk"],
+  behind:   ["var(--off)", "var(--off-ink)", "Behind"],
+  unknown:  ["var(--none)", "var(--none-ink)", "Not wired"],
+  binary:   ["var(--none)", "var(--none-ink)", "Logged"],
 };
 
 export function Pace({ status }: { status?: string | null }) {
-  const [col, txt] = PACE_MAP[status ?? ""] ?? ["#736e5f", status ?? "—"];
+  const [bg, fg, txt] = PACE_MAP[status ?? ""] ?? ["var(--none)", "var(--none-ink)", status ?? "—"];
   return (
-    <span
-      className="font-mono whitespace-nowrap"
-      style={{ fontSize: 9, letterSpacing: "0.5px", color: col }}
-    >
+    <span className="font-sans whitespace-nowrap inline-block" style={{ fontSize: 12, fontWeight: 500, lineHeight: "20px", padding: "0 8px", borderRadius: 4, background: bg, color: fg }}>
       {txt}
     </span>
   );
 }
 
-// ── Pill — rounded filter toggle ─────────────────────────────────────────────
+// ── Pill — filter toggle chip ───────────────────────────────────────────────
 
 export function Pill({
   children,
   active,
-  color = "#1d5536",
+  color = "var(--ink)",
   onClick,
   style,
 }: {
@@ -207,18 +186,18 @@ export function Pill({
 }) {
   return (
     <button
-      className="ons-tap cursor-pointer"
+      className="ons-tap cursor-pointer font-sans"
       onClick={onClick}
+      aria-pressed={active}
       style={{
-        fontFamily: "var(--font-mono, 'Spline Sans Mono', monospace)",
-        fontSize: 10,
-        letterSpacing: "0.5px",
-        textTransform: "uppercase",
-        border: `1px solid ${active ? color : "#e6e3dc"}`,
-        background: active ? color : "#f6f5f2",
-        color: active ? "#fff" : "#736e5f",
-        borderRadius: 999,
-        padding: "6px 13px",
+        fontSize: 13,
+        fontWeight: active ? 500 : 400,
+        height: 28,
+        border: `1px solid ${active ? color : "var(--border)"}`,
+        background: active ? color : "var(--sheet)",
+        color: active ? "var(--sheet)" : "var(--ink-2)",
+        borderRadius: 6,
+        padding: "0 10px",
         ...style,
       }}
     >
@@ -236,6 +215,7 @@ export function Watermark({
 }: {
   size?: number;
   opacity?: number;
+  /** Ignored: nothing spins in Logbook Color. Kept so existing callers compile. */
   spin?: boolean;
 }) {
   return (
@@ -245,10 +225,9 @@ export function Watermark({
         right: -50,
         top: -70,
         opacity,
-        animation: spin ? "ons-rot 120s linear infinite" : "none",
       }}
     >
-      <GlobeMark size={size} stroke="#1d5536" sw={1} />
+      <GlobeMark size={size} stroke="var(--hue)" sw={1} />
     </div>
   );
 }
@@ -264,7 +243,7 @@ export function Stub({
 }) {
   return (
     <div className="grid place-items-center py-[90px] px-5 text-center">
-      <div className="font-serif text-[22px] text-ink">{title}</div>
+      <div className="font-sans font-semibold text-[20px] text-ink">{title}</div>
       {body && (
         <p className="text-[13px] text-muted max-w-[380px] mt-2">{body}</p>
       )}
@@ -326,19 +305,19 @@ export function StatCard({
   const display =
     value === null || value === undefined || value === "" ? "—" : String(value);
   return (
-    <div className="bg-surface border border-border rounded-card p-4">
-      <p className="font-mono text-[9.5px] tracking-[1.7px] uppercase text-faint mb-2">
+    <div className="bg-sheet border border-border rounded-card p-4">
+      <p className="text-[12px] font-medium text-muted mb-2">
         {label}
       </p>
       <p
         className={clsx(
-          "font-serif text-2xl font-semibold",
+          "font-sans text-2xl font-semibold",
           accent ? "text-green" : "text-ink"
         )}
       >
         {display}
         {unit && (
-          <span className="font-mono text-[11px] text-faint font-normal ml-1">
+          <span className="font-mono text-[12px] text-muted font-normal ml-1">
             {unit}
           </span>
         )}
@@ -351,7 +330,7 @@ export function StatCard({
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="font-mono text-[9.5px] tracking-[1.7px] uppercase text-faint mb-2">
+    <p className="text-[12px] font-medium text-muted mb-2">
       {children}
     </p>
   );
@@ -375,7 +354,7 @@ export function PageHeader({
   right?: ReactNode;
 }) {
   return (
-    <div className="px-6 py-4 border-b border-border bg-surface flex items-center justify-between">
+    <div className="px-6 py-4 border-b border-border bg-sheet flex items-center justify-between">
       <div>
         <h1 className="text-xl font-semibold text-ink">{title}</h1>
         {sub && <p className="text-xs text-muted mt-0.5">{sub}</p>}
