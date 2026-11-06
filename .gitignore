@@ -167,3 +167,7 @@ data/spotify/processed/daily10_latest.json
 web/tsconfig.tsbuildinfo
 .DS_Store
 __MACOSX/
+
+# Dev servers (scripts/dev.sh): scratch write logs and a separate Next build dir
+.dev-data/
+web/.next-dev/

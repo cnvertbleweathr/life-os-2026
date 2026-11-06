@@ -38,8 +38,21 @@ from zoneinfo import ZoneInfo
 ROOT = Path(__file__).resolve().parents[1]
 
 
+DEV_DATA_DIR = ROOT / ".dev-data"
+
+
 def data_dir() -> Path:
-    return Path(os.getenv("ONS_DATA_DIR", ROOT / "data"))
+    """Where the JSONL write logs live.
+
+    ONS_DATA_DIR wins when set (tests point it at a tmp dir). Dev servers set ONS_DEV=1
+    (scripts/dev.sh does), which defaults writes to .dev-data/ so a test click can never
+    touch the real logs in data/. Production (launchd) sets neither and writes to data/.
+    """
+    if os.getenv("ONS_DATA_DIR"):
+        return Path(os.environ["ONS_DATA_DIR"])
+    if os.getenv("ONS_DEV") == "1":
+        return DEV_DATA_DIR
+    return ROOT / "data"
 
 
 def local_tz() -> ZoneInfo:

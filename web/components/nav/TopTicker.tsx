@@ -10,9 +10,9 @@
 // while one of my teams is live, every 5 min otherwise, and not at all while
 // the tab is hidden.
 //
-// The marquee is two copies of the same strip translated -50% on a loop, so
-// it wraps seamlessly. Hover or keyboard focus pauses it; with
-// prefers-reduced-motion it becomes a plain horizontally scrollable strip.
+// A static row you swipe or scroll sideways (owner's call, Nov 2026: the pixel title scenes are the
+// only looping motion). The strip is still rendered twice for the old marquee; globals.css hides the
+// aria-hidden copy and turns off the animation, so the duration set below is inert.
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";

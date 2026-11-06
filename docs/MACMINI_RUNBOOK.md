@@ -373,6 +373,71 @@ git push
 
 ---
 
+## Deploy and roll back
+
+Deploy only from `main`, after the owner has merged the PR. Production is two launchd jobs:
+- **web:** `com.ons.nextjs`, which runs `next start` on :3000 from `web/` and serves `web/.next`;
+- **API:** `com.ons.fastapi`, which runs uvicorn on :8000.
+
+The Cloudflare Tunnel publishes both.
+
+### Deploy
+
+```bash
+cd ~/life-os-2026
+git checkout main && git pull --ff-only
+
+# 1. Keep the current build so a rollback is one move (outside the repo, kept until the next deploy)
+rm -rf ~/ons-next-previous && cp -R web/.next ~/ons-next-previous
+
+# 2. Build (from web/, where package.json is); stop here if it fails, as production is untouched until step 3
+(cd web && npm run build)
+
+# 3. Restart the web app; restart the API too if api/ changed in this merge
+launchctl kickstart -k gui/$(id -u)/com.ons.nextjs
+launchctl kickstart -k gui/$(id -u)/com.ons.fastapi   # only if api/ changed
+
+# 4. Verify
+curl -fsS -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:3000/
+curl -fsS -o /dev/null -w "api %{http_code}\n" http://127.0.0.1:8000/api/health
+curl -fsS -o /dev/null -w "public %{http_code}\n" https://narcisystem.com/
+```
+
+Then open narcisystem.com in a browser, in light and dark, and check the pages the merge touched.
+
+A failed build (step 2) can leave `web/.next` half written. If it did, restore the copy from step 1 (see Roll back) before restarting anything.
+
+### Roll back
+
+**Fastest: the previous build.** Use this when the new build is bad but the code is fine to revert later.
+
+```bash
+cd ~/life-os-2026/web
+rm -rf .next && cp -R ~/ons-next-previous .next
+launchctl kickstart -k gui/$(id -u)/com.ons.nextjs
+```
+
+**From git: revert the merge and redeploy.** Use this when the code itself is wrong, or for API changes.
+
+```bash
+cd ~/life-os-2026
+git checkout -b revert/<what> main
+git revert -m 1 <merge-commit-sha>        # open a PR for the revert; the owner merges it
+# after the merge: run Deploy above (restart com.ons.fastapi if api/ was in the reverted merge)
+```
+
+To get the API back immediately, before the revert PR is merged, check out the previous commit's `api/` and restart:
+
+```bash
+git checkout <previous-good-sha> -- api/ && launchctl kickstart -k gui/$(id -u)/com.ons.fastapi
+# then discard the local change once the revert PR lands: git checkout main -- api/
+```
+
+### Never during a deploy
+
+- Never run `next dev` in `web/` without `NEXT_DIST_DIR`; use `scripts/dev.sh`. It writes into `web/.next` and breaks the live site.
+- Never test writes against an API started without `ONS_DEV=1` or `ONS_DATA_DIR`. It writes to the real logs in `data/`.
+
 ## Next time it drops while you're away
 
 1. **healthchecks.io tells you which case you're in.**
