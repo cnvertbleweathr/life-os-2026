@@ -69,24 +69,35 @@ Files: `home.html`, `cfb.html`, `style.css`, `theme.js`; screenshots `{home,cfb}
 
 ## Pixel scenes beside the title
 
-Each page gets a small pixel-art loop next to its title, in `px.js`. They're built to the **pixel-art-sprites** skill (`.claude/skills/pixel-art-sprites`, copied from omer-metin/skills-for-antigravity after reading it).
+Each page has a pixel-art loop in a right-hand column under the action buttons. It's up to 460px wide on desktop and a full-width banner on phones. The code is in `px.js`, built to the **pixel-art-sprites** skill (`.claude/skills/pixel-art-sprites`, a reviewed copy of omer-metin/skills-for-antigravity).
 
-- **Sprites.** Characters are 16×16 frames with a 4-frame run cycle: contact, passing, mirrored contact, mirrored passing. Arms swing opposite the legs, and the torso drops 1px on each contact frame. Frame times are 125ms for the run and 160ms for the jog, the skill's "fast" and "normal" bands.
-- **No sliding.** The ground scrolls exactly 4px a frame, which is how far a planted foot travels, so feet plant instead of sliding.
-- **One outline rule.** Every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left, so shade sits on the right and bottom of each form.
-- **Closed palette.** 33 `--px-*` colours per theme, with day and night sets, and no colours borrowed from the UI. The ball carrier's jersey has its own navy because the skill's silhouette test failed when it matched the outline.
-- **Integer scaling in device pixels.** Each art pixel is exactly 3 device pixels at 1×, 3 at 1.25×, 4 at 1.5× and 6 at 2×. The canvas uses `image-rendering: pixelated`.
+- **Characters.** 20×18 frames with a **6-frame run cycle**, as the skill recommends for runs: contact, down, float, then the same three mirrored.
+  - Legs are hip → knee → foot, so knees bend: the front leg reaches, the back heel kicks, the knee drives through. Arms swing opposite the legs, and the body bobs 1px.
+  - Frame times are 100ms for the run and 140ms for the jog.
+- **No sliding.** The ground scrolls one foot-travel per frame: 4px on the field, 3px on the trail.
+- **One outline rule.** Every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left.
+- **Closed palette.** 42 `--px-*` colours per theme, within the skill's "expanded" range.
+  - The silhouette test sent three characters to navy: the ball carrier's jersey, the referee's pants and the jogger's shorts all matched the outline colour and merged into it.
+- **Integer scaling in device pixels.** Each art pixel lands on 3, 4 or 6 device pixels at 1×/1.25×, 1.5× and 2×.
 
-**Built:**
-- **Degenerates Corner:** a ball carrier (tangerine helmet, navy jersey, ball tucked) breaks upfield with a violet defender reaching for him. The crowd bounces, lights come on at night, and an end zone and goalpost scroll past, with a sparkle on the score.
-- **This week:** a jogger in running blue on a trail, with parallax hills, trees and clouds. There's a sun by day and a moon with stars at night.
+**Degenerates Corner:**
+- The stands have a bouncing crowd, a scoreboard showing the season record (17–11), and light towers at night.
+- Coaches in headsets walk the sideline.
+- The field has mown stripes, yard lines, hash marks and yard numbers.
+- A referee trails a violet defender, who chases the tangerine ball carrier with the ball tucked.
+- Every so often an end zone, pylons and a goalpost scroll in; crossing the goal line sets off confetti and "TD!".
+
+**This week:**
+- A jogger in running blue on a trail, with a dog alongside.
+- Behind them: the Rockies with snowcaps, rolling hills, trees, drifting clouds and birds.
+- The trail has wildflowers on the verge and numbered mile markers.
+- There's a sun by day and a moon with stars at night.
 
 **Motion rules.** These break CLAUDE.md's "quiet on daily screens" default because the owner asked for them. To keep them quiet anyway:
 - They draw only when the frame changes.
 - They stop when scrolled offscreen or when the tab is hidden.
 - Clicking a scene pauses every scene. The choice is saved as `ons-px-paused`.
 - With `prefers-reduced-motion` on, each scene shows a still frame and the button is disabled.
-- Nothing else on the page animates.
 
 **Ideas for the other pages** (not built):
 
