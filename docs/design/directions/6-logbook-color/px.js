@@ -146,7 +146,7 @@
       let scoring = false;
       for (let k = Math.floor(d / 260) - 1; k <= Math.floor(d / 260) + 1; k++) {
         const gx = k * 260 + 220 - d; if (gx > W + 30 || gx < -40) continue;
-        px(ctx, P.team, gx, 11, 20, H - 11); px(ctx, P.line, gx, 11, 1, H - 11);
+        px(ctx, P['team-d'], gx, 11, 20, H - 11); px(ctx, P.line, gx, 11, 1, H - 11);
         const p = gx + 20;
         px(ctx, P.post, p, 13, 1, 16); px(ctx, P.post, p - 4, 12, 9, 1); px(ctx, P.post, p - 4, 3, 1, 9); px(ctx, P.post, p + 4, 3, 1, 9);
         if (rx + 8 >= gx && rx + 8 <= gx + 20) scoring = true;
