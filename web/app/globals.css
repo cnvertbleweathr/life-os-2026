@@ -1,191 +1,232 @@
-@import url('https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600;700&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap');
+/* ONS — Logbook Color (DESIGN.md). Tokens are CSS custom properties in two themes on <html data-theme>.
+   tailwind.config.js maps every colour name to these variables, including the old Almanac names
+   (canvas, surface, faint, green…), so existing classes follow the theme. Pages that used hex literals
+   were codemodded to var(--token). Reference build: docs/design/directions/6-logbook-color/. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --frame: #edf1ee; --sheet: #ffffff; --raised: #f4f6f4; --active: #dfe7e1; --hover: #e5ebe6;
+  --border: #e1e6e2; --rule: #edf0ed; --control: #c6cdc7; --we: #f8faf8;
+  --ink: #141714; --ink-2: #2c312c; --muted: #596059; --icon: #646b64;
+  --hue: #1f6b46; --hue-ink: #ffffff; --hue-soft: #e1efe6; --focus-ring: rgb(31 107 70 / .14);
+  --btn-pri: #141714; --btn-pri-hover: #2a2f2a; --btn-pri-ink: #ffffff;
+  --pos: #1f6b46; --neg: #b3262b;
+
+  --run: #dcefff;   --run-ink: #0a3a80;   --run-mark: #2a6fd6;
+  --lift: #fdecc8;  --lift-ink: #663a00;  --lift-mark: #c27a12;
+  --read: #d4f2ea;  --read-ink: #0b4840;  --read-mark: #17907c;
+  --habit: #e0f3d5; --habit-ink: #1f4a12; --habit-mark: #3f8f2a;
+  --check: #ebe5fc; --check-ink: #37217a; --check-mark: #6d4fd1;
+  --plan: #fbe3ea;  --plan-ink: #6b1631;  --plan-mark: #c2456b;
+  --edge: #fde3cf;  --edge-ink: #6a2b06;  --edge-mark: #d9661c;
+  --wx: #e6ebf2;    --wx-ink: #263247;    --wx-mark: #5b6f8f;
+
+
+  --px-outline: #1d2230; --px-skin: #e5ad85; --px-skin-d: #b97a56; --px-team: #d9661c; --px-team-d: #96400f;
+  --px-foe: #6d4fd1; --px-foe-d: #3f2d8c; --px-white: #f3f4f6; --px-white-d: #aeb3c4; --px-mask: #8c93a3; --px-ball: #8a4a1c;
+  --px-hair: #3b2516; --px-run: #2a6fd6; --px-run-d: #1a4796; --px-navy: #34446a; --px-navy-d: #222d49;
+  --px-stand: #3b4252; --px-grass: #4e9a4a; --px-grass2: #59a654; --px-grass-d: #3c7d3a; --px-line: #f5f8f3; --px-post: #f4c430;
+  --px-sky: #cfe6f5; --px-cloud: #ffffff; --px-sun: #ffc23d; --px-hill: #8fc77f; --px-hill2: #b5dba6; --px-tree: #2f7a3a;
+  --px-tree-d: #1f5a2a; --px-trunk: #7a4a24; --px-ground: #d6c39a; --px-ground2: #b39d6e; --px-star: #ffffff;
+  --px-track: #6b4a3a; --px-board: #12151c; --px-mtn: #8e9db3; --px-mtn-d: #6c7b93; --px-snow: #f4f7fb; --px-bloom1: #e85d8a; --px-bloom2: #f2d14b;
+  --px-sky-o: #b9c3cf; --px-cloud-o: #dfe4ea; --px-rain: #4f7fb8; --px-leaf: #d08a2e;
+  --px-blackdog: #2e2d33; --px-collar: #d23b3b; --px-tan: #c98a45; --px-tan-d: #7d4f22; --px-muzzle: #3a2a22;
+  --px-tabby: #a46a34; --px-tabby-s: #5b3818; --px-gray-c: #9097a2; --px-gray-s: #555b66; --px-eye: #8cc14a;
+
+  --ok: #d9f2e2; --ok-ink: #0d3a22; --risk: #fff0d6; --risk-ink: #7a430a; --off: #fde6e6; --off-ink: #7d1c20; --none: #eef0ee; --none-ink: #3e443e;
+  /* legacy Almanac names, re-pointed (see tailwind.config.js) */
+  --faint: #646b64; --warn: #8a4b0b; --series2: #3d6a9a;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --frame: #0f1210; --sheet: #171b18; --raised: #1f2420; --active: #253029; --hover: #1d231f;
+  --border: #2a312c; --rule: #222823; --control: #3b443d; --we: #1a1f1b;
+  --ink: #edf1ee; --ink-2: #d3d9d4; --muted: #9ea7a0; --icon: #8f9891;
+  --hue: #5cc290; --hue-ink: #0b1a12; --hue-soft: #17301f; --focus-ring: rgb(92 194 144 / .22);
+  --btn-pri: #edf1ee; --btn-pri-hover: #d3d9d4; --btn-pri-ink: #111411;
+  --pos: #6fd29e; --neg: #ff8a8f;
+
+  --run: #142a45;   --run-ink: #b8d8ff;   --run-mark: #5d9ff2;
+  --lift: #352508;  --lift-ink: #f7d394;  --lift-mark: #e39d36;
+  --read: #0e302a;  --read-ink: #a2e6d6;  --read-mark: #33b89f;
+  --habit: #182c12; --habit-ink: #c2e8ae; --habit-mark: #63b549;
+  --check: #251c42; --check-ink: #d2c6ff; --check-mark: #9479f2;
+  --plan: #371722;  --plan-ink: #ffc2d2;  --plan-mark: #e66b91;
+  --edge: #3a1f0c;  --edge-ink: #ffcca4;  --edge-mark: #f08a45;
+  --wx: #1d2433;    --wx-ink: #c5d0e3;    --wx-mark: #7f95ba;
+
+
+  --px-outline: #07090d; --px-skin: #d29c76; --px-skin-d: #a06a49; --px-team: #f08a45; --px-team-d: #b0561f;
+  --px-foe: #9479f2; --px-foe-d: #5d45b8; --px-white: #d9dbe2; --px-white-d: #8e93a5; --px-mask: #6b7282; --px-ball: #a0592a;
+  --px-hair: #2a1a10; --px-run: #5d9ff2; --px-run-d: #3567b5; --px-navy: #3d4f7a; --px-navy-d: #28345a;
+  --px-stand: #171b23; --px-grass: #2a5a2b; --px-grass2: #306431; --px-grass-d: #1f4721; --px-line: #cdd6cc; --px-post: #e3b52c;
+  --px-sky: #101c2a; --px-cloud: #22303f; --px-sun: #e9e4c4; --px-hill: #1e3b25; --px-hill2: #182d22; --px-tree: #14361c;
+  --px-tree-d: #0d2614; --px-trunk: #4a2e18; --px-ground: #4a3f2c; --px-ground2: #5e5038; --px-star: #fff6cf;
+  --px-track: #3a2a22; --px-board: #05070a; --px-mtn: #2b3a50; --px-mtn-d: #1f2b3d; --px-snow: #b9c6d8; --px-bloom1: #b8476c; --px-bloom2: #bfa43a;
+  --px-sky-o: #1a222c; --px-cloud-o: #2b3542; --px-rain: #6d9bd3; --px-leaf: #a86d22;
+  --px-blackdog: #34333b; --px-collar: #d94a4a; --px-tan: #b07a3d; --px-tan-d: #6a431c; --px-muzzle: #2a1d17;
+  --px-tabby: #94602f; --px-tabby-s: #4f3015; --px-gray-c: #7c838e; --px-gray-s: #474c56; --px-eye: #9fd35a;
+
+  --ok: #143222; --ok-ink: #a9e9c4; --risk: #382810; --risk-ink: #f6cf8b; --off: #3d191c; --off-ink: #ffb8bb; --none: #232924; --none-ink: #c3cac4;
+  --faint: #8f9891; --warn: #f6cf8b; --series2: #8fb3dd;
+}
+
+html { background: var(--frame); }
 body {
-  background-color: theme('colors.canvas');
+  background-color: var(--frame);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-
-::selection {
-  background: theme('colors.green.DEFAULT');
-  color: #fff;
-}
+::selection { background: var(--hue); color: var(--hue-ink); }
+:focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; }
 
 /* Scrollbar */
-.ons-scroll { scrollbar-width: thin; scrollbar-color: theme('colors.border') transparent; }
+.ons-scroll { scrollbar-width: thin; scrollbar-color: var(--control) transparent; }
 .ons-scroll::-webkit-scrollbar { width: 9px; height: 9px; }
-.ons-scroll::-webkit-scrollbar-thumb { background: theme('colors.border'); border-radius: 6px; border: 2px solid theme('colors.canvas'); }
+.ons-scroll::-webkit-scrollbar-thumb { background: var(--control); border-radius: 6px; border: 2px solid var(--sheet); }
 .ons-scroll::-webkit-scrollbar-track { background: transparent; }
 
-/* Animations */
-@keyframes ons-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes ons-rot  { to { transform: rotate(360deg); } }
-
-.ons-page  { animation: ons-rise .42s cubic-bezier(.2,.7,.3,1); }
-
 /* Utilities */
-.rounded-card { border-radius: 3px; }
-.text-2xs { font-size: 0.6875rem; line-height: 1rem; }
+.rounded-card { border-radius: 8px; }
+.text-2xs { font-size: 0.75rem; line-height: 1rem; }
 
-/* Tap targets */
-.ons-tap { transition: transform .12s, background .14s, border-color .14s, color .14s; }
+/* Press feedback (the only UI motion besides hover and the pixel scenes) */
+.ons-tap { transition: transform .12s ease-out, background-color .15s ease-out, border-color .15s ease-out, color .15s ease-out; }
 .ons-tap:active { transform: scale(.97); }
-
-/* Hoverable rows */
-.ons-row { transition: background .12s; }
-.ons-row:hover { background: theme('colors.canvas'); }
+.ons-row { transition: background-color .12s ease-out; }
+.ons-row:hover { background: var(--we); }
 
 /* Inputs */
 .ons-input {
-  font-family: theme('fontFamily.mono');
-  font-size: 13px;
-  background: theme('colors.canvas');
-  border: 1px solid theme('colors.border');
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 14px;
+  background: var(--sheet);
+  border: 1px solid var(--control);
   border-radius: 6px;
-  padding: 9px 11px;
-  color: theme('colors.ink');
+  padding: 8px 10px;
+  color: var(--ink);
   outline: none;
-  transition: border-color .14s, box-shadow .14s;
+  transition: border-color .15s ease-out, box-shadow .15s ease-out;
 }
-.ons-input:focus {
-  border-color: theme('colors.green.DEFAULT');
-  box-shadow: 0 0 0 3px rgb(29 85 54 / 0.13);
-}
+.ons-input::placeholder { color: var(--muted); }
+.ons-input:focus { border-color: var(--hue); box-shadow: 0 0 0 3px var(--focus-ring); }
 
-/* ── Top ticker (components/nav/TopTicker.tsx) ──────────────────────────── */
+/* ── Shell: L-frame (sidebar + top bar on --frame), work on a rounded sheet ── */
+.ons-shell { height: 100vh; height: 100dvh; }
+.ons-app { display: grid; grid-template-columns: 228px minmax(0, 1fr); grid-template-rows: 48px minmax(0, 1fr); height: 100%; }
+.ons-sidebar { grid-row: 1 / span 2; grid-column: 1; }
+.ons-topbar { grid-row: 1; grid-column: 2; }
+.ons-sheet-main { grid-row: 2; grid-column: 2; margin: 0 8px 8px 0; background: var(--sheet); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.ons-theme-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; border-radius: 6px; border: 1px solid var(--control); background: var(--sheet); color: var(--ink-2); cursor: pointer; }
+.ons-theme-btn:hover { background: var(--raised); }
+.ons-theme-btn .in-dark, [data-theme="dark"] .ons-theme-btn .in-light { display: none; }
+[data-theme="dark"] .ons-theme-btn .in-dark { display: block; }
+
+/* ── Pixel title scenes (components/ui/PixelScene.tsx) ── */
+.ons-scene { display: block; width: 100%; height: 98px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--px-sky); cursor: pointer; position: relative; }
+.ons-scene canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+.ons-scene:disabled { cursor: default; }
+.ons-scene:not(:disabled):hover::after, .ons-scene[aria-pressed="true"]:not(:disabled)::after { content: "Pause"; position: absolute; right: 6px; bottom: 6px; font: 500 11px/16px "IBM Plex Sans", system-ui, sans-serif; padding: 0 6px; border-radius: 4px; background: var(--sheet); color: var(--ink-2); }
+.ons-scene[aria-pressed="true"]:not(:disabled)::after { content: "Paused · play"; }
+
+/* ── Top ticker (components/nav/TopTicker.tsx) ── */
 .ons-ticker-bar {
   display: flex; align-items: stretch; height: 38px; flex-shrink: 0;
-  background: #fbfaf5; border-bottom: 1px solid #e6e3dc;
-  font-family: "Spline Sans", system-ui, sans-serif; color: #232a22;
+  background: var(--sheet); border-bottom: 1px solid var(--border);
+  font-family: "IBM Plex Sans", system-ui, sans-serif; color: var(--ink);
 }
 .ons-ticker-label {
-  display: flex; align-items: center; gap: 7px; padding: 0 16px 0 24px; flex-shrink: 0;
-  border-right: 1px solid #e6e3dc;
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9.5px;
-  letter-spacing: 1.7px; text-transform: uppercase; color: #1d5536;
+  display: flex; align-items: center; gap: 7px; padding: 0 16px 0 20px; flex-shrink: 0;
+  border-right: 1px solid var(--border); font-size: 12px; font-weight: 500; color: var(--hue);
 }
-.ons-ticker-dot { width: 6px; height: 6px; border-radius: 999px; background: #1d5536; }
-.ons-ticker-dot.is-live { background: #a8473a; animation: ons-pulse 1.6s ease-out infinite; }
-@keyframes ons-pulse {
-  0% { box-shadow: 0 0 0 0 rgb(168 71 58 / 0.5); }
-  100% { box-shadow: 0 0 0 7px rgb(168 71 58 / 0); }
-}
+.ons-ticker-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--hue); }
+.ons-ticker-dot.is-live { background: var(--neg); }
 .ons-ticker-pinned {
   display: flex; align-items: center; flex-shrink: 0; padding: 0 6px;
-  border-right: 1px solid #e6e3dc; background: rgb(168 71 58 / 0.04);
+  border-right: 1px solid var(--border); background: color-mix(in srgb, var(--neg) 5%, transparent);
 }
-.ons-ticker-pinned > * + * { border-left: 1px solid #ebe5d8; }
+.ons-ticker-pinned > * + * { border-left: 1px solid var(--rule); }
 .ons-ticker-viewport {
   flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
           mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
 }
-.ons-ticker-track {
-  display: flex; width: max-content;
-  animation: ons-marquee 90s linear infinite;
-}
+.ons-ticker-track { display: flex; width: max-content; animation: ons-marquee 90s linear infinite; }
 .ons-ticker-viewport:hover .ons-ticker-track,
 .ons-ticker-viewport:focus-within .ons-ticker-track { animation-play-state: paused; }
 @keyframes ons-marquee { to { transform: translateX(-50%); } }
 .ons-ticker-copy { display: flex; align-items: center; flex-shrink: 0; padding-right: 8px; }
-.ons-ticker-empty { flex: 1; display: flex; align-items: center; padding: 0 18px; font-size: 10px; letter-spacing: 0.5px; }
-
+.ons-ticker-empty { flex: 1; display: flex; align-items: center; padding: 0 18px; font-size: 12px; color: var(--muted); }
 .ons-ticker-tag {
-  margin: 0 6px 0 18px; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-  background: #e9efe7; color: #1d5536;
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 8.5px;
-  letter-spacing: 1.3px; text-transform: uppercase;
+  margin: 0 6px 0 18px; padding: 1px 8px; border-radius: 4px; white-space: nowrap;
+  background: var(--hue-soft); color: var(--hue); font-size: 12px; font-weight: 500;
 }
 .ons-ticker-item {
   display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
-  padding: 3px 12px; font-size: 12px; color: #232a22; text-decoration: none;
-  border-radius: 4px;
+  padding: 3px 12px; font-size: 13px; color: var(--ink); text-decoration: none; border-radius: 4px;
 }
-.ons-ticker-item + .ons-ticker-item { border-left: 1px solid #ebe5d8; }
-a.ons-ticker-item:hover .ons-ticker-headline { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #a39d8c; }
-a.ons-ticker-item:focus-visible { outline: 2px solid #1d5536; outline-offset: -2px; }
-.ons-ticker-league,
-.ons-ticker-source,
-.ons-ticker-status,
-.ons-ticker-ago {
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px;
-  letter-spacing: 0.9px; text-transform: uppercase; color: #a39d8c;
+.ons-ticker-item + .ons-ticker-item { border-left: 1px solid var(--rule); }
+a.ons-ticker-item:hover .ons-ticker-headline { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--muted); }
+a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset: -2px; }
+.ons-ticker-league, .ons-ticker-source, .ons-ticker-status, .ons-ticker-ago {
+  font-size: 12px; color: var(--muted);
 }
-.ons-ticker-source { color: #736e5f; }
-.ons-ticker-source.is-team { color: #1d5536; font-weight: 600; }
-.ons-ticker-status.is-live { color: #a8473a; font-weight: 600; }
-.ons-ticker-ago { letter-spacing: 0.3px; text-transform: none; }
-.ons-ticker-headline { font-family: "Spectral", Georgia, serif; font-size: 13.5px; max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
-.ons-ticker-result {
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; font-weight: 700;
-  padding: 1px 5px; border-radius: 3px;
-}
-.ons-ticker-result.is-win { background: #e9efe7; color: #1d5536; }
-.ons-ticker-result.is-loss { background: rgb(168 71 58 / 0.1); color: #a8473a; }
-
+.ons-ticker-source.is-team { color: var(--hue); font-weight: 600; }
+.ons-ticker-status.is-live { color: var(--neg); font-weight: 600; }
+.ons-ticker-headline { font-size: 13px; max-width: 520px; overflow: hidden; text-overflow: ellipsis; }
+.ons-ticker-result { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600; padding: 0 5px; border-radius: 4px; }
+.ons-ticker-result.is-win { background: var(--ok); color: var(--ok-ink); }
+.ons-ticker-result.is-loss { background: var(--off); color: var(--off-ink); }
 .ons-ticker-cfb {
-  display: flex; align-items: center; gap: 9px; padding: 0 24px 0 16px; flex-shrink: 0;
-  border-left: 1px solid #e6e3dc; font-size: 13px; color: #232a22; text-decoration: none;
+  display: flex; align-items: center; gap: 9px; padding: 0 20px 0 16px; flex-shrink: 0;
+  border-left: 1px solid var(--border); font-size: 13px; color: var(--ink); text-decoration: none;
 }
-.ons-ticker-cfb:hover { background: #f6f5f2; }
-.ons-ticker-cfb-label {
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px;
-  letter-spacing: 1.4px; text-transform: uppercase; color: #a39d8c;
-}
-.ons-ticker-cfb-pre {
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; color: #9a6a1e;
-  border: 1px solid rgb(154 106 30 / 0.33); border-radius: 999px; padding: 2px 9px;
-}
-.ons-ticker-cfb-pending {
-  font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 9px; color: #9a6a1e;
-}
+.ons-ticker-cfb:hover { background: var(--raised); }
+.ons-ticker-cfb-label { font-size: 12px; color: var(--muted); }
+.ons-ticker-cfb-pre { font-size: 12px; color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); border-radius: 4px; padding: 0 8px; }
+.ons-ticker-cfb-pending { font-size: 12px; color: var(--warn); }
 
 @media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
   .ons-ticker-track { animation: none; }
   .ons-ticker-track > [aria-hidden] { display: none; }
   .ons-ticker-viewport { overflow-x: auto; scrollbar-width: none; }
-  .ons-ticker-dot.is-live { animation: none; }
 }
 
 /* ── Phone layout (< 768px) ──────────────────────────────────────────────────
    Pages are styled inline, so these rules use !important to override inline
    padding/grids. Marker classes: ons-sidebar, ons-page, ons-stack, ons-band,
    ons-pagehead, ons-banner(-extra). The bottom tab bar is MobileNav.tsx. */
-
-/* Dynamic viewport height: 100vh runs under Safari's toolbars on iOS. */
-.ons-shell { height: 100vh; height: 100dvh; }
-
 .ons-tabbar, .ons-sheet { display: none; }
 
 @media (max-width: 767px) {
+  .ons-app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 48px minmax(0, 1fr); }
   .ons-sidebar { display: none !important; }
+  .ons-topbar { grid-column: 1; }
+  .ons-sheet-main { grid-column: 1; margin: 0; border: 0; border-radius: 0; }
   .ons-tabbar { display: flex; }
   .ons-sheet[data-open="true"] { display: flex; }
 
-  .ons-page { padding: 18px 16px 104px !important; overflow-x: clip; }
-  .ons-masthead h1 { font-size: 34px !important; }
+  .ons-page { padding: 16px 16px 104px !important; overflow-x: clip; }
+  .ons-masthead h1 { font-size: 26px !important; }
   .ons-pagehead > :not(:first-child) { text-align: left !important; }
-
-  /* Multi-column page layouts stack into one column. */
   .ons-stack { grid-template-columns: minmax(0, 1fr) !important; }
-
-  /* Stat bands: two across, ruled like a table. */
   .ons-band { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-  .ons-band > * { border-right: none !important; border-bottom: 1px solid #ebe5d8; padding: 12px !important; }
-  .ons-band > *:nth-child(odd) { border-right: 1px solid #ebe5d8 !important; }
-  .ons-band .font-serif { font-size: 24px !important; }
-
-  .ons-pagehead { flex-wrap: wrap; gap: 10px; align-items: flex-start !important; margin-bottom: 18px !important; }
-  .ons-pagehead h1 { font-size: 30px !important; }
-
+  .ons-band > * { border-right: none !important; border-bottom: 1px solid var(--rule); padding: 12px !important; }
+  .ons-band > *:nth-child(odd) { border-right: 1px solid var(--rule) !important; }
+  .ons-pagehead { flex-direction: column; gap: 14px; align-items: stretch !important; margin-bottom: 18px !important; }
+  .ons-pagehead h1 { font-size: 26px !important; line-height: 32px !important; }
+  .ons-pagehead > * { flex: none !important; min-width: 0 !important; }
+  .ons-pagehead > div:last-child { align-items: stretch !important; }
+  .ons-pagehead .ons-scene { order: -1; height: 66px; }
   .ons-ticker-bar { height: 34px; }
   .ons-ticker-label { padding: 0 10px 0 14px; }
-  .ons-ticker-item { font-size: 11.5px; }
   .ons-banner-extra { display: none !important; }
-
-  /* iOS Safari zooms into any focused field under 16px. */
   .ons-input, input, textarea, select { font-size: 16px !important; }
 }

@@ -71,7 +71,7 @@ export default function HabitsPage() {
         title="Habits"
         kicker={`${todayLong} · daily checklist`}
         right={
-          <div className="font-mono text-right" style={{ fontSize: 9.5, color: doneCount === total ? "#1d5536" : "#a39d8c" }}>
+          <div className="font-mono text-right" style={{ fontSize: 9.5, color: doneCount === total ? "var(--hue)" : "var(--faint)" }}>
             {doneCount}/{total} DONE TODAY<br />RESETS AT MIDNIGHT
           </div>
         }
@@ -92,7 +92,7 @@ export default function HabitsPage() {
             <span className="font-mono text-faint" style={{ fontSize: 9.5 }}>TAP TO LOG</span>
           </div>
           {saveError && (
-            <div className="font-mono mb-3" role="alert" style={{ fontSize: 10.5, color: "#a8473a" }}>
+            <div className="font-mono mb-3" role="alert" style={{ fontSize: 10.5, color: "var(--neg)" }}>
               {saveError}
             </div>
           )}
@@ -111,7 +111,7 @@ export default function HabitsPage() {
                     opacity: pending[h.key] ? 0.7 : 1,
                     padding: "13px 12px",
                     margin: "0 -12px",
-                    background: on ? "#e9efe7" : "transparent",
+                    background: on ? "var(--hue-soft)" : "transparent",
                     borderRadius: 8,
                   }}
                 >
@@ -119,16 +119,16 @@ export default function HabitsPage() {
                     className="grid place-items-center shrink-0"
                     style={{
                       width: 22, height: 22, borderRadius: 6,
-                      border: `1.5px solid ${on ? "#1d5536" : "#e6e3dc"}`,
-                      background: on ? "#1d5536" : "transparent",
+                      border: `1.5px solid ${on ? "var(--hue)" : "var(--border)"}`,
+                      background: on ? "var(--hue)" : "transparent",
                       transition: "all .15s",
                     }}
                   >
-                    {on && <OnsIcon name="habits" size={13} stroke={2.4} style={{ color: "#fff" }} />}
+                    {on && <OnsIcon name="habits" size={13} stroke={2.4} style={{ color: "var(--hue-ink)" }} />}
                   </span>
                   <span
                     className="flex-1"
-                    style={{ fontSize: 14.5, color: on ? "#1d5536" : "#232a22", fontWeight: on ? 600 : 400 }}
+                    style={{ fontSize: 14.5, color: on ? "var(--hue)" : "var(--ink)", fontWeight: on ? 600 : 400 }}
                   >
                     {h.label}
                   </span>
@@ -146,8 +146,8 @@ export default function HabitsPage() {
           <div className="flex justify-between items-center" style={{ padding: "16px 18px 12px" }}>
             <K>Streaks · last 21 days</K>
             <div className="flex items-center gap-1.5 font-mono text-faint" style={{ fontSize: 8.5 }}>
-              <span className="rounded-sm" style={{ width: 9, height: 9, background: "#1d5536" }} /> DONE
-              <span className="rounded-sm ml-1.5" style={{ width: 9, height: 9, background: "#efebe1" }} /> MISSED
+              <span className="rounded-sm" style={{ width: 9, height: 9, background: "var(--hue)" }} /> DONE
+              <span className="rounded-sm ml-1.5" style={{ width: 9, height: 9, background: "var(--frame)" }} /> MISSED
             </div>
           </div>
           <div style={{ padding: "0 18px 14px" }}>
@@ -162,7 +162,7 @@ export default function HabitsPage() {
                 on: d[h.key] === true,
               }));
               return (
-                <div key={h.key} style={{ padding: "14px 0", borderTop: "1px solid #ebe5d8" }}>
+                <div key={h.key} style={{ padding: "14px 0", borderTop: "1px solid var(--rule)" }}>
                   <div className="flex justify-between items-baseline mb-[9px]">
                     <span style={{ fontSize: 13.5 }}>{h.label}</span>
                     <span>
@@ -180,7 +180,7 @@ export default function HabitsPage() {
                           height: 16,
                           background: d.on
                             ? `rgba(29,85,54,${(0.4 + (i / hist.length) * 0.6).toFixed(2)})`
-                            : "#efebe1",
+                            : "var(--frame)",
                         }}
                       />
                     ))}
@@ -189,8 +189,8 @@ export default function HabitsPage() {
                       title="today"
                       style={{
                         height: 16,
-                        background: done[h.key] ? "#1d5536" : "transparent",
-                        border: `1.5px dashed ${done[h.key] ? "#1d5536" : "#e6e3dc"}`,
+                        background: done[h.key] ? "var(--hue)" : "transparent",
+                        border: `1.5px dashed ${done[h.key] ? "var(--hue)" : "var(--border)"}`,
                       }}
                     />
                   </div>

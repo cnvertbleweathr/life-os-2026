@@ -85,7 +85,7 @@ export function GameRow({ g, withDay = false, rank }: { g: Game; withDay?: boole
         <Side side={g.home} showScore={started} dim={final && g.away.winner === true} />
       </div>
       <div className="text-right shrink-0" style={{ width: 112 }}>
-        <div className="font-mono" style={{ fontSize: 10.5, color: g.is_live ? "#a8473a" : "#736e5f" }}>
+        <div className="font-mono" style={{ fontSize: 10.5, color: g.is_live ? "var(--neg)" : "var(--muted)" }}>
           {g.is_live && "● "}
           {statusLabel(g, withDay)}
         </div>
@@ -120,7 +120,7 @@ export function GameLine({ g, withDay = false, label }: { g: Game; withDay?: boo
             : `${g.short_name}${g.broadcasts.length ? ` · ${g.broadcasts[0]}` : ""}`}
         </div>
       </div>
-      <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: g.is_live ? "#a8473a" : "#736e5f" }}>
+      <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: g.is_live ? "var(--neg)" : "var(--muted)" }}>
         {g.is_live && "● "}
         {statusLabel(g, withDay)}
       </span>

@@ -11,7 +11,7 @@ ONS's UI is the **Logbook Color** design system, chosen by the owner in November
 
 `DESIGN.md` describes it in full. Logbook Color is the brief. No skill may replace it on its own initiative.
 
-**Token source.** Until the app migrates, the reference build is the mockup in `docs/design/directions/6-logbook-color/`, and its `style.css` is the token source. The live app (`web/`) still runs Almanac (Spectral, Spline Sans, cream). After migration, `web/app/globals.css` and `web/tailwind.config.js` become the source of truth. Update this paragraph when that happens.
+**Token source.** `web/app/globals.css` defines every colour as a CSS variable for both themes (`html[data-theme]`); `web/tailwind.config.js` maps Tailwind colour names to those variables, including the old Almanac names (`canvas`, `surface`, `faint`, `green`…), so pages that still use them follow the theme. Never hard-code a hex in a page: use `var(--token)` or a Tailwind colour. The shell, nav, theme switch and primitives are migrated. Individual pages still carry Almanac habits (tracked caps, stat bands, the Home masthead) until each is rebuilt. The mockup in `docs/design/directions/6-logbook-color/` remains the visual reference.
 
 Most ONS screens are **Operate** surfaces (dashboards, slates, trackers, forms). Read-heavy pages (briefs, reviews, postmortems) are **Read**. Precision, density, and scanability outrank expression.
 

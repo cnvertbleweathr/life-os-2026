@@ -59,11 +59,11 @@ function TrainingHeatmap({ days }: { days: Map<string, DayActivity> }) {
   const CF_RGB = "154,106,30";
 
   const fill = (a: DayActivity | undefined) => {
-    if (!a) return "#efebe1";
-    if (a.ran && a.crossfit) return "#1d5536";
+    if (!a) return "var(--frame)";
+    if (a.ran && a.crossfit) return "var(--hue)";
     if (a.ran) return `rgba(${RUN_RGB},${Math.min(1, 0.4 + a.runMiles / 10).toFixed(2)})`;
     if (a.crossfit) return `rgba(${CF_RGB},0.78)`;
-    return "#efebe1";
+    return "var(--frame)";
   };
 
   return (
@@ -102,7 +102,7 @@ function TrainingHeatmap({ days }: { days: Map<string, DayActivity> }) {
                     aspectRatio: "1",
                     borderRadius: 2,
                     background: fill(a),
-                    border: both ? "1.2px solid #9a6a1e" : "none",
+                    border: both ? "1.2px solid var(--warn)" : "none",
                     boxSizing: "border-box",
                   }}
                 />
@@ -116,7 +116,7 @@ function TrainingHeatmap({ days }: { days: Map<string, DayActivity> }) {
           className="font-mono fixed z-10 pointer-events-none"
           style={{
             left: hover.x, top: hover.y - 46, fontSize: 9.5,
-            background: "#232a22", color: "#fbfaf5", padding: "5px 8px",
+            background: "var(--ink)", color: "var(--sheet)", padding: "5px 8px",
             borderRadius: 4, whiteSpace: "nowrap",
           }}
         >
@@ -134,7 +134,7 @@ function TrainingHeatmap({ days }: { days: Map<string, DayActivity> }) {
           <span className="rounded-sm" style={{ width: 9, height: 9, background: `rgba(${CF_RGB},0.8)` }} /> CROSSFIT
         </span>
         <span className="flex items-center gap-[5px]">
-          <span className="rounded-sm" style={{ width: 9, height: 9, background: "#1d5536", border: "1.5px solid #9a6a1e", boxSizing: "border-box" }} /> BOTH
+          <span className="rounded-sm" style={{ width: 9, height: 9, background: "var(--hue)", border: "1.5px solid var(--warn)", boxSizing: "border-box" }} /> BOTH
         </span>
       </div>
     </div>
@@ -153,7 +153,7 @@ function MiniVol({ data, color, h = 70, labels }: { data: number[]; color: strin
               className="rounded-sm"
               style={{
                 height: v > 0 ? `${Math.max(2, (v / max) * (h - 4))}px` : 0,
-                background: v === 0 ? "#e6e3dc" : color,
+                background: v === 0 ? "var(--border)" : color,
               }}
               title={`${v}`}
             />
@@ -172,7 +172,7 @@ function MiniVol({ data, color, h = 70, labels }: { data: number[]; color: strin
 function MiniStat({ v, u, l, color }: { v: string | number; u: string; l: string; color?: string }) {
   return (
     <div>
-      <div className="font-serif font-bold leading-none" style={{ fontSize: 24, color: color ?? "#232a22" }}>
+      <div className="font-serif font-bold leading-none" style={{ fontSize: 24, color: color ?? "var(--ink)" }}>
         {v}<span className="font-mono font-normal ml-0.5 text-faint" style={{ fontSize: 10 }}>{u}</span>
       </div>
       <div className="font-mono text-faint mt-[5px]" style={{ fontSize: 8.5, letterSpacing: "0.5px" }}>{l}</div>
@@ -305,7 +305,7 @@ export default function FitnessPage() {
           <K>Training Consistency</K>
           <div className="flex items-center gap-4">
             <span className="font-mono" style={{ fontSize: 11 }}>
-              <span className="font-serif font-bold" style={{ fontSize: 15, color: "#1d5536" }}>
+              <span className="font-serif font-bold" style={{ fontSize: 15, color: "var(--hue)" }}>
                 {avgWorkoutDaysPerWeek.toFixed(1)}
               </span>
               <span className="text-faint"> / 7 days · avg this year</span>
@@ -323,7 +323,7 @@ export default function FitnessPage() {
       <div className="ons-stack grid gap-[30px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {/* Running */}
         <div>
-          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #1d5536", paddingTop: 12 }}>
+          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid var(--hue)", paddingTop: 12 }}>
             <div className="flex items-center gap-[9px]">
               <span className="text-green"><OnsIcon name="fitness" size={18} stroke={1.8} /></span>
               <div>
@@ -334,7 +334,7 @@ export default function FitnessPage() {
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <MiniStat v={rs.ytd_miles} u="mi" l="YTD MILES" color="#1d5536" />
+            <MiniStat v={rs.ytd_miles} u="mi" l="YTD MILES" color="var(--hue)" />
             <MiniStat v={rs.avg_pace_min_mile} u="/mi" l="AVG PACE" />
             <MiniStat v={rs.total_runs} u="" l="TOTAL RUNS" />
           </div>
@@ -343,7 +343,7 @@ export default function FitnessPage() {
             <K style={{ marginBottom: 14 }}>Pace Trend · last {recent_runs.length} runs</K>
             {paceSeries.length > 1 ? (
               <div className="text-green">
-                <Sparkline data={paceSeries} w={420} h={82} stroke="#1d5536" sw={2.2} fill="#1d5536" dot />
+                <Sparkline data={paceSeries} w={420} h={82} stroke="var(--hue)" sw={2.2} fill="var(--hue)" dot />
               </div>
             ) : (
               <Empty message="Need more runs for a trend line." />
@@ -352,7 +352,7 @@ export default function FitnessPage() {
 
           <Card style={{ marginBottom: 22 }}>
             <K style={{ marginBottom: 14 }}>Weekly Volume · {weeklyRunData.length} wk</K>
-            <MiniVol data={weeklyRunData} color="#1d5536" />
+            <MiniVol data={weeklyRunData} color="var(--hue)" />
           </Card>
 
           <Card pad={0}>
@@ -363,7 +363,7 @@ export default function FitnessPage() {
               ) : (
                 recent_runs.map((r, i) => (
                   <div key={i} className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "10px 6px", margin: "0 -6px" }}>
-                    <span className="grid place-items-center shrink-0 text-green" style={{ width: 26, height: 26, borderRadius: 6, background: "#e9efe7" }}>
+                    <span className="grid place-items-center shrink-0 text-green" style={{ width: 26, height: 26, borderRadius: 6, background: "var(--hue-soft)" }}>
                       <OnsIcon name="fitness" size={15} stroke={1.7} />
                     </span>
                     <div className="flex-1">
@@ -384,9 +384,9 @@ export default function FitnessPage() {
 
         {/* CrossFit */}
         <div>
-          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid #9a6a1e", paddingTop: 12 }}>
+          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid var(--warn)", paddingTop: 12 }}>
             <div className="flex items-center gap-[9px]">
-              <span style={{ color: "#9a6a1e" }}><OnsIcon name="habits" size={18} stroke={1.8} /></span>
+              <span style={{ color: "var(--warn)" }}><OnsIcon name="habits" size={18} stroke={1.8} /></span>
               <div>
                 <div className="font-serif font-bold text-ink leading-none" style={{ fontSize: 19 }}>CrossFit</div>
                 <div className="font-mono text-faint mt-[3px]" style={{ fontSize: 8.5, letterSpacing: "1px" }}>SUGARWOD</div>
@@ -396,14 +396,14 @@ export default function FitnessPage() {
           </div>
 
           <div className="grid grid-cols-3 gap-3 mb-5">
-            <MiniStat v={classesYtd} u="" l="CLASSES YTD" color="#9a6a1e" />
+            <MiniStat v={classesYtd} u="" l="CLASSES YTD" color="var(--warn)" />
             <MiniStat v={classesThisWeek} u="" l="THIS WEEK" />
             <MiniStat v={currentMaxes.length} u="" l="LIFTS TRACKED" />
           </div>
 
-          <Card accent accentColor="#9a6a1e" style={{ marginBottom: 22 }}>
+          <Card accent accentColor="var(--warn)" style={{ marginBottom: 22 }}>
             <div className="flex justify-between items-center mb-4">
-              <K color="#9a6a1e">Current Maxes</K>
+              <K color="var(--warn)">Current Maxes</K>
               <span className="font-mono text-faint" style={{ fontSize: 9 }}>MOST RECENT LOGGED</span>
             </div>
             {currentMaxes.length === 0 ? (
@@ -418,8 +418,8 @@ export default function FitnessPage() {
                       key={m.lift}
                       style={{
                         padding: "14px 14px 14px 0",
-                        borderRight: i % 2 === 0 ? "1px solid #ebe5d8" : "none",
-                        borderTop: i > 1 ? "1px solid #ebe5d8" : "none",
+                        borderRight: i % 2 === 0 ? "1px solid var(--rule)" : "none",
+                        borderTop: i > 1 ? "1px solid var(--rule)" : "none",
                         paddingLeft: i % 2 === 1 ? 16 : 0,
                       }}
                     >
@@ -427,7 +427,7 @@ export default function FitnessPage() {
                         {m.lift}
                       </div>
                       <div className="flex items-baseline gap-1 mt-1.5">
-                        <span className="font-serif font-bold leading-none" style={{ fontSize: 26, color: "#9a6a1e" }}>
+                        <span className="font-serif font-bold leading-none" style={{ fontSize: 26, color: "var(--warn)" }}>
                           {m.latest.best_result_raw}
                         </span>
                         <span className="font-mono text-faint" style={{ fontSize: 9 }}>
@@ -435,11 +435,11 @@ export default function FitnessPage() {
                         </span>
                       </div>
                       {vals.length > 1 && (
-                        <div className="my-2" style={{ color: "#9a6a1e" }}>
-                          <Sparkline data={vals} w={120} h={22} stroke="#9a6a1e" sw={1.6} fill="#9a6a1e" dot />
+                        <div className="my-2" style={{ color: "var(--warn)" }}>
+                          <Sparkline data={vals} w={120} h={22} stroke="var(--warn)" sw={1.6} fill="var(--warn)" dot />
                         </div>
                       )}
-                      <div className="font-mono" style={{ fontSize: 8.5, color: gain > 0 ? "#1d5536" : "#a39d8c" }}>
+                      <div className="font-mono" style={{ fontSize: 8.5, color: gain > 0 ? "var(--hue)" : "var(--faint)" }}>
                         {vals.length > 1 ? `${gain >= 0 ? "+" : ""}${gain.toFixed(0)} ${m.latest.best_result_unit ?? "lb"} since first log` : "single entry"}
                       </div>
                     </div>
@@ -451,7 +451,7 @@ export default function FitnessPage() {
 
           <Card style={{ marginBottom: 22 }}>
             <K style={{ marginBottom: 14 }}>Weekly Classes · 12 wk</K>
-            <MiniVol data={cfWeekly} color="#9a6a1e" labels={cfWeekLabels} />
+            <MiniVol data={cfWeekly} color="var(--warn)" labels={cfWeekLabels} />
           </Card>
 
           <Card pad={0}>
@@ -464,7 +464,7 @@ export default function FitnessPage() {
                   <div key={i} className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "10px 6px", margin: "0 -6px" }}>
                     <span
                       className="grid place-items-center shrink-0"
-                      style={{ width: 26, height: 26, borderRadius: 6, background: c.is_pr ? "#f3ead6" : "#f3ead6", color: "#9a6a1e" }}
+                      style={{ width: 26, height: 26, borderRadius: 6, background: c.is_pr ? "var(--risk)" : "var(--risk)", color: "var(--warn)" }}
                     >
                       <OnsIcon name="habits" size={15} stroke={1.7} />
                     </span>

@@ -170,9 +170,9 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 ### Validated Model (Walk-Forward, 2021-2025)
 
 ```
-107-32 · 77.0% win rate · +47.0% ROI · 5/5 seasons profitable
-Favorites: 66-23 (74.2% cover, +41.6% ROI)
-Underdogs: 37-8 (82.2% cover, +57.0% ROI)
+250-115 · 68.5% cover · +30.8% ROI at -110 · 5/5 seasons profitable
+Favorites (official): 186-97 (65.7% cover, +25.5% ROI)
+Underdogs (official): 33-9 (78.6% cover, +50.0% ROI)
 ```
 
 ### Active Signals

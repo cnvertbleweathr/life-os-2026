@@ -10,18 +10,19 @@ import {
   Card, PageHead, K, Pill, Watermark, Empty, Loading, ErrorState,
 } from "@/components/ui/primitives";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { PixelScene } from "@/components/ui/PixelScene";
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
-const GOOD = "#1d5536";
-const WARN = "#9a6a1e";
-const BAD = "#a8473a";
-const FAINT = "#a39d8c";
-const EMPTY = "#d4cfc5";
-const OFF_COLOR = "#1d5536";
-const DEF_COLOR = "#a8473a";
+const GOOD = "var(--hue)";
+const WARN = "var(--warn)";
+const BAD = "var(--neg)";
+const FAINT = "var(--faint)";
+const EMPTY = "var(--control)";
+const OFF_COLOR = "var(--hue)";
+const DEF_COLOR = "var(--neg)";
 
-function Mono({ children, c = "#736e5f", s = 10 }: { children: React.ReactNode; c?: string; s?: number }) {
+function Mono({ children, c = "var(--muted)", s = 10 }: { children: React.ReactNode; c?: string; s?: number }) {
   return <span className="font-mono" style={{ fontSize: s, color: c }}>{children}</span>;
 }
 
@@ -81,7 +82,7 @@ function TrendChart({ games, w = 300, h = 70 }: { games: CfbTrendGame[]; w?: num
   return (
     <div>
       <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ display: "block", height: h }}>
-        <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="#d9d3c5" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+        <line x1={0} x2={w} y1={y(0)} y2={y(0)} stroke="var(--control)" strokeDasharray="3 3" strokeWidth={1} vectorEffect="non-scaling-stroke" />
         <path d={path(def)} fill="none" stroke={DEF_COLOR} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
         <path d={path(off)} fill="none" stroke={OFF_COLOR} strokeWidth={1.8} vectorEffect="non-scaling-stroke" />
         {off.map((v, i) => v != null && <circle key={`o${i}`} cx={x(i)} cy={y(v)} r={2} fill={OFF_COLOR} />)}
@@ -111,11 +112,11 @@ function ChartLegend() {
 
 // ── Shared stat tile ─────────────────────────────────────────────────────────
 
-function Tile({ label, main, mainColor = "#232a22", sub }: {
+function Tile({ label, main, mainColor = "var(--ink)", sub }: {
   label: string; main: React.ReactNode; mainColor?: string; sub?: React.ReactNode;
 }) {
   return (
-    <div style={{ background: "#faf8f4", border: "1px solid #ebe5d8", borderRadius: 8, padding: "9px 11px" }}>
+    <div style={{ background: "var(--raised)", border: "1px solid var(--rule)", borderRadius: 8, padding: "9px 11px" }}>
       <Mono s={8.5} c={FAINT}>{label}</Mono>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
         <span className="font-mono" style={{ fontSize: 17, fontWeight: 700, color: mainColor }}>{main}</span>
@@ -178,7 +179,7 @@ function GameDrill({ awayTeam, homeTeam, season, week, onClose }: {
   }, [season, throughWeek]);
 
   return (
-    <div style={{ background: "#ffffff", border: "1px solid #e6e3dc", borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
+    <div style={{ background: "var(--sheet)", border: "1px solid var(--border)", borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
         <div>
           <K>Season to date · entering Week {week}</K>
@@ -193,15 +194,15 @@ function GameDrill({ awayTeam, homeTeam, season, week, onClose }: {
         <Loading label="Loading season trends…" />
       ) : (
         <>
-          <div style={{ display: "flex", borderTop: "1px solid #ebe5d8", paddingTop: 14 }}>
+          <div style={{ display: "flex", borderTop: "1px solid var(--rule)", paddingTop: 14 }}>
             {[{ team: awayTeam, side: "AWAY" }, { team: homeTeam, side: "HOME" }].map(({ team, side }, i) => {
               const t = trends.get(team);
               return (
-                <div key={team} style={{ flex: 1, minWidth: 0, paddingLeft: i ? 14 : 0, paddingRight: i ? 0 : 14, borderLeft: i ? "1px solid #ebe5d8" : "none" }}>
+                <div key={team} style={{ flex: 1, minWidth: 0, paddingLeft: i ? 14 : 0, paddingRight: i ? 0 : 14, borderLeft: i ? "1px solid var(--rule)" : "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                     <Crest name={team} size={26} />
                     <div>
-                      <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "#1a2420" }}>{team}</div>
+                      <div className="font-serif" style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{team}</div>
                       <Mono s={9} c={FAINT}>{side}{t ? ` · ${t.games} GAMES` : ""}</Mono>
                     </div>
                   </div>
@@ -241,7 +242,7 @@ function MetricBar({ label, value, lo, hi, fmt, invert }: {
           <span className="text-ink" style={{ fontSize: 12.5 }}>{label}</span>
           <Mono s={11} c={FAINT}>no data</Mono>
         </div>
-        <div className="rounded overflow-hidden" style={{ height: 5, background: "#efebe1" }} />
+        <div className="rounded overflow-hidden" style={{ height: 5, background: "var(--frame)" }} />
       </div>
     );
   }
@@ -254,7 +255,7 @@ function MetricBar({ label, value, lo, hi, fmt, invert }: {
         <span className="text-ink" style={{ fontSize: 12.5 }}>{label}</span>
         <Mono s={11} c={col}>{fmt ? fmt(value) : value.toFixed(2)}</Mono>
       </div>
-      <div className="rounded overflow-hidden" style={{ height: 5, background: "#efebe1" }}>
+      <div className="rounded overflow-hidden" style={{ height: 5, background: "var(--frame)" }}>
         <div className="rounded" style={{ width: `${pct * 100}%`, height: "100%", background: col, transition: "width .4s" }} />
       </div>
     </div>
@@ -265,7 +266,7 @@ function GameLog({ games }: { games: CfbTrendGame[] }) {
   const cols = "34px 1fr 64px 58px 58px";
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, paddingBottom: 4, borderBottom: "1px solid #ebe5d8" }}>
+      <div style={{ display: "grid", gridTemplateColumns: cols, gap: 6, paddingBottom: 4, borderBottom: "1px solid var(--rule)" }}>
         {["WK", "OPPONENT", "SCORE", "OFF", "DEF"].map((h, i) => (
           <div key={h} style={{ textAlign: i >= 2 ? "right" : "left" }}><Mono s={8} c={FAINT}>{h}</Mono></div>
         ))}
@@ -274,7 +275,7 @@ function GameLog({ games }: { games: CfbTrendGame[] }) {
         const has = g.points_for != null && g.points_against != null;
         const won = has && (g.points_for as number) > (g.points_against as number);
         return (
-          <div key={g.week} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, padding: "5px 0", borderBottom: "1px solid #f3efe6", alignItems: "center" }}>
+          <div key={g.week} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, padding: "5px 0", borderBottom: "1px solid var(--raised)", alignItems: "center" }}>
             <Mono s={10} c={FAINT}>{g.week}</Mono>
             <span style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {g.venue === "away" ? "@ " : g.venue === "home" ? "vs " : ""}{g.opponent ?? "—"}
@@ -354,9 +355,9 @@ function TeamProfile({ team, trend, trendsReady, season, onClose }: {
             ["PROFIT YRS", `${team.seasons_profitable}/4`, team.seasons_profitable >= 3],
             ["GAMES", String(team.total_bets), false],
           ].map(([l, v, hot], i) => (
-            <div key={i} style={{ padding: "12px 0", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 14 : 0 }}>
+            <div key={i} style={{ padding: "12px 0", borderLeft: i ? "1px solid var(--rule)" : "none", paddingLeft: i ? 14 : 0 }}>
               <Mono s={8.5} c={FAINT}>{l as string}</Mono>
-              <div className="font-serif font-bold mt-1" style={{ fontSize: 20, color: hot ? GOOD : "#232a22" }}>{v as string}</div>
+              <div className="font-serif font-bold mt-1" style={{ fontSize: 20, color: hot ? GOOD : "var(--ink)" }}>{v as string}</div>
             </div>
           ))}
         </div>
@@ -425,9 +426,9 @@ function TeamProfile({ team, trend, trendsReady, season, onClose }: {
                     className="w-full rounded-sm mt-[3px]"
                     style={{
                       height: Math.max(3, h),
-                      background: roi == null ? "#e6e3dc" : pos ? GOOD : BAD,
+                      background: roi == null ? "var(--border)" : pos ? GOOD : BAD,
                       opacity: isCurrent ? 0.6 : 0.85,
-                      border: isCurrent ? "1px dashed #a39d8c" : "none",
+                      border: isCurrent ? "1px dashed var(--faint)" : "none",
                     }}
                   />
                   <Mono s={8.5} c={isCurrent ? GOOD : FAINT}>'{String(r.season).slice(2)}</Mono>
@@ -468,7 +469,7 @@ const SORT_OPTS: [TeamSort, string][] = [
 function MiniBar({ pct, color }: { pct: number; color: string }) {
   const w = Math.max(4, Math.min(100, pct));
   return (
-    <div style={{ width: 40, height: 4, background: "#efebe1", borderRadius: 2, overflow: "hidden" }}>
+    <div style={{ width: 40, height: 4, background: "var(--frame)", borderRadius: 2, overflow: "hidden" }}>
       <div style={{ width: `${w}%`, height: "100%", background: color, borderRadius: 2 }} />
     </div>
   );
@@ -489,7 +490,7 @@ function PointsCell({ total, perGame }: { total: number | null | undefined; perG
   if (total == null) return <div style={{ textAlign: "right" }}><Mono s={10} c={EMPTY}>—</Mono></div>;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-      <span className="font-mono" style={{ fontSize: 11, color: "#232a22" }}>{total}</span>
+      <span className="font-mono" style={{ fontSize: 11, color: "var(--ink)" }}>{total}</span>
       <Mono s={8.5} c={FAINT}>{perGame != null ? `${perGame.toFixed(1)}/g` : ""}</Mono>
     </div>
   );
@@ -559,7 +560,7 @@ function TeamsView({ teams }: { teams: CfbTeam[] }) {
           <div style={{ minWidth: 720 }}>
             <div style={{
               display: "grid", gridTemplateColumns: TEAM_COLS, gap: 6,
-              padding: "6px 26px 6px 18px", borderTop: "1px solid #ebe5d8", borderBottom: "2px solid #ebe5d8",
+              padding: "6px 26px 6px 18px", borderTop: "1px solid var(--rule)", borderBottom: "2px solid var(--rule)",
             }}>
               <span /><span />
               <Mono s={8} c={FAINT}>TEAM</Mono>
@@ -585,8 +586,8 @@ function TeamsView({ teams }: { teams: CfbTeam[] }) {
                     style={{
                       display: "grid", alignItems: "center", gridTemplateColumns: TEAM_COLS, gap: 6,
                       width: "100%", textAlign: "left", padding: "8px 8px", margin: "0 -8px", borderRadius: 6,
-                      background: on ? "#e9efe7" : "transparent",
-                      boxShadow: on ? "inset 2px 0 0 #1d5536" : "none",
+                      background: on ? "var(--hue-soft)" : "transparent",
+                      boxShadow: on ? "inset 2px 0 0 var(--hue)" : "none",
                       border: "none", cursor: "pointer",
                     }}
                   >
@@ -645,7 +646,7 @@ function EdgeList({ items, color, label }: { items: string[]; color: string; lab
 }
 
 function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
-  const scoreColor = result.meets_publish_bar ? "#1d5536" : result.model_score > 0 ? "#9a6a1e" : "#a39d8c";
+  const scoreColor = result.meets_publish_bar ? "var(--hue)" : result.model_score > 0 ? "var(--warn)" : "var(--faint)";
   return (
     <Card accent={result.meets_publish_bar} style={{ position: "relative", overflow: "hidden" }}>
       {result.meets_publish_bar && <Watermark size={180} opacity={0.04} />}
@@ -656,7 +657,7 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             <span className="font-serif font-bold" style={{ fontSize: 17 }}>{result.matchup}</span>
             <Crest name={result.matchup.split(" @ ")[1]} size={28} />
           </div>
-          <span className="font-mono rounded-full" style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", padding: "3px 10px", background: result.meets_publish_bar ? "#1d5536" : "#efebe1", color: result.meets_publish_bar ? "#fff" : "#736e5f" }}>
+          <span className="font-mono rounded-full" style={{ fontSize: 9, letterSpacing: "0.5px", textTransform: "uppercase", padding: "3px 10px", background: result.meets_publish_bar ? "var(--hue)" : "var(--frame)", color: result.meets_publish_bar ? "var(--hue-ink)" : "var(--muted)" }}>
             {result.meets_publish_bar ? "would publish" : "below publish bar"}
           </span>
         </div>
@@ -677,25 +678,25 @@ function MatchupResultCard({ result }: { result: CfbMatchupResult }) {
             ["RET GAP",     result.ret_gap     != null ? `${result.ret_gap >= 0 ? "+" : ""}${result.ret_gap.toFixed(3)}` : "—"],
             ["RECRUIT GAP", result.recruiting_gap != null ? `${result.recruiting_gap >= 0 ? "+" : ""}${result.recruiting_gap.toFixed(1)}` : "—"],
           ].map(([l, v], i) => (
-            <div key={i} style={{ padding: "10px 0", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 12 : 0 }}>
-              <Mono s={8.5} c="#a39d8c">{l}</Mono>
+            <div key={i} style={{ padding: "10px 0", borderLeft: i ? "1px solid var(--rule)" : "none", paddingLeft: i ? 12 : 0 }}>
+              <Mono s={8.5} c="var(--faint)">{l}</Mono>
               <div className="font-mono font-semibold mt-1" style={{ fontSize: 14 }}>{v}</div>
             </div>
           ))}
         </div>
-        <EdgeList items={result.edges} color="#1d5536" label={`SIGNALS (${result.n_edges})`} />
-        <EdgeList items={result.warnings} color="#9a6a1e" label="WARNINGS" />
+        <EdgeList items={result.edges} color="var(--hue)" label={`SIGNALS (${result.n_edges})`} />
+        <EdgeList items={result.warnings} color="var(--warn)" label="WARNINGS" />
         {result.edges.length === 0 && result.warnings.length === 0 && <Empty message="No qualifying signals for this matchup." />}
         {(result.home_coach || result.away_coach) && (
           <div className="mt-4 pt-4 border-t border-border-2">
-            <Mono s={9} c="#a39d8c">COACHES</Mono>
+            <Mono s={9} c="var(--faint)">COACHES</Mono>
             <div className="flex justify-between items-baseline mt-1.5" style={{ fontSize: 12.5 }}>
               <span>{result.home_coach ?? "—"} vs {result.away_coach ?? "—"}</span>
-              {result.coach_h2h && <Mono s={10.5} c="#736e5f">H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)</Mono>}
+              {result.coach_h2h && <Mono s={10.5} c="var(--muted)">H2H {result.coach_h2h.home_record}-{result.coach_h2h.away_record} ({result.coach_h2h.total} gm)</Mono>}
             </div>
           </div>
         )}
-        <div className="mt-4"><Mono s={8.5} c="#a39d8c">score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only</Mono></div>
+        <div className="mt-4"><Mono s={8.5} c="var(--faint)">score_game() · prior season {result.season - 1} · NOT a probability — ordinal ranking only</Mono></div>
       </div>
     </Card>
   );
@@ -728,28 +729,28 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
         <div className="flex flex-col gap-3">
           {[["HOME TEAM", home, setHome], ["AWAY TEAM", away, setAway]].map(([lbl, val, setter]) => (
             <div key={lbl as string}>
-              <Mono s={9} c="#a39d8c">{lbl as string}</Mono>
-              <select value={val as string} onChange={(e) => (setter as any)(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }}>
+              <Mono s={9} c="var(--faint)">{lbl as string}</Mono>
+              <select value={val as string} onChange={(e) => (setter as any)(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }}>
                 {names.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
           ))}
           <div className="flex gap-3">
             <div className="flex-1">
-              <Mono s={9} c="#a39d8c">SPREAD (NEG = HOME FAV)</Mono>
-              <input value={spread} onChange={(e) => setSpread(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+              <Mono s={9} c="var(--faint)">SPREAD (NEG = HOME FAV)</Mono>
+              <input value={spread} onChange={(e) => setSpread(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             </div>
             <div className="flex-1">
-              <Mono s={9} c="#a39d8c">OVER/UNDER</Mono>
-              <input value={overUnder} onChange={(e) => setOverUnder(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+              <Mono s={9} c="var(--faint)">OVER/UNDER</Mono>
+              <input value={overUnder} onChange={(e) => setOverUnder(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             </div>
           </div>
           <div>
-            <Mono s={9} c="#a39d8c">SEASON</Mono>
-            <input value={season} onChange={(e) => setSeason(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid #e6e3dc", fontSize: 13 }} />
+            <Mono s={9} c="var(--faint)">SEASON</Mono>
+            <input value={season} onChange={(e) => setSeason(e.target.value)} style={{ width: "100%", marginTop: 4, padding: "7px 9px", borderRadius: 6, border: "1px solid var(--border)", fontSize: 13 }} />
             <p className="text-faint mt-1.5 mb-0" style={{ fontSize: 10.5, lineHeight: 1.4 }}>Model uses prior-season stats (season − 1) — walk-forward, no lookahead.</p>
           </div>
-          <button onClick={run} disabled={loading || !home || !away} style={{ marginTop: 4, padding: "10px 0", borderRadius: 8, border: "none", background: loading ? "#a39d8c" : "#1d5536", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={run} disabled={loading || !home || !away} style={{ marginTop: 4, padding: "10px 0", borderRadius: 8, border: "none", background: loading ? "var(--faint)" : "var(--hue)", color: "var(--hue-ink)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             {loading ? "Scoring…" : "Run Model"}
           </button>
         </div>
@@ -759,7 +760,7 @@ function MatchupLab({ teams }: { teams: CfbTeam[] }) {
         {!error && !result && <Card><Empty message="Pick two teams and run the model." detail="Calls the real score_game() walk-forward model directly." /></Card>}
         {result && "error" in result && (
           <Card accent>
-            <K color="#a8473a" style={{ marginBottom: 8 }}>{result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}</K>
+            <K color="var(--neg)" style={{ marginBottom: 8 }}>{result.error === "no_advanced_stats" ? "No data for this matchup" : "Request failed"}</K>
             <p style={{ fontSize: 13, lineHeight: 1.5 }}>{result.message}</p>
           </Card>
         )}
@@ -786,17 +787,17 @@ const WARNING_LABELS: Record<string, string> = {
 function OutcomeBadge({ p }: { p: CfbPick }) {
   if (!p.outcome || p.outcome === "ungradeable") return null;
   const map = {
-    win:     { label: "WIN",     bg: GOOD,      fg: "#fff" },
-    loss:    { label: "LOSS",    bg: BAD,       fg: "#fff" },
-    push:    { label: "PUSH",    bg: "#efebe1", fg: "#736e5f" },
-    pending: { label: "PENDING", bg: "#efebe1", fg: "#736e5f" },
+    win:     { label: "WIN",     bg: GOOD,      fg: "var(--hue-ink)" },
+    loss:    { label: "LOSS",    bg: BAD,       fg: "var(--hue-ink)" },
+    push:    { label: "PUSH",    bg: "var(--frame)", fg: "var(--muted)" },
+    pending: { label: "PENDING", bg: "var(--frame)", fg: "var(--muted)" },
   } as const;
   const m = map[p.outcome];
   const [away, home] = p.matchup.split(" @ ");
   const score = p.home_score != null && p.away_score != null ? `${away} ${p.away_score} – ${home} ${p.home_score}` : null;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      {score && <Mono s={9.5} c="#736e5f">{score}</Mono>}
+      {score && <Mono s={9.5} c="var(--muted)">{score}</Mono>}
       <span className="font-mono" style={{ fontSize: 9, letterSpacing: "0.5px", padding: "2px 7px", borderRadius: 9999, background: m.bg, color: m.fg }}>{m.label}</span>
     </span>
   );
@@ -810,7 +811,7 @@ function PickCardDrillable({ p, isOfficial = true, season, week }: { p: CfbPick;
 
   return (
     <div>
-      <Card accent={isOfficial} accentColor={accentColor} style={{ position: "relative", overflow: "hidden", opacity: isOfficial ? 1 : 0.82, background: isOfficial ? undefined : "#faf8f4" }}>
+      <Card accent={isOfficial} accentColor={accentColor} style={{ position: "relative", overflow: "hidden", opacity: isOfficial ? 1 : 0.82, background: isOfficial ? undefined : "var(--raised)" }}>
         <button
           onClick={() => setExpanded(prev => !prev)}
           style={{ display: "block", width: "100%", background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
@@ -823,10 +824,10 @@ function PickCardDrillable({ p, isOfficial = true, season, week }: { p: CfbPick;
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {!isOfficial && (
-                <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: FAINT, border: "1px solid #d4cfc5", borderRadius: 3, padding: "1px 5px" }}>watch</span>
+                <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", color: FAINT, border: "1px solid var(--control)", borderRadius: 3, padding: "1px 5px" }}>watch</span>
               )}
               <span className="font-mono" style={{ fontSize: 13, color: accentColor }}>{p.stars} Model: {p.model_score}</span>
-              <span style={{ fontSize: 14, color: expanded ? accentColor : "#c4bfb5" }}>{expanded ? "▾" : "▸"}</span>
+              <span style={{ fontSize: 14, color: expanded ? accentColor : "var(--control)" }}>{expanded ? "▾" : "▸"}</span>
             </div>
           </div>
           <div className="flex items-baseline justify-between mb-2 flex-wrap gap-1">
@@ -848,8 +849,8 @@ function PickCardDrillable({ p, isOfficial = true, season, week }: { p: CfbPick;
         )}
 
         {!expanded && (
-          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid #ebe5d8" }}>
-            <Mono s={8.5} c="#c4bfb5">▸ CLICK TO SEE SEASON-TO-DATE STRENGTH COMPARISON</Mono>
+          <div style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--rule)" }}>
+            <Mono s={8.5} c="var(--control)">▸ CLICK TO SEE SEASON-TO-DATE STRENGTH COMPARISON</Mono>
           </div>
         )}
       </Card>
@@ -936,7 +937,7 @@ function SlateView() {
           disabled={!weeks}
           aria-label="Select week"
           className="font-mono"
-          style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #d9d3c5", background: "#fbfaf5", color: GOOD, fontSize: 11.5, letterSpacing: "0.04em", cursor: "pointer" }}
+          style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--control)", background: "var(--sheet)", color: GOOD, fontSize: 11.5, letterSpacing: "0.04em", cursor: "pointer" }}
         >
           {weekOptions.map(wk => (
             <option key={wk} value={wk} disabled={!available.has(wk)}>{optionLabel(wk)}</option>
@@ -975,9 +976,9 @@ function SlateView() {
 
     const Divider = ({ label }: { label: string }) => (
       <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 6px" }}>
-        <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
         <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.08em", color: FAINT }}>{label}</span>
-        <div style={{ flex: 1, height: 1, background: "#e5e0d4" }} />
+        <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
       </div>
     );
 
@@ -1004,7 +1005,7 @@ function SlateView() {
               <button
                 onClick={() => setShowAllWatch(v => !v)}
                 className="font-mono"
-                style={{ display: "block", margin: "12px auto 0", fontSize: 10, color: GOOD, background: "none", border: "1px solid #d9d3c5", borderRadius: 9999, padding: "5px 14px", cursor: "pointer" }}
+                style={{ display: "block", margin: "12px auto 0", fontSize: 10, color: GOOD, background: "none", border: "1px solid var(--control)", borderRadius: 9999, padding: "5px 14px", cursor: "pointer" }}
               >
                 {showAllWatch ? "SHOW TOP ONLY" : `SHOW ALL ${watchAll.length} SCORED GAMES`}
               </button>
@@ -1029,9 +1030,12 @@ export default function CfbPage() {
   const [teams, setTeams] = useState<CfbTeam[] | null>(null);
   const [tab, setTab] = useState<"slate" | "lab" | "teams">("slate");
   const [error, setError] = useState<string | null>(null);
+  const [record, setRecord] = useState<string>("");
 
   useEffect(() => {
     cfbApi.teams().then(setTeams).catch((e) => setError(e.message));
+    // The scoreboard in the title scene shows the live season record; it stays blank if this fails.
+    cfbApi.liveTracker().then((t) => t.graded_picks > 0 && setRecord(`${t.wins}-${t.losses}`)).catch(() => {});
   }, []);
 
   if (error) return <ErrorState message={error} />;
@@ -1044,17 +1048,19 @@ export default function CfbPage() {
   ];
 
   return (
-    <div style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
+    <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
-        title="CFB Betting"
-        kicker="The Degenerates' Corner · walk-forward validated"
+        title="Degenerates Corner"
+        titleSub="— College Football"
+        kicker="Walk-forward validated model · picks set Mon–Wed, graded as games go final"
+        scene={<PixelScene scene="cfb" record={record} label="a ball carrier breaking upfield, the season record on the scoreboard" />}
         right={
-          <div className="flex gap-1 rounded-full" style={{ background: "#fbfaf5", border: "1px solid #e6e3dc", padding: 4 }}>
+          <div className="flex gap-1 rounded-full" style={{ background: "var(--sheet)", border: "1px solid var(--border)", padding: 4 }}>
             {TABS.map(([k, l]) => (
               <button
                 key={k}
                 onClick={() => setTab(k as any)}
-                style={{ fontSize: 12, fontWeight: 500, padding: "7px 15px", background: tab === k ? "#1d5536" : "transparent", color: tab === k ? "#fff" : "#736e5f", border: "none", cursor: "pointer", borderRadius: "9999px" }}
+                style={{ fontSize: 12, fontWeight: 500, padding: "7px 15px", background: tab === k ? "var(--hue)" : "transparent", color: tab === k ? "var(--hue-ink)" : "var(--muted)", border: "none", cursor: "pointer", borderRadius: "9999px" }}
               >
                 {l}
               </button>

@@ -130,9 +130,9 @@ export default function MusicPage() {
           )}
 
           {daily10.available && (daily10.description || daily10.tewnidge_artists?.length) ? (
-            <div style={{ padding: "12px 18px 14px", borderTop: "1px solid #ebe5d8" }}>
+            <div style={{ padding: "12px 18px 14px", borderTop: "1px solid var(--rule)" }}>
               {daily10.description && (
-                <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.5, color: "#232a22" }}>
+                <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.5, color: "var(--ink)" }}>
                   {daily10.description}
                 </p>
               )}
@@ -222,8 +222,8 @@ function ArtistOfTheDayCard({ data, onShuffle }: { data: ArtistOfTheDay | null; 
         className="ons-stack grid gap-[26px]"
         style={{
           gridTemplateColumns: data.image ? "200px 1fr 240px" : "1fr 240px",
-          borderTop: "1.5px solid #232a22",
-          borderBottom: "1px solid #e6e3dc",
+          borderTop: "1.5px solid var(--ink)",
+          borderBottom: "1px solid var(--border)",
           padding: "18px 0",
         }}
       >
@@ -248,14 +248,14 @@ function ArtistOfTheDayCard({ data, onShuffle }: { data: ArtistOfTheDay | null; 
                 <span
                   key={t}
                   className="font-mono text-green"
-                  style={{ fontSize: 9, border: "1px solid #c9d6cc", borderRadius: 999, padding: "2px 8px" }}
+                  style={{ fontSize: 9, border: "1px solid var(--hue-soft)", borderRadius: 999, padding: "2px 8px" }}
                 >
                   {t.toLowerCase()}
                 </span>
               ))}
             </div>
           )}
-          <div className="mt-3" style={{ fontSize: 13, lineHeight: 1.6, color: "#232a22" }}>
+          <div className="mt-3" style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink)" }}>
             {shown.map((p, i) => <p key={i} className="m-0 mb-2">{p}</p>)}
           </div>
           <div className="flex gap-4 font-mono text-faint" style={{ fontSize: 9.5 }}>
@@ -279,7 +279,7 @@ function ArtistOfTheDayCard({ data, onShuffle }: { data: ArtistOfTheDay | null; 
           </div>
         </div>
 
-        <div className="flex flex-col gap-4" style={{ borderLeft: "1px solid #e6e3dc", paddingLeft: 20 }}>
+        <div className="flex flex-col gap-4" style={{ borderLeft: "1px solid var(--border)", paddingLeft: 20 }}>
           <Fact label="You">
             {you.minutes ? (
               <>
@@ -371,7 +371,7 @@ function ShowRow({ show: x, first }: { show: Show; first: boolean }) {
   return (
     <div
       className="flex items-center gap-[6px]"
-      style={{ borderTop: first ? "none" : "1px solid #ebe5d8" }}
+      style={{ borderTop: first ? "none" : "1px solid var(--rule)" }}
     >
       <a
         href={x.ticket_url || "#"}
@@ -383,7 +383,7 @@ function ShowRow({ show: x, first }: { show: Show; first: boolean }) {
       >
         <div
           className="font-mono shrink-0"
-          style={{ fontSize: 10.5, color: isMine ? "#1d5536" : "#736e5f", width: 40 }}
+          style={{ fontSize: 10.5, color: isMine ? "var(--hue)" : "var(--muted)", width: 40 }}
         >
           {(x.date ?? "").slice(5)}
         </div>

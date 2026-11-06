@@ -11,9 +11,9 @@ const CFB_BACKTEST_ROI = "+34.5"; // confirmed 4-season walk-forward backtest, s
 
 function CalendarIcon({ title }: { title: string }) {
   const t = title.toLowerCase();
-  if (/concert|show|fest/.test(t)) return <OnsIcon name="shows" size={13} stroke={1.6} style={{ color: "#a39d8c" }} />;
-  if (/trip|fly|dia|airport|hartford|rehoboth/.test(t)) return <OnsIcon name="pin" size={13} stroke={1.6} style={{ color: "#a39d8c" }} />;
-  if (/bday|birthday/.test(t)) return <span className="rounded-full" style={{ width: 5, height: 5, background: "#9a6a1e" }} />;
+  if (/concert|show|fest/.test(t)) return <OnsIcon name="shows" size={13} stroke={1.6} style={{ color: "var(--faint)" }} />;
+  if (/trip|fly|dia|airport|hartford|rehoboth/.test(t)) return <OnsIcon name="pin" size={13} stroke={1.6} style={{ color: "var(--faint)" }} />;
+  if (/bday|birthday/.test(t)) return <span className="rounded-full" style={{ width: 5, height: 5, background: "var(--warn)" }} />;
   return null;
 }
 
@@ -85,7 +85,7 @@ export default function HomePage() {
       {/* Masthead */}
       <div className="ons-pagehead ons-masthead flex justify-between items-start mb-7">
         <div>
-          <K color="#1d5536">{todayLong} · Denver, CO</K>
+          <K color="var(--hue)">{todayLong} · Denver, CO</K>
           <h1
             className="font-serif font-bold leading-none m-0 mt-3"
             style={{ fontSize: 50, letterSpacing: "-1px" }}
@@ -100,14 +100,14 @@ export default function HomePage() {
           <div
             className="ons-tap inline-flex items-center gap-[9px] text-muted cursor-text"
             style={{
-              border: "1px solid #e6e3dc", background: "#fbfaf5", borderRadius: 999,
+              border: "1px solid var(--border)", background: "var(--sheet)", borderRadius: 999,
               padding: "9px 15px", fontSize: 12.5,
             }}
           >
             <OnsIcon name="search" size={15} stroke={1.6} /> Ask the system…
             <span
               className="font-mono"
-              style={{ fontSize: 9, border: "1px solid #e6e3dc", borderRadius: 4, padding: "1px 5px", marginLeft: 4 }}
+              style={{ fontSize: 9, border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", marginLeft: 4 }}
             >
               ⌘K
             </span>
@@ -121,7 +121,7 @@ export default function HomePage() {
       {/* Stat band */}
       <div
         className="ons-band grid mb-7"
-        style={{ gridTemplateColumns: "repeat(6,1fr)", borderTop: "1.5px solid #232a22", borderBottom: "1px solid #e6e3dc" }}
+        style={{ gridTemplateColumns: "repeat(6,1fr)", borderTop: "1.5px solid var(--ink)", borderBottom: "1px solid var(--border)" }}
       >
         {[
           { l: "YTD Miles", v: sc.ytd_miles ?? 0, u: "mi", a: true },
@@ -135,14 +135,14 @@ export default function HomePage() {
             key={i}
             style={{
               padding: "16px 18px 16px 0",
-              borderRight: i < 5 ? "1px solid #ebe5d8" : "none",
+              borderRight: i < 5 ? "1px solid var(--rule)" : "none",
               paddingLeft: i ? 18 : 0,
             }}
           >
             <K>{c.l}</K>
             <div
               className="font-serif font-semibold leading-none mt-2"
-              style={{ fontSize: 32, color: c.a ? "#1d5536" : "#232a22" }}
+              style={{ fontSize: 32, color: c.a ? "var(--hue)" : "var(--ink)" }}
             >
               {c.v}
               <span className="font-mono font-normal ml-1 text-faint" style={{ fontSize: 11 }}>{c.u}</span>
@@ -157,7 +157,7 @@ export default function HomePage() {
         <div
           className="relative overflow-hidden"
           style={{
-            background: "#fbfaf5", border: "1px solid #e6e3dc", borderTop: "2.5px solid #1d5536",
+            background: "var(--sheet)", border: "1px solid var(--border)", borderTop: "2.5px solid var(--hue)",
             borderRadius: 3, padding: "22px 26px 20px",
           }}
         >
@@ -165,14 +165,14 @@ export default function HomePage() {
           <div className="relative">
             <div className="flex justify-between items-center mb-[14px]">
               <div className="flex items-center gap-[10px]">
-                <K color="#1d5536">Today's Brief</K>
+                <K color="var(--hue)">Today's Brief</K>
               </div>
               <span className="font-mono text-faint" style={{ fontSize: 9 }}>UPDATED {data.date}</span>
             </div>
             {brief ? (
               <p
                 className="font-serif m-0"
-                style={{ fontSize: 21, lineHeight: 1.4, color: "#232a22", maxWidth: 640, marginBottom: 18 }}
+                style={{ fontSize: 21, lineHeight: 1.4, color: "var(--ink)", maxWidth: 640, marginBottom: 18 }}
                 dangerouslySetInnerHTML={{ __html: brief.brief_content.replace(/\n/g, '<br/>') }}
               />
             ) : (
@@ -180,7 +180,7 @@ export default function HomePage() {
                 {brief === false ? "No brief yet today. It's written during the 9am sync." : "Loading brief…"}
               </p>
             )}
-            <div className="ons-stack grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid #ebe5d8" }}>
+            <div className="ons-stack grid" style={{ gridTemplateColumns: "repeat(3,1fr)", borderTop: "1px solid var(--rule)" }}>
               {[
                 {
                   icon: "fitness", title: "What's happening",
@@ -199,18 +199,18 @@ export default function HomePage() {
                     : `All habits logged. Check the calendar for anything time-sensitive.`,
                 },
               ].map((f, i) => (
-                <div key={i} style={{ padding: "16px 16px 4px", borderLeft: i ? "1px solid #ebe5d8" : "none", paddingLeft: i ? 16 : 0 }}>
+                <div key={i} style={{ padding: "16px 16px 4px", borderLeft: i ? "1px solid var(--rule)" : "none", paddingLeft: i ? 16 : 0 }}>
                   <div className="flex items-center gap-[7px] mb-[9px] text-green">
                     <OnsIcon name={f.icon} size={15} stroke={1.6} />
                     <span className="font-mono uppercase text-green" style={{ fontSize: 9.5, letterSpacing: "1px" }}>
                       {f.title}
                     </span>
                   </div>
-                  <p className="m-0" style={{ fontSize: 12.5, lineHeight: 1.5, color: "#232a22" }}>{f.body}</p>
+                  <p className="m-0" style={{ fontSize: 12.5, lineHeight: 1.5, color: "var(--ink)" }}>{f.body}</p>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between items-center mt-[18px] pt-[14px]" style={{ borderTop: "1px solid #ebe5d8" }}>
+            <div className="flex justify-between items-center mt-[18px] pt-[14px]" style={{ borderTop: "1px solid var(--rule)" }}>
               <span className="font-mono text-faint" style={{ fontSize: 9 }}>BUILT FROM TODAY'S DATA</span>
               <div className="flex gap-2 items-center">
                 <span className="font-mono text-faint mr-0.5" style={{ fontSize: 9 }}>
@@ -222,9 +222,9 @@ export default function HomePage() {
                     className="ons-tap cursor-pointer"
                     onClick={() => setVote(t)}
                     style={{
-                      fontSize: 11, color: vote === t ? "#fff" : "#736e5f",
-                      border: `1px solid ${vote === t ? "#1d5536" : "#e6e3dc"}`,
-                      background: vote === t ? "#1d5536" : "#f6f5f2",
+                      fontSize: 11, color: vote === t ? "var(--hue-ink)" : "var(--muted)",
+                      border: `1px solid ${vote === t ? "var(--hue)" : "var(--border)"}`,
+                      background: vote === t ? "var(--hue)" : "var(--raised)",
                       borderRadius: 999, padding: "4px 11px",
                     }}
                   >
@@ -252,7 +252,7 @@ export default function HomePage() {
                   className="ons-row flex items-center gap-3 border-t border-border-2"
                   style={{ padding: "8px 6px", margin: "0 -6px" }}
                 >
-                  <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: "#2f6b43", width: 42 }}>
+                  <span className="font-mono shrink-0" style={{ fontSize: 9.5, color: "var(--hue)", width: 42 }}>
                     {e.date.toUpperCase()}
                   </span>
                   <span className="flex-1" style={{ fontSize: 13 }}>{e.title}</span>
@@ -269,7 +269,7 @@ export default function HomePage() {
         <Card>
           <div className="flex justify-between items-center mb-3">
             <K>Today's Habits</K>
-            <span className="font-mono" style={{ fontSize: 9.5, color: doneCount === habitsTotal ? "#1d5536" : "#a39d8c" }}>
+            <span className="font-mono" style={{ fontSize: 9.5, color: doneCount === habitsTotal ? "var(--hue)" : "var(--faint)" }}>
               {doneCount}/{habitsTotal} DONE
             </span>
           </div>
@@ -287,16 +287,16 @@ export default function HomePage() {
                     className="grid place-items-center shrink-0"
                     style={{
                       width: 19, height: 19, borderRadius: 5,
-                      border: `1.5px solid ${on ? "#1d5536" : "#e6e3dc"}`,
-                      background: on ? "#1d5536" : "transparent",
+                      border: `1.5px solid ${on ? "var(--hue)" : "var(--border)"}`,
+                      background: on ? "var(--hue)" : "transparent",
                       transition: "all .15s",
                     }}
                   >
-                    {on && <OnsIcon name="habits" size={12} stroke={2.2} style={{ color: "#fff" }} />}
+                    {on && <OnsIcon name="habits" size={12} stroke={2.2} style={{ color: "var(--hue-ink)" }} />}
                   </span>
                   <span
                     style={{
-                      fontSize: 13.5, color: on ? "#a39d8c" : "#232a22",
+                      fontSize: 13.5, color: on ? "var(--faint)" : "var(--ink)",
                       textDecoration: on ? "line-through" : "none", transition: "color .15s",
                     }}
                   >
@@ -319,7 +319,7 @@ export default function HomePage() {
                   className="mb-[11px]"
                   style={{
                     width: "100%", aspectRatio: "16/8", objectFit: "cover",
-                    display: "block", border: "1px solid #e6e3dc",
+                    display: "block", border: "1px solid var(--border)",
                   }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
@@ -330,8 +330,8 @@ export default function HomePage() {
                   className="grid place-items-center mb-[11px]"
                   style={{
                     aspectRatio: "16/8",
-                    background: "repeating-linear-gradient(135deg, #efebe1, #efebe1 7px, #fbfaf5 7px, #fbfaf5 14px)",
-                    border: "1px solid #e6e3dc",
+                    background: "repeating-linear-gradient(135deg, var(--frame), var(--frame) 7px, var(--sheet) 7px, var(--sheet) 14px)",
+                    border: "1px solid var(--border)",
                   }}
                 >
                   <span className="font-mono text-faint" style={{ fontSize: 9, letterSpacing: "1px" }}>
@@ -339,7 +339,7 @@ export default function HomePage() {
                   </span>
                 </div>
               )}
-              <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.45, color: "#232a22" }}>
+              <p className="m-0" style={{ fontSize: 11.5, lineHeight: 1.45, color: "var(--ink)" }}>
                 {daily10.description}
               </p>
             </>

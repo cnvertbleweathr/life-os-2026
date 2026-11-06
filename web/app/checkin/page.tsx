@@ -19,10 +19,10 @@ type Vals = Record<string, number>;
 const BLANK: Vals = { energy: 0, mood: 0, focus: 0, sleep: 0, soreness: 0, stress: 0 };
 
 function readinessLabel(r: number): [string, string] {
-  if (r >= 0.78) return ["Primed", "#1d5536"];
-  if (r >= 0.6) return ["Steady", "#2f6b43"];
-  if (r >= 0.42) return ["Manage load", "#9a6a1e"];
-  return ["Recover", "#a8473a"];
+  if (r >= 0.78) return ["Primed", "var(--hue)"];
+  if (r >= 0.6) return ["Steady", "var(--hue)"];
+  if (r >= 0.42) return ["Manage load", "var(--warn)"];
+  return ["Recover", "var(--neg)"];
 }
 
 export default function CheckinPage() {
@@ -90,7 +90,7 @@ export default function CheckinPage() {
         <Card accent style={{ maxWidth: 460, textAlign: "center", padding: "44px 30px" }}>
           <div
             className="grid place-items-center text-green mx-auto mb-[18px]"
-            style={{ width: 56, height: 56, borderRadius: 999, background: "#e9efe7" }}
+            style={{ width: 56, height: 56, borderRadius: 999, background: "var(--hue-soft)" }}
           >
             <OnsIcon name="habits" size={28} stroke={2} />
           </div>
@@ -104,8 +104,8 @@ export default function CheckinPage() {
             className="ons-tap mt-[18px] font-mono cursor-pointer"
             onClick={reset}
             style={{
-              fontSize: 11, color: "#1d5536", background: "#f6f5f2",
-              border: "1px solid rgba(29,85,54,0.33)", borderRadius: 999, padding: "8px 18px",
+              fontSize: 11, color: "var(--hue)", background: "var(--raised)",
+              border: "1px solid color-mix(in srgb, var(--hue) 33%, transparent)", borderRadius: 999, padding: "8px 18px",
             }}
           >
             EDIT TODAY&apos;S CHECK-IN
@@ -137,7 +137,7 @@ export default function CheckinPage() {
             {FIELDS.map((f) => (
               <div key={f.key}>
                 <div className="flex items-center gap-[10px] mb-[9px]">
-                  <K color="#232a22" style={{ fontSize: 11 }}>{f.label}</K>
+                  <K color="var(--ink)" style={{ fontSize: 11 }}>{f.label}</K>
                   {f.invert && (
                     <span className="font-mono text-faint" style={{ fontSize: 8, letterSpacing: "0.5px" }}>
                       (lower = better)
@@ -159,9 +159,9 @@ export default function CheckinPage() {
                         onClick={() => setVals({ ...vals, [f.key]: n })}
                         style={{
                           height: 42, borderRadius: 7, fontSize: 14,
-                          border: `1px solid ${on ? "#1d5536" : "#e6e3dc"}`,
-                          background: on ? "#1d5536" : "#f6f5f2",
-                          color: on ? "#fff" : "#736e5f",
+                          border: `1px solid ${on ? "var(--hue)" : "var(--border)"}`,
+                          background: on ? "var(--hue)" : "var(--raised)",
+                          color: on ? "var(--hue-ink)" : "var(--muted)",
                           transition: "all .12s",
                         }}
                       >
@@ -190,7 +190,7 @@ export default function CheckinPage() {
             </div>
 
             {saveError && (
-              <div className="font-mono" role="alert" style={{ fontSize: 10.5, color: "#a8473a" }}>
+              <div className="font-mono" role="alert" style={{ fontSize: 10.5, color: "var(--neg)" }}>
                 {saveError}
               </div>
             )}
@@ -202,8 +202,8 @@ export default function CheckinPage() {
                 padding: 14, borderRadius: 8, border: "none",
                 cursor: filled && !saving ? "pointer" : "not-allowed",
                 fontSize: 14,
-                background: filled ? "#1d5536" : "#e6e3dc",
-                color: filled ? "#fff" : "#a39d8c",
+                background: filled ? "var(--hue)" : "var(--border)",
+                color: filled ? "var(--hue-ink)" : "var(--faint)",
                 opacity: saving ? 0.75 : 1,
                 transition: "background .15s",
               }}
@@ -222,19 +222,19 @@ export default function CheckinPage() {
         {/* Live readiness */}
         <div>
           <Card accent style={{ marginBottom: 22, textAlign: "center" }}>
-            <K color="#1d5536" style={{ marginBottom: 16 }}>Today's Readiness</K>
+            <K color="var(--hue)" style={{ marginBottom: 16 }}>Today's Readiness</K>
             <div className="grid place-items-center">
               <Donut
                 value={readiness}
                 size={130}
                 sw={12}
                 color={readColor}
-                track="#efebe1"
+                track="var(--frame)"
               >
                 <div className="text-center">
                   <div
                     className="font-serif font-bold leading-none"
-                    style={{ fontSize: 34, color: filled ? readColor : "#a39d8c" }}
+                    style={{ fontSize: 34, color: filled ? readColor : "var(--faint)" }}
                   >
                     {filled ? Math.round(readiness * 100) : "—"}
                   </div>

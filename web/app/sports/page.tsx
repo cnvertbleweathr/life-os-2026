@@ -12,7 +12,7 @@ const LIVE_POLL_MS = 60_000;
 function SectionHead({ title, color, right }: { title: string; color: string; right?: string }) {
   return (
     <div className="flex justify-between items-center mb-4" style={{ borderTop: `2.5px solid ${color}`, paddingTop: 12 }}>
-      <K color="#232a22" style={{ fontSize: 11, letterSpacing: "1.5px" }}>{title}</K>
+      <K color="var(--ink)" style={{ fontSize: 11, letterSpacing: "1.5px" }}>{title}</K>
       {right && <span className="font-mono text-faint" style={{ fontSize: 9 }}>{right}</span>}
     </div>
   );
@@ -62,7 +62,7 @@ export default function SportsPage() {
 
       <div className="ons-stack grid gap-[22px] items-start" style={{ gridTemplateColumns: "1.4fr 1fr" }}>
         <div>
-          <SectionHead title="My Teams Today" color="#1d5536" />
+          <SectionHead title="My Teams Today" color="var(--hue)" />
           <Card pad={0} style={{ marginBottom: 22 }}>
             <div style={{ padding: "4px 18px 12px" }}>
               {my_teams.length === 0 ? (
@@ -73,7 +73,7 @@ export default function SportsPage() {
             </div>
           </Card>
 
-          <SectionHead title="Coming Up" color="#3a5f7a" right="NEXT GAME PER TEAM" />
+          <SectionHead title="Coming Up" color="var(--series2)" right="NEXT GAME PER TEAM" />
           <Card pad={0} style={{ marginBottom: 22 }}>
             <div style={{ padding: "4px 18px 12px" }}>
               {upcoming.length === 0 ? (
@@ -84,7 +84,7 @@ export default function SportsPage() {
             </div>
           </Card>
 
-          <SectionHead title="Top Games Today" color="#9a6a1e" right="POSTSEASON · NATIONAL TV · RANKED" />
+          <SectionHead title="Top Games Today" color="var(--warn)" right="POSTSEASON · NATIONAL TV · RANKED" />
           <Card pad={0} style={{ marginBottom: 22 }}>
             <div style={{ padding: "4px 18px 12px" }}>
               {top.length === 0 ? (
@@ -114,7 +114,7 @@ export default function SportsPage() {
         </div>
 
         <div>
-          <SectionHead title="News · Your Teams" color="#3a5f7a" right="ESPN" />
+          <SectionHead title="News · Your Teams" color="var(--series2)" right="ESPN" />
           {news && news.teams.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {[{ name: null as string | null, short: "All" as string | null, abbr: "ALL", logo: null as string | null }, ...news.teams].map((t) => {
@@ -127,9 +127,9 @@ export default function SportsPage() {
                     className="ons-tap font-mono flex items-center gap-1"
                     style={{
                       fontSize: 9, borderRadius: 999, padding: "3px 9px",
-                      color: active ? "#fff" : "#736e5f",
-                      background: active ? "#1d5536" : "transparent",
-                      border: `1px solid ${active ? "#1d5536" : "#e6e3dc"}`,
+                      color: active ? "var(--hue-ink)" : "var(--muted)",
+                      background: active ? "var(--hue)" : "transparent",
+                      border: `1px solid ${active ? "var(--hue)" : "var(--border)"}`,
                     }}
                   >
                     {t.logo && <TeamMark side={{ logo: t.logo, abbr: t.abbr ?? "", name: t.name ?? "" }} px={12} />}

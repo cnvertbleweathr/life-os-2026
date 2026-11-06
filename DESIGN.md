@@ -164,7 +164,7 @@ Each life area owns a colour and keeps it everywhere: running is blue, CrossFit 
 
 Most ONS surfaces are **Operate** surfaces: dashboards, slates, trackers and forms used every day. Read-heavy pages such as briefs, reviews and postmortems are **Read**. Precision, density and scanability outrank expression. The one deliberate indulgence is a small pixel-art scene beside each page title, which the owner asked for. It is the only thing on a page that moves, and it follows strict rules (see Pixel Scenes).
 
-The current reference build is the static mockup in `docs/design/directions/6-logbook-color/` (`home.html`, `cfb.html`, `style.css`, `theme.js`, `px.js`). Until the app migrates, that `style.css` is the token source; afterwards `web/app/globals.css` and `web/tailwind.config.js` are.
+Tokens live in `web/app/globals.css` (CSS variables for both themes) and `web/tailwind.config.js` (Tailwind names mapped to those variables). The visual reference for pages not yet rebuilt is the static mockup in `docs/design/directions/6-logbook-color/`. The pixel scene engine is `web/lib/pixelScenes.js`, wrapped by `web/components/ui/PixelScene.tsx`.
 
 **Key Characteristics:**
 - A tinted L-frame (sidebar and 48px top bar) holding the work on a white sheet with 16px corners

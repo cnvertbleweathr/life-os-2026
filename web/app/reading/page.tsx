@@ -9,7 +9,7 @@ import { Donut } from "@/components/ui/viz";
 
 // Deterministic spine color from title — keeps it visually varied without
 // needing real cover art (Hardcover's API doesn't give us cover images here)
-const SPINE_COLORS = ["#1d5536", "#3a5f7a", "#9a6a1e", "#a8473a", "#2f6b43", "#736e5f"];
+const SPINE_COLORS = ["var(--hue)", "var(--series2)", "var(--warn)", "var(--neg)", "var(--hue)", "var(--muted)"];
 function spineColor(title: string) {
   let h = 0;
   for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) % SPINE_COLORS.length;
@@ -124,8 +124,8 @@ export default function ReadingPage() {
                         className="font-mono uppercase rounded-full"
                         style={{
                           fontSize: 9, letterSpacing: "0.5px",
-                          color: b.classification === "fiction" ? "#1d5536" : b.classification === "nonfiction" ? "#3a5f7a" : "#a39d8c",
-                          border: `1px solid ${b.classification === "fiction" ? "#1d553633" : b.classification === "nonfiction" ? "#3a5f7a33" : "#e6e3dc"}`,
+                          color: b.classification === "fiction" ? "var(--hue)" : b.classification === "nonfiction" ? "var(--series2)" : "var(--faint)",
+                          border: `1px solid ${b.classification === "fiction" ? "color-mix(in srgb, var(--hue) 20%, transparent)" : b.classification === "nonfiction" ? "color-mix(in srgb, var(--series2) 20%, transparent)" : "var(--border)"}`,
                           padding: "2px 8px",
                         }}
                       >
@@ -147,7 +147,7 @@ export default function ReadingPage() {
           <Card style={{ marginBottom: 22 }}>
             <div className="flex justify-between items-center mb-4">
               <K>Pace vs Goal · 2026</K>
-              <span className="font-mono" style={{ fontSize: 9, color: behindBy > 0 ? "#a8473a" : "#1d5536" }}>
+              <span className="font-mono" style={{ fontSize: 9, color: behindBy > 0 ? "var(--neg)" : "var(--hue)" }}>
                 {behindBy > 0 ? "BEHIND" : "ON TRACK"}
               </span>
             </div>
@@ -164,10 +164,10 @@ export default function ReadingPage() {
                     const act = cumulative.map((v, i) => `${i ? "L" : "M"}${xs(i).toFixed(1)} ${ys(v).toFixed(1)}`).join(" ");
                     return (
                       <>
-                        <path d={tgt} fill="none" stroke="#a39d8c" strokeWidth={1.4} strokeDasharray="3 3" />
-                        <path d={`${act} L ${xs(cumulative.length - 1)} 100 L 0 100 Z`} fill="#1d5536" opacity="0.12" />
-                        <path d={act} fill="none" stroke="#1d5536" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
-                        <circle cx={xs(cumulative.length - 1)} cy={ys(cumulative[cumulative.length - 1])} r={3.5} fill="#1d5536" />
+                        <path d={tgt} fill="none" stroke="var(--faint)" strokeWidth={1.4} strokeDasharray="3 3" />
+                        <path d={`${act} L ${xs(cumulative.length - 1)} 100 L 0 100 Z`} fill="var(--hue)" opacity="0.12" />
+                        <path d={act} fill="none" stroke="var(--hue)" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx={xs(cumulative.length - 1)} cy={ys(cumulative[cumulative.length - 1])} r={3.5} fill="var(--hue)" />
                       </>
                     );
                   })()}
@@ -193,8 +193,8 @@ export default function ReadingPage() {
                 value={booksRead > 0 ? fiction / booksRead : 0}
                 size={84}
                 sw={11}
-                color="#1d5536"
-                track="#3a5f7a"
+                color="var(--hue)"
+                track="var(--series2)"
               >
                 <div className="text-center">
                   <div className="font-serif text-[20px] font-bold">{booksRead}</div>
@@ -203,12 +203,12 @@ export default function ReadingPage() {
               </Donut>
               <div className="flex-1 flex flex-col gap-[10px]">
                 <div className="flex items-center gap-[9px]">
-                  <span className="rounded" style={{ width: 11, height: 11, background: "#1d5536" }} />
+                  <span className="rounded" style={{ width: 11, height: 11, background: "var(--hue)" }} />
                   <span className="flex-1" style={{ fontSize: 13 }}>Fiction</span>
                   <span className="font-mono font-semibold" style={{ fontSize: 12 }}>{fiction}</span>
                 </div>
                 <div className="flex items-center gap-[9px]">
-                  <span className="rounded" style={{ width: 11, height: 11, background: "#3a5f7a" }} />
+                  <span className="rounded" style={{ width: 11, height: 11, background: "var(--series2)" }} />
                   <span className="flex-1" style={{ fontSize: 13 }}>Nonfiction</span>
                   <span className="font-mono font-semibold" style={{ fontSize: 12 }}>{nonfiction}</span>
                 </div>
