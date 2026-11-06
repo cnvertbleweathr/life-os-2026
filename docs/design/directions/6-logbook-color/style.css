@@ -20,16 +20,20 @@
   --check: #ebe5fc; --check-ink: #37217a; --check-mark: #6d4fd1;
   --plan: #fbe3ea;  --plan-ink: #6b1631;  --plan-mark: #c2456b;
   --edge: #fde3cf;  --edge-ink: #6a2b06;  --edge-mark: #d9661c;
+  --wx: #e6ebf2;    --wx-ink: #263247;    --wx-mark: #5b6f8f;
 
 
-  /* pixel scenes: closed palette (pixel-art-sprites: palette discipline). Characters + scenery, 42 colours. */
+  /* pixel scenes: closed palette (pixel-art-sprites: palette discipline). Characters, pets, scenery and weather: 56 colours. */
   --px-outline: #1d2230; --px-skin: #e5ad85; --px-skin-d: #b97a56; --px-team: #d9661c; --px-team-d: #96400f;
   --px-foe: #6d4fd1; --px-foe-d: #3f2d8c; --px-white: #f3f4f6; --px-white-d: #aeb3c4; --px-mask: #8c93a3; --px-ball: #8a4a1c;
   --px-hair: #3b2516; --px-run: #2a6fd6; --px-run-d: #1a4796; --px-navy: #34446a; --px-navy-d: #222d49;
   --px-stand: #3b4252; --px-grass: #4e9a4a; --px-grass2: #59a654; --px-grass-d: #3c7d3a; --px-line: #f5f8f3; --px-post: #f4c430;
   --px-sky: #cfe6f5; --px-cloud: #ffffff; --px-sun: #ffc23d; --px-hill: #8fc77f; --px-hill2: #b5dba6; --px-tree: #2f7a3a;
   --px-tree-d: #1f5a2a; --px-trunk: #7a4a24; --px-ground: #d6c39a; --px-ground2: #b39d6e; --px-star: #ffffff;
-  --px-track: #6b4a3a; --px-board: #12151c; --px-mtn: #8e9db3; --px-mtn-d: #6c7b93; --px-snow: #f4f7fb; --px-dog: #c98a3e; --px-dog-d: #9a6224; --px-bloom1: #e85d8a; --px-bloom2: #f2d14b;
+  --px-track: #6b4a3a; --px-board: #12151c; --px-mtn: #8e9db3; --px-mtn-d: #6c7b93; --px-snow: #f4f7fb; --px-bloom1: #e85d8a; --px-bloom2: #f2d14b;
+  --px-sky-o: #b9c3cf; --px-cloud-o: #dfe4ea; --px-rain: #4f7fb8; --px-leaf: #d08a2e;
+  --px-blackdog: #2e2d33; --px-collar: #d23b3b; --px-tan: #c98a45; --px-tan-d: #7d4f22; --px-muzzle: #3a2a22;
+  --px-tabby: #a46a34; --px-tabby-s: #5b3818; --px-gray-c: #9097a2; --px-gray-s: #555b66; --px-eye: #8cc14a;
 
   --ok: #d9f2e2; --ok-ink: #0d3a22; --risk: #fff0d6; --risk-ink: #7a430a; --off: #fde6e6; --off-ink: #7d1c20; --none: #eef0ee; --none-ink: #3e443e;
 }
@@ -49,6 +53,7 @@
   --check: #251c42; --check-ink: #d2c6ff; --check-mark: #9479f2;
   --plan: #371722;  --plan-ink: #ffc2d2;  --plan-mark: #e66b91;
   --edge: #3a1f0c;  --edge-ink: #ffcca4;  --edge-mark: #f08a45;
+  --wx: #1d2433;    --wx-ink: #c5d0e3;    --wx-mark: #7f95ba;
 
 
   --px-outline: #07090d; --px-skin: #d29c76; --px-skin-d: #a06a49; --px-team: #f08a45; --px-team-d: #b0561f;
@@ -57,7 +62,10 @@
   --px-stand: #171b23; --px-grass: #2a5a2b; --px-grass2: #306431; --px-grass-d: #1f4721; --px-line: #cdd6cc; --px-post: #e3b52c;
   --px-sky: #101c2a; --px-cloud: #22303f; --px-sun: #e9e4c4; --px-hill: #1e3b25; --px-hill2: #182d22; --px-tree: #14361c;
   --px-tree-d: #0d2614; --px-trunk: #4a2e18; --px-ground: #4a3f2c; --px-ground2: #5e5038; --px-star: #fff6cf;
-  --px-track: #3a2a22; --px-board: #05070a; --px-mtn: #2b3a50; --px-mtn-d: #1f2b3d; --px-snow: #b9c6d8; --px-dog: #a8732f; --px-dog-d: #7a501c; --px-bloom1: #b8476c; --px-bloom2: #bfa43a;
+  --px-track: #3a2a22; --px-board: #05070a; --px-mtn: #2b3a50; --px-mtn-d: #1f2b3d; --px-snow: #b9c6d8; --px-bloom1: #b8476c; --px-bloom2: #bfa43a;
+  --px-sky-o: #1a222c; --px-cloud-o: #2b3542; --px-rain: #6d9bd3; --px-leaf: #a86d22;
+  --px-blackdog: #34333b; --px-collar: #d94a4a; --px-tan: #b07a3d; --px-tan-d: #6a431c; --px-muzzle: #2a1d17;
+  --px-tabby: #94602f; --px-tabby-s: #4f3015; --px-gray-c: #7c838e; --px-gray-s: #474c56; --px-eye: #9fd35a;
 
   --ok: #143222; --ok-ink: #a9e9c4; --risk: #382810; --risk-ink: #f6cf8b; --off: #3d191c; --off-ink: #ffb8bb; --none: #232924; --none-ink: #c3cac4;
 }
@@ -223,6 +231,7 @@ h1 { font: 600 22px/28px var(--sans); margin: 0; }
 .l-check { --l: var(--check); --l-ink: var(--check-ink); --l-mark: var(--check-mark); }
 .l-plan  { --l: var(--plan);  --l-ink: var(--plan-ink);  --l-mark: var(--plan-mark); }
 .l-edge  { --l: var(--edge);  --l-ink: var(--edge-ink);  --l-mark: var(--edge-mark); }
+.l-wx    { --l: var(--wx);    --l-ink: var(--wx-ink);    --l-mark: var(--wx-mark); }
 .l-read  { --l: var(--read);  --l-ink: var(--read-ink);  --l-mark: var(--read-mark); }
 
 .mk { display: block; border-radius: 5px; padding: 4px 7px; font-size: 12px; line-height: 16px; background: var(--l); color: var(--l-ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -233,6 +242,16 @@ h1 { font: 600 22px/28px var(--sans); margin: 0; }
 .mk.miss { background: transparent; outline: 1px dashed var(--l-mark); outline-offset: -1px; color: var(--l-ink); font-weight: 400; }
 .dots { display: flex; gap: 4px; } .dots i { width: 12px; height: 12px; border-radius: 3px; background: transparent; border: 1.5px solid var(--habit-mark); opacity: .7; } .dots i.d { background: var(--habit-mark); opacity: 1; }
 .dash { color: var(--muted); }
+
+/* Weather lane: each day is a button that previews its conditions in the title scene */
+.wx { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 18px auto; grid-template-rows: auto auto; column-gap: 6px; align-items: center; width: 100%; padding: 4px 6px; border-radius: 6px; cursor: pointer; color: var(--wx-ink); }
+.wx svg { width: 18px; height: 18px; grid-row: span 2; color: var(--wx-mark); }
+.wx .n { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.wx .n b { font-weight: 600; color: var(--ink); }
+.wx small { font-size: 12px; line-height: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx:hover { background: var(--wx); }
+.wx[aria-pressed="true"] { background: var(--wx); outline: 1px solid var(--wx-mark); outline-offset: -1px; }
+.wx:focus-visible { outline: 2px solid var(--hue); outline-offset: 1px; }
 
 /* Legend under the strip */
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 12px; color: var(--muted); }
@@ -314,6 +333,7 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
   .week { grid-template-columns: 96px repeat(7, 112px); width: max-content; }
   .week .lane span { padding: 0 8px; }
   .mk { white-space: normal; }
+  .wx small { white-space: normal; }
   .pill { white-space: normal; height: auto; line-height: 16px; padding: 2px 8px; text-align: center; }
   td.n, td .n { white-space: nowrap; }
   .weekwrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
@@ -334,6 +354,8 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
 /* Tablet band (768–1100px): blocks take the full width; wide tables scroll inside their own frame. */
 @media (min-width: 768px) and (max-width: 1100px) {
   .grid > [class*="s"] { grid-column: 1 / -1; }
+  .weekwrap { overflow-x: auto; }
+  .week { grid-template-columns: 112px repeat(7, 118px); width: max-content; }
   .intro { flex-direction: column; gap: 14px; }
   .intro-side { align-items: flex-start; flex-basis: auto; width: 100%; max-width: 520px; }
   .next { grid-template-columns: repeat(2, minmax(0, 1fr)); }

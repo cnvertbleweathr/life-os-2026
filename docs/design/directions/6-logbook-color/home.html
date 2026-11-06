@@ -7,6 +7,16 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="theme.js"></script>
 <script src="px.js" defer></script>
+<script>
+// Weather lane: pick a day to see its conditions in the title scene (today is selected on load).
+addEventListener('DOMContentLoaded', () => {
+  const scene = document.querySelector('.scene[data-scene="week"]'), btns = document.querySelectorAll('.wx');
+  btns.forEach(b => b.addEventListener('click', () => {
+    btns.forEach(x => x.setAttribute('aria-pressed', x === b));
+    scene.dataset.wx = b.dataset.wx; scene.dataset.temp = b.dataset.temp;
+  }));
+});
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,6 +38,12 @@
 <symbol id="i-globe" viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="1.5"/><ellipse cx="16" cy="16" rx="6" ry="13" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M3 16h26M5 9.5h22M5 22.5h22" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-partly" viewBox="0 0 24 24"><path d="M9 4v1.5M3.5 9.5H5M5.3 5.8l1 1M12.7 5.8l-1 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M6.2 11.5a3.2 3.2 0 0 1 5.9-2.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 19.5h9.5a3.5 3.5 0 0 0 .3-7 5 5 0 0 0-9.6 1.2A2.9 2.9 0 0 0 8 19.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-cloud" viewBox="0 0 24 24"><path d="M6.5 18.5h11a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6 3.2 3.2 0 0 0 .1 6.4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="i-wx-wind" viewBox="0 0 24 24"><path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-rain" viewBox="0 0 24 24"><path d="M6.5 14.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 17.5l-1 2.5M12 17.5l-1 2.5M16 17.5l-1 2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="i-wx-snow" viewBox="0 0 24 24"><path d="M6.5 13.5h11a3.6 3.6 0 0 0 .4-7.2 5.5 5.5 0 0 0-10.6 1.5 2.9 2.9 0 0 0-.8 5.7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="17.5" r="1" fill="currentColor"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/><circle cx="16" cy="17.5" r="1" fill="currentColor"/><circle cx="10" cy="21.5" r=".9" fill="currentColor"/><circle cx="14" cy="21.5" r=".9" fill="currentColor"/></symbol>
 </svg><!--/SPRITE-->
 <div class="app">
   <a class="brand" href="home.html"><svg><use href="#i-globe"/></svg><b>ONS</b></a>
@@ -60,11 +76,11 @@
       <div>
         <h1>This week</h1>
         <p class="span">Tuesday, November 3 · week of Nov 2–8 · 58 days left in 2026</p>
-        <p class="lede">A slow start: <b>one run so far and no CrossFit</b>. Running is on pace if you keep up last week's 10 miles; reading is one book behind. Saturday is the big day, with <b>six picks from 10:00</b> and <b>Ma's birthday</b>.</p>
+        <p class="lede">A slow start: <b>one run so far and no CrossFit</b>. <b>Snow moves in Friday</b> (2–4 in.), so get your next run in before Thursday's rain if you can; Wednesday is dry but windy. Saturday is the big day, with <b>six picks from 10:00</b> and <b>Ma's birthday</b>, and it'll be sunny but cold.</p>
       </div>
       <div class="intro-side">
         <div class="acts"><a class="btn" href="#">Check in</a><a class="btn pri" href="#">Log today's habits</a></div>
-        <button type="button" class="scene" data-scene="week" aria-label="Pause animation: a jogger on the trail" aria-pressed="false"><canvas aria-hidden="true"></canvas></button>
+        <button type="button" class="scene" data-scene="week" data-wx="partly" data-temp="58" aria-label="Pause animation: a jogger and the pets on the trail, partly cloudy" aria-pressed="false"><canvas aria-hidden="true"></canvas></button>
       </div>
       <ol class="next" aria-label="Next steps today">
           <li class="l-check"><b>Check in</b><span>Today's check-in is due</span></li>
@@ -76,10 +92,13 @@
 
     <div class="grid">
       <section class="card s12" aria-labelledby="wk-h">
-        <div class="ch"><h2 id="wk-h">The week</h2><span class="aside">Mon Nov 2 – Sun Nov 8 · last 7 days: 10.2 mi, 2 runs</span></div>
+        <div class="ch"><h2 id="wk-h">The week</h2><span class="aside">Mon Nov 2 – Sun Nov 8 · Denver · last 7 days: 10.2 mi, 2 runs</span></div>
         <div class="weekwrap"><div class="week" role="table" aria-label="This week by day">
           <div class="hd lane" role="columnheader"></div>
           <div class="hd" role="columnheader">Mon<b>2</b></div><div class="hd today" role="columnheader">Tue · today<b>3</b></div><div class="hd" role="columnheader">Wed<b>4</b></div><div class="hd" role="columnheader">Thu<b>5</b></div><div class="hd" role="columnheader">Fri<b>6</b></div><div class="hd we" role="columnheader">Sat<b>7</b></div><div class="hd we" role="columnheader">Sun<b>8</b></div>
+
+          <div class="lane l-wx"><span>Weather</span></div>
+          <div><button type="button" class="wx" data-wx="sun" data-temp="63" aria-pressed="false" aria-label="Mon: Sunny, high 63, low 36. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-sun"/></svg><span class="n"><b>63°</b> 36°</span><small>Sunny</small></button></div><div class="today"><button type="button" class="wx" data-wx="partly" data-temp="58" aria-pressed="true" aria-label="Tue: Partly cloudy, high 58, low 33. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-partly"/></svg><span class="n"><b>58°</b> 33°</span><small>Partly cloudy</small></button></div><div><button type="button" class="wx" data-wx="wind" data-temp="55" aria-pressed="false" aria-label="Wed: Windy, gusts 35, high 55, low 30. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-wind"/></svg><span class="n"><b>55°</b> 30°</span><small>Windy, gusts 35</small></button></div><div><button type="button" class="wx" data-wx="rain" data-temp="44" aria-pressed="false" aria-label="Thu: Rain, then a mix, high 44, low 29. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-rain"/></svg><span class="n"><b>44°</b> 29°</span><small>Rain, then a mix</small></button></div><div><button type="button" class="wx" data-wx="snow" data-temp="34" aria-pressed="false" aria-label="Fri: Snow, 2–4 in., high 34, low 22. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-snow"/></svg><span class="n"><b>34°</b> 22°</span><small>Snow, 2–4 in.</small></button></div><div class="we"><button type="button" class="wx" data-wx="sun" data-temp="41" aria-pressed="false" aria-label="Sat: Sunny, cold, high 41, low 20. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-sun"/></svg><span class="n"><b>41°</b> 20°</span><small>Sunny, cold</small></button></div><div class="we"><button type="button" class="wx" data-wx="sun" data-temp="50" aria-pressed="false" aria-label="Sun: Sunny, high 50, low 27. Show in the scene"><svg class="i" aria-hidden="true"><use href="#i-wx-sun"/></svg><span class="n"><b>50°</b> 27°</span><small>Sunny</small></button></div>
 
           <div class="lane l-run"><span>Running</span></div>
           <div class="l-run"><span class="mk n">5.13 mi · 46 m</span></div><div class="today"></div><div></div><div></div><div></div><div class="we"></div><div class="we"></div>

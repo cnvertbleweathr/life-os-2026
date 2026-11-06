@@ -70,11 +70,7 @@
   const SPR = {};
   ['carrier', 'tackler', 'ref', 'jogger'].forEach(k => SPR[k] = [0, 1, 2, 3, 4, 5].map(f => build(k, f)));
 
-  // Dog (10×6), 2-frame gallop, and birds (3×2)
-  const DOG = [
-    ['........dd', 'd......dde', '.ddddddddd', '.DDDDDDDD.', 'd.d....d.d', '..........'],
-    ['........dd', '.d.....dde', '.ddddddddd', '.DDDDDDDD.', '..dd..dd..', '..........'],
-  ];
+  // Birds (3×2)
   const BIRD = [['b.b', '.b.'], ['...', 'bbb']];
   const TREE = ['..TTT..', '.TTTTD.', 'TTTTTDD', 'TTTTDDD', '.TTDDD.', '...R...', '...R...'];
   const CLOUD = ['..CC....', '.CCCC.C.', 'CCCCCCCC'];
@@ -108,7 +104,8 @@
 
   const KEYS = ['outline', 'skin', 'skin-d', 'team', 'team-d', 'foe', 'foe-d', 'white', 'white-d', 'mask', 'ball', 'hair', 'run', 'run-d', 'navy', 'navy-d',
     'stand', 'track', 'grass', 'grass2', 'grass-d', 'line', 'post', 'board', 'sky', 'cloud', 'sun', 'mtn', 'mtn-d', 'snow', 'hill', 'hill2', 'tree', 'tree-d', 'trunk',
-    'ground', 'ground2', 'star', 'dog', 'dog-d', 'bloom1', 'bloom2'];
+    'ground', 'ground2', 'star', 'bloom1', 'bloom2', 'sky-o', 'cloud-o', 'rain', 'leaf',
+    'blackdog', 'collar', 'tan', 'tan-d', 'muzzle', 'tabby', 'tabby-s', 'gray-c', 'gray-s', 'eye'];
   function palette() {
     const cs = getComputedStyle(document.documentElement), P = { dark: document.documentElement.dataset.theme === 'dark' };
     KEYS.forEach(k => P[k] = cs.getPropertyValue('--px-' + k).trim());
@@ -173,51 +170,109 @@
   };
 
   // ---------------- This week ----------------
+  // The pack: black dog, chihuahua-beagle, puggle run with the jogger; a brown tabby and a gray striped cat trot behind.
+  // 2-frame gaits (patterns.md: fewer frames, readable silhouettes). Facing right.
+  const PETS = {
+    blackdog: [ // 12×6, red collar
+      ['........KKK.', 'K......cKKKK', '.KKKKKKKKKn.', '.KKKKKKKKK..', '.K.K....K.K.', 'K...K..K...K'],
+      ['........KKK.', '.K.....cKKKK', '.KKKKKKKKKn.', '.KKKKKKKKK..', '..KK....KK..', '..K.K..K.K..'],
+    ],
+    chibeagle: [ // 9×5, tri-colour, tall chihuahua ears, tiny
+      ['......T.T', 'T.....TTT', '.BBBBBTTW', '.WWWWWW..', '.T.T..T.T'],
+      ['......T.T', '.T....TTT', '.BBBBBTTW', '.WWWWWW..', '..TT.TT..'],
+    ],
+    puggle: [ // 10×6, stocky, dark pug muzzle, curly tail
+      ['.......TTT', 'TT....TEMM', 'T.TTTTTTMM', '.TTTTTTTW.', '.T.T..T.T.', '..........'],
+      ['.......TTT', '.TT...TEMM', '.TTTTTTTMM', '.TTTTTTTW.', '..TT..TT..', '..........'],
+    ],
+    cat: [ // 10×6, tail up, pointed ears, striped back
+      ['.......C.C', 'C......CCC', '.C.....CCe', '..CSCSCSC.', '..CCCCCCC.', '..C.C..C.C'],
+      ['.......C.C', '.C.....CCC', '..C....CCe', '..CSCSCSC.', '..CCCCCCC.', '...CC..CC.'],
+    ],
+  };
+  const WEATHER = {
+    sun: { sky: 'sky', clouds: 2, sun: true },
+    partly: { sky: 'sky', clouds: 5, sun: true },
+    cloudy: { sky: 'sky-o', clouds: 8, sun: false, overcast: true },
+    wind: { sky: 'sky', clouds: 4, sun: true, wind: true },
+    rain: { sky: 'sky-o', clouds: 8, sun: false, overcast: true, rain: true },
+    snow: { sky: 'sky-o', clouds: 8, sun: false, overcast: true, snow: true },
+  };
   const week = {
     ms: 140, stride: 3, still: 0,
-    draw(ctx, W, n, P) {
-      const d = n * this.stride, f = n % 6;
-      px(ctx, P.sky, 0, 0, W, H);
+    draw(ctx, W, n, P, data) {
+      const wx = WEATHER[data.wx] || WEATHER.sun, d = n * this.stride, f = n % 6;
+      const cloudSpeed = wx.wind ? 2 : 8;
+      px(ctx, P[wx.sky], 0, 0, W, H);
+      // sky body: sun or moon, stars only when the sky is clear-ish at night
       if (P.dark) {
-        for (let i = 0; i < W / 4; i++) { const x = Math.floor(rnd(i * 13) * W), y = Math.floor(rnd(i * 29) * 12); if (rnd(i + Math.floor(n / 3) * 31) > 0.15) px(ctx, P.star, x, y); }
-        const mx = W - 18; px(ctx, P.sun, mx + 1, 2, 4, 1); px(ctx, P.sun, mx, 3, 5, 3); px(ctx, P.sun, mx + 1, 6, 4, 1); px(ctx, P.sky, mx + 3, 3, 2, 2);
-      } else {
+        if (!wx.overcast) for (let i = 0; i < W / 4; i++) { const x = Math.floor(rnd(i * 13) * W), y = Math.floor(rnd(i * 29) * 12); if (rnd(i + Math.floor(n / 3) * 31) > 0.15) px(ctx, P.star, x, y); }
+        if (wx.sun) { const mx = W - 18; px(ctx, P.sun, mx + 1, 2, 4, 1); px(ctx, P.sun, mx, 3, 5, 3); px(ctx, P.sun, mx + 1, 6, 4, 1); px(ctx, P[wx.sky], mx + 3, 3, 2, 2); }
+      } else if (wx.sun) {
         const sx = W - 18; px(ctx, P.sun, sx + 1, 2, 4, 6); px(ctx, P.sun, sx, 3, 6, 4);
         if (Math.floor(n / 3) % 2) { px(ctx, P.sun, sx + 2, 0, 2, 1); px(ctx, P.sun, sx + 2, 9, 2, 1); px(ctx, P.sun, sx - 2, 4, 1, 2); px(ctx, P.sun, sx + 7, 4, 1, 2); }
       }
-      // the Rockies, far back, snow on the peaks (lit side left)
+      // the Rockies (snowier when it's snowing)
       const mo = Math.floor(d / 10);
       for (let x = 0; x < W; x++) {
-        const wx = x + mo, k = Math.floor(wx / 34), u = wx - k * 34, peak = 9 + Math.floor(rnd(k + 5) * 6), hh = Math.max(0, peak - ((Math.abs(u - 17) * 0.8) | 0));
-        if (hh > 0) { px(ctx, u < 17 ? P.mtn : P['mtn-d'], x, 25 - hh, 1, hh); if (hh > peak - 3) px(ctx, P.snow, x, 25 - hh, 1, Math.min(2, hh)); }
+        const wxp = x + mo, k = Math.floor(wxp / 34), u = wxp - k * 34, peak = 9 + Math.floor(rnd(k + 5) * 6), hh = Math.max(0, peak - ((Math.abs(u - 17) * 0.8) | 0));
+        if (hh > 0) { px(ctx, u < 17 ? P.mtn : P['mtn-d'], x, 25 - hh, 1, hh); const cap = wx.snow ? 5 : 3; if (hh > peak - cap) px(ctx, P.snow, x, 25 - hh, 1, Math.min(cap - 1, hh)); }
       }
-      for (let k = 0; k < 4; k++) { const span = W + 40, cx = ((k * 67 - Math.floor(d / 8)) % span + span) % span - 20; tiles(ctx, CLOUD, cx, 3 + (k % 2) * 4, { C: P.cloud }); }
-      for (let k = 0; k < 3; k++) { const span = W + 30, bx = ((k * 53 + Math.floor(n / 2) * (k + 1)) % span) - 10; tiles(ctx, BIRD[(n + k) % 2], bx, 6 + k * 3, { b: P.outline }); }
+      // clouds: count and speed follow the weather; overcast adds a low ceiling
+      if (wx.overcast) px(ctx, P['cloud-o'], 0, 0, W, 3);
+      for (let k = 0; k < wx.clouds; k++) {
+        const span = W + 40, cx = ((k * 41 + Math.floor(rnd(k) * 30) - Math.floor(d / cloudSpeed)) % span + span) % span - 20;
+        tiles(ctx, CLOUD, cx, 2 + (k % 3) * 3, { C: wx.overcast ? P['cloud-o'] : P.cloud });
+      }
+      if (!wx.rain && !wx.snow) for (let k = 0; k < 3; k++) { const span = W + 30, bx = ((k * 53 + Math.floor(n / 2) * (k + 1)) % span) - 10; tiles(ctx, BIRD[(n + k) % 2], bx, 7 + k * 3, { b: P.outline }); }
       for (let x = 0; x < W; x++) {
         const o1 = x + Math.floor(d / 4), h1 = 4 + Math.round(2 * Math.sin(o1 / 11) + 1.5 * Math.sin(o1 / 5));
-        px(ctx, P.hill2, x, 27 - h1, 1, h1);
+        px(ctx, P.hill2, x, 27 - h1, 1, h1); if (wx.snow) px(ctx, P.snow, x, 27 - h1, 1, 1);
         const o2 = x + Math.floor(d / 2), h2 = 2 + Math.round(1.5 * Math.sin(o2 / 7));
-        px(ctx, P.hill, x, 27 - h2, 1, h2);
+        px(ctx, P.hill, x, 27 - h2, 1, h2); if (wx.snow) px(ctx, P.snow, x, 27 - h2, 1, 1);
       }
-      const tOff = Math.floor(d * 3 / 4);
-      for (let k = Math.floor(tOff / 41) - 1; k <= Math.floor((tOff + W) / 41) + 1; k++) if (rnd(k * 9 + 2) > 0.25) tiles(ctx, TREE, k * 41 + 9 - tOff, 20, { T: P.tree, D: P['tree-d'], R: P.trunk });
-      // trail, wildflowers on the verge, mile markers
+      const tOff = Math.floor(d * 3 / 4), lean = wx.wind && n % 4 < 2 ? 1 : 0;
+      for (let k = Math.floor(tOff / 41) - 1; k <= Math.floor((tOff + W) / 41) + 1; k++) if (rnd(k * 9 + 2) > 0.25) {
+        const tx = k * 41 + 9 - tOff;
+        tiles(ctx, TREE.slice(0, 5), tx + lean, 20, { T: P.tree, D: P['tree-d'] }); tiles(ctx, TREE.slice(5), tx, 25, { R: P.trunk });
+        if (wx.snow) px(ctx, P.snow, tx + 2 + lean, 20, 3, 1), px(ctx, P.snow, tx + 1 + lean, 21, 1, 1);
+      }
+      // trail: snow cover, puddles, wildflowers (not under snow), mile markers
       px(ctx, P.ground, 0, 27, W, H - 27);
       for (let x = 0; x < W; x++) {
-        const wx = x + d;
-        if (wx % 9 === 0) px(ctx, P.ground2, x, 29);
-        if (wx % 13 === 4) px(ctx, P.ground2, x, 31);
-        const fl = rnd(wx * 3 + 1); if (fl > 0.86) px(ctx, fl > 0.93 ? P.bloom1 : P.bloom2, x, 26);
+        const wxp = x + d;
+        if (wxp % 9 === 0) px(ctx, P.ground2, x, 29);
+        if (wxp % 13 === 4) px(ctx, P.ground2, x, 31);
+        if (wx.snow) { px(ctx, P.snow, x, 27); if (rnd(wxp) > 0.55) px(ctx, P.snow, x, 28); if (rnd(wxp * 5) > 0.8) px(ctx, P.snow, x, 30); }
+        else { const fl = rnd(wxp * 3 + 1); if (fl > 0.86) px(ctx, fl > 0.93 ? P.bloom1 : P.bloom2, x, 26); }
+        if (wx.rain && (wxp % 47) < 6) px(ctx, P.rain, x, 30);
       }
       for (let k = Math.floor(d / 120); k <= Math.floor((d + W) / 120) + 1; k++) {
         const x = k * 120 - d + 30; if (x < -6 || x > W) continue;
         px(ctx, P.trunk, x + 2, 22, 1, 6); px(ctx, P.outline, x - 1, 15, 7, 8); px(ctx, P.white, x, 16, 5, 6); text(ctx, (k % 9) + 1, x + 1, 16, P.run);
+        if (wx.snow) px(ctx, P.snow, x - 1, 14, 7, 1);
       }
-      // jogger and the dog
-      const jx = Math.floor(W * 0.42) - 10, dogx = jx + 18 + Math.round(2 * Math.sin(n / 6));
-      px(ctx, P.ground2, jx + 4, 29, 11, 1); px(ctx, P.ground2, dogx + 1, 29, 8, 1);
+      // the pack. Jogger at 40% of the width; dogs around, cats trailing.
+      const jx = Math.round(W * 0.46) - 10, gap = Math.round(W * 0.1), wob = k => Math.round(2 * Math.sin(n / 6 + k));
+      const pets = [
+        ['cat', jx - 3 * gap + wob(4), 23, { C: P['gray-c'], S: P['gray-s'], e: P.eye }],
+        ['cat', jx - 2 * gap - 1 + wob(3), 23, { C: P.tabby, S: P['tabby-s'], e: P.eye }],
+        ['chibeagle', jx - gap + 2 + wob(2), 24, { T: P.tan, B: P.blackdog, W: P.white }],
+        ['blackdog', jx + 18 + wob(0), 23, { K: P.blackdog, c: P.collar, n: P.outline }],
+        ['puggle', jx + 34 + wob(1), 23, { T: P.tan, E: P['tan-d'], M: P.muzzle, W: P.white }],
+      ];
+      pets.forEach(([k, x, y], i) => px(ctx, P.ground2, x + 1, 29, PETS[k][0][0].length - 1, 1));
+      px(ctx, P.ground2, jx + 4, 29, 11, 1);
+      pets.slice(0, 3).forEach(([k, x, y, m], i) => drawSprite(ctx, toGrid(PETS[k][(n + i) % 2]), x, y, m, P.outline));
       drawSprite(ctx, SPR.jogger[f], jx, 12, { H: P.hair, s: P.skin, t: P['skin-d'], e: P.outline, j: P.run, k: P['run-d'], w: P.run, r: P.navy, p: P.skin, q: P['skin-d'], x: P.white }, P.outline);
-      drawSprite(ctx, toGrid(DOG[n % 2]), dogx, 23, { d: P.dog, D: P['dog-d'], e: P.outline }, P.outline);
+      pets.slice(3).forEach(([k, x, y, m], i) => drawSprite(ctx, toGrid(PETS[k][(n + i) % 2]), x, y, m, P.outline));
+      // precipitation and wind on top of everything
+      if (wx.snow) for (let i = 0; i < W * 0.35; i++) { const x = Math.floor(rnd(i * 3) * W + n * (0.5 + rnd(i) * 0.6) + Math.sin(n / 4 + i) * 1.5) % W, y = Math.floor(rnd(i * 7) * H + n * (0.6 + rnd(i * 5) * 0.5)) % H; px(ctx, P.snow, x, y); }
+      if (wx.rain) for (let i = 0; i < W * 0.3; i++) { const x = Math.floor(rnd(i * 3) * W - n * 1) % W, y = Math.floor(rnd(i * 7) * H + n * 3) % H; px(ctx, P.rain, (x + W) % W, y, 1, 2); }
+      if (wx.wind) for (let i = 0; i < 7; i++) { const x = Math.floor(rnd(i * 3) * W + n * (4 + i % 3)) % (W + 10) - 5, y = 8 + Math.floor(rnd(i * 7) * 18) + (n + i) % 3 - 1; px(ctx, i % 2 ? P.leaf : P['tree-d'], W - x, y); px(ctx, P[wx.sky] === P.sky ? P.cloud : P['cloud-o'], W - x + 2 + (i % 3), y - 4, 4, 1); }
+      // temperature, top left, straight on the sky
+      const t = String(data.temp || '');
+      if (t) { const c = P.dark ? P.white : P.outline; text(ctx, t, 3, 3, c); const gx = 3 + t.length * 4; px(ctx, c, gx, 3, 3, 1); px(ctx, c, gx, 4); px(ctx, c, gx + 2, 4); px(ctx, c, gx, 5, 3, 1); }
     },
   };
 
@@ -227,7 +282,7 @@
     const canvas = el.querySelector('canvas'), ctx = canvas.getContext('2d'), scene = SCENES[el.dataset.scene];
     let W = 96, P = palette(), clock = scene.still * scene.ms, prev = 0, raf = 0, last = -1, visible = true, paused = false;
     try { paused = localStorage.getItem(KEY) === '1'; } catch (e) {}
-    const draw = force => { const n = Math.floor(clock / scene.ms); if (!force && n === last) return; last = n; ctx.clearRect(0, 0, W, H); scene.draw(ctx, W, n, P); };
+    const draw = force => { const n = Math.floor(clock / scene.ms); if (!force && n === last) return; last = n; ctx.clearRect(0, 0, W, H); scene.draw(ctx, W, n, P, el.dataset); };
     const running = () => !paused && visible && !reduce.matches && !document.hidden;
     const loop = now => { clock += Math.max(0, Math.min(100, now - prev)); prev = now; draw(false); raf = running() ? requestAnimationFrame(loop) : 0; };
     const sync = () => {
@@ -251,6 +306,7 @@
     new ResizeObserver(size).observe(el);
     new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }).observe(el);
     new MutationObserver(() => { P = palette(); draw(true); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    new MutationObserver(() => draw(true)).observe(el, { attributes: true, attributeFilter: ['data-wx', 'data-temp'] });
     document.addEventListener('visibilitychange', sync);
     reduce.addEventListener('change', () => { draw(true); sync(); });
     size(); sync();

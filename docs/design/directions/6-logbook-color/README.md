@@ -76,7 +76,7 @@ Each page has a pixel-art loop in a right-hand column under the action buttons. 
   - Frame times are 100ms for the run and 140ms for the jog.
 - **No sliding.** The ground scrolls one foot-travel per frame: 4px on the field, 3px on the trail.
 - **One outline rule.** Every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left.
-- **Closed palette.** 42 `--px-*` colours per theme, within the skill's "expanded" range.
+- **Closed palette.** 56 `--px-*` colours per theme, within the skill's "expanded" range.
   - The silhouette test sent three characters to navy: the ball carrier's jersey, the referee's pants and the jogger's shorts all matched the outline colour and merged into it.
 - **Integer scaling in device pixels.** Each art pixel lands on 3, 4 or 6 device pixels at 1×/1.25×, 1.5× and 2×.
 
@@ -87,8 +87,33 @@ Each page has a pixel-art loop in a right-hand column under the action buttons. 
 - A referee trails a violet defender, who chases the tangerine ball carrier with the ball tucked.
 - Every so often an end zone, pylons and a goalpost scroll in; crossing the goal line sets off confetti and "TD!".
 
+**Weather (This week page):**
+- **Weather lane.** The first lane of the week strip shows each day's icon, high/low and conditions. Clicking a day shows its conditions in the title scene; today is selected on load.
+- **Coach line.** The intro paragraph uses the forecast: snow Friday, so run before Thursday's rain; Saturday sunny but cold.
+- **Sample forecast for Denver (to replace):**
+
+  | Day | Conditions | High/low |
+  |---|---|---|
+  | Mon | Sunny | 63/36 |
+  | Tue | Partly cloudy | 58/33 |
+  | Wed | Windy, gusts 35 | 55/30 |
+  | Thu | Rain, then a mix | 44/29 |
+  | Fri | Snow, 2–4 in. | 34/22 |
+  | Sat | Sunny, cold | 41/20 |
+  | Sun | Sunny | 50/27 |
+
+- **Real version.** ONS has no weather source yet. Open-Meteo (free, no key) can serve the daily forecast and current conditions for Denver; `MIGRATION.md` notes there's no stored lat/long, so add one. The scene reads `data-wx` (`sun`, `partly`, `cloudy`, `wind`, `rain`, `snow`) and `data-temp`.
+
 **This week:**
-- A jogger in running blue on a trail, with a dog alongside.
+- A jogger in running blue on a trail with the pack:
+  - the black dog (red collar), the chihuahua-beagle (tiny, tri-colour, tall ears) and the puggle (stocky, dark pug muzzle) run alongside;
+  - the brown tabby and the gray striped cat trot behind.
+- **The scene follows the weather:**
+  - clear and partly cloudy: sun and clouds;
+  - windy: fast clouds, blowing leaves, swaying trees;
+  - rain: overcast sky, falling drops, puddles on the trail;
+  - snow: overcast sky, falling snow, snow on the peaks, hills, trees, trail and mile markers.
+  - The temperature sits in the top-left corner. At night the dark theme adds the moon, and stars when the sky is clear.
 - Behind them: the Rockies with snowcaps, rolling hills, trees, drifting clouds and birds.
 - The trail has wildflowers on the verge and numbered mile markers.
 - There's a sun by day and a moon with stars at night.
