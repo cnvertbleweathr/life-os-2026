@@ -22,11 +22,13 @@
   --edge: #fde3cf;  --edge-ink: #6a2b06;  --edge-mark: #d9661c;
 
 
-  /* pixel scenes */
-  --px-sky: #cfe6f5; --px-grass: #4e9a4a; --px-grass2: #59a654; --px-line: #f5f8f3; --px-stand: #3b4252; --px-zone: #d9661c;
-  --px-post: #f4c430; --px-ball: #8a4a1c; --px-ground: #d6c39a; --px-ground2: #b39d6e; --px-hill: #8fc77f; --px-hill2: #b5dba6;
-  --px-tree: #2f7a3a; --px-trunk: #7a4a24; --px-sun: #ffc23d; --px-cloud: #ffffff; --px-skin: #e5ad85; --px-ink: #1d2230;
-  --px-hair: #3b2516; --px-away: #f1f2f5; --px-star: #ffffff; --px-shadow: rgb(0 0 0 / .18);
+  /* pixel scenes: closed palette (pixel-art-sprites: palette discipline). Characters + scenery, 33 colours. */
+  --px-outline: #1d2230; --px-skin: #e5ad85; --px-skin-d: #b97a56; --px-team: #d9661c; --px-team-d: #96400f;
+  --px-foe: #6d4fd1; --px-foe-d: #3f2d8c; --px-white: #f3f4f6; --px-white-d: #aeb3c4; --px-mask: #8c93a3; --px-ball: #8a4a1c;
+  --px-hair: #3b2516; --px-run: #2a6fd6; --px-run-d: #1a4796; --px-navy: #34446a; --px-navy-d: #222d49;
+  --px-stand: #3b4252; --px-grass: #4e9a4a; --px-grass2: #59a654; --px-grass-d: #3c7d3a; --px-line: #f5f8f3; --px-post: #f4c430;
+  --px-sky: #cfe6f5; --px-cloud: #ffffff; --px-sun: #ffc23d; --px-hill: #8fc77f; --px-hill2: #b5dba6; --px-tree: #2f7a3a;
+  --px-tree-d: #1f5a2a; --px-trunk: #7a4a24; --px-ground: #d6c39a; --px-ground2: #b39d6e; --px-star: #ffffff;
 
   --ok: #d9f2e2; --ok-ink: #0d3a22; --risk: #fff0d6; --risk-ink: #7a430a; --off: #fde6e6; --off-ink: #7d1c20; --none: #eef0ee; --none-ink: #3e443e;
 }
@@ -48,10 +50,12 @@
   --edge: #3a1f0c;  --edge-ink: #ffcca4;  --edge-mark: #f08a45;
 
 
-  --px-sky: #101c2a; --px-grass: #2a5a2b; --px-grass2: #306431; --px-line: #cdd6cc; --px-stand: #171b23; --px-zone: #8a3f12;
-  --px-post: #e3b52c; --px-ball: #a0592a; --px-ground: #4a3f2c; --px-ground2: #5e5038; --px-hill: #1e3b25; --px-hill2: #182d22;
-  --px-tree: #14361c; --px-trunk: #4a2e18; --px-sun: #e9e4c4; --px-cloud: #22303f; --px-skin: #d29c76; --px-ink: #0b0d12;
-  --px-hair: #2a1a10; --px-away: #d9dbe2; --px-star: #fff6cf; --px-shadow: rgb(0 0 0 / .3);
+  --px-outline: #07090d; --px-skin: #d29c76; --px-skin-d: #a06a49; --px-team: #f08a45; --px-team-d: #b0561f;
+  --px-foe: #9479f2; --px-foe-d: #5d45b8; --px-white: #d9dbe2; --px-white-d: #8e93a5; --px-mask: #6b7282; --px-ball: #a0592a;
+  --px-hair: #2a1a10; --px-run: #5d9ff2; --px-run-d: #3567b5; --px-navy: #3d4f7a; --px-navy-d: #28345a;
+  --px-stand: #171b23; --px-grass: #2a5a2b; --px-grass2: #306431; --px-grass-d: #1f4721; --px-line: #cdd6cc; --px-post: #e3b52c;
+  --px-sky: #101c2a; --px-cloud: #22303f; --px-sun: #e9e4c4; --px-hill: #1e3b25; --px-hill2: #182d22; --px-tree: #14361c;
+  --px-tree-d: #0d2614; --px-trunk: #4a2e18; --px-ground: #4a3f2c; --px-ground2: #5e5038; --px-star: #fff6cf;
 
   --ok: #143222; --ok-ink: #a9e9c4; --risk: #382810; --risk-ink: #f6cf8b; --off: #3d191c; --off-ink: #ffb8bb; --none: #232924; --none-ink: #c3cac4;
 }
@@ -116,7 +120,7 @@ h1 { font: 600 22px/28px var(--sans); margin: 0; }
 .intro { flex-wrap: wrap; }
 .intro > div:first-child { flex: 1 1 0; min-width: 0; }
 /* Pixel scene: a small looping picture beside the title. The whole box is the pause button. */
-.scene { flex: none; align-self: center; width: 288px; height: 96px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--px-sky); cursor: pointer; position: relative; display: block; }
+.scene { flex: none; align-self: center; width: 290px; height: 98px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--px-sky); cursor: pointer; position: relative; display: block; }
 .scene canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
 .scene:disabled { cursor: default; }
 .scene:not(:disabled):hover::after, .scene[aria-pressed="true"]:not(:disabled)::after { content: "Pause"; position: absolute; right: 6px; bottom: 6px; font: 500 11px/16px var(--sans); padding: 0 6px; border-radius: 4px; background: var(--sheet); color: var(--ink-2); }
@@ -292,7 +296,7 @@ td .sub { display: block; font-size: 13px; color: var(--muted); }
   .title { flex-direction: column; align-items: stretch; }
   .intro { flex-direction: column; gap: 14px; padding-top: 0; }
   .intro h1 { font-size: 26px; line-height: 32px; }
-  .scene { order: -1; align-self: stretch; width: auto; height: 64px; }
+  .scene { order: -1; align-self: stretch; width: auto; height: 66px; }
   .intro h1 .h1-sub { display: block; font-size: 20px; line-height: 26px; }
   .intro .lede { font-size: 15px; line-height: 23px; }
   .next { grid-template-columns: minmax(0, 1fr); gap: 8px; }

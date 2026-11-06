@@ -69,17 +69,20 @@ Files: `home.html`, `cfb.html`, `style.css`, `theme.js`; screenshots `{home,cfb}
 
 ## Pixel scenes beside the title
 
-Each page gets a small pixel-art loop next to its title, in `px.js`.
+Each page gets a small pixel-art loop next to its title, in `px.js`. They're built to the **pixel-art-sprites** skill (`.claude/skills/pixel-art-sprites`, copied from omer-metin/skills-for-antigravity after reading it).
 
-- **How it's drawn:** a canvas 32 logical pixels tall, scaled up with nearest-neighbour: ×3 (288×96) on desktop, and a 64px banner above the title on phones.
-- **Colours** come from `--px-*` theme variables plus the area marks, so each scene has a day version and a night version.
+- **Sprites.** Characters are 16×16 frames with a 4-frame run cycle: contact, passing, mirrored contact, mirrored passing. Arms swing opposite the legs, and the torso drops 1px on each contact frame. Frame times are 125ms for the run and 160ms for the jog, the skill's "fast" and "normal" bands.
+- **No sliding.** The ground scrolls exactly 4px a frame, which is how far a planted foot travels, so feet plant instead of sliding.
+- **One outline rule.** Every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left, so shade sits on the right and bottom of each form.
+- **Closed palette.** 33 `--px-*` colours per theme, with day and night sets, and no colours borrowed from the UI. The ball carrier's jersey has its own navy because the skill's silhouette test failed when it matched the outline.
+- **Integer scaling in device pixels.** Each art pixel is exactly 3 device pixels at 1×, 3 at 1.25×, 4 at 1.5× and 6 at 2×. The canvas uses `image-rendering: pixelated`.
 
 **Built:**
-- **Degenerates Corner:** a ball carrier in tangerine (underdog colour) breaks upfield with a violet defender chasing. The stands have a crowd that bounces, stadium lights come on at night, and an end zone and goalpost scroll past, with a sparkle when he crosses the goal line.
-- **This week:** a jogger in the running blue on a trail, with parallax hills, trees and clouds. There's a sun by day and a moon with twinkling stars at night.
+- **Degenerates Corner:** a ball carrier (tangerine helmet, navy jersey, ball tucked) breaks upfield with a violet defender reaching for him. The crowd bounces, lights come on at night, and an end zone and goalpost scroll past, with a sparkle on the score.
+- **This week:** a jogger in running blue on a trail, with parallax hills, trees and clouds. There's a sun by day and a moon with stars at night.
 
 **Motion rules.** These break CLAUDE.md's "quiet on daily screens" default because the owner asked for them. To keep them quiet anyway:
-- They run at 12fps and draw nothing between frames.
+- They draw only when the frame changes.
 - They stop when scrolled offscreen or when the tab is hidden.
 - Clicking a scene pauses every scene. The choice is saved as `ons-px-paused`.
 - With `prefers-reduced-motion` on, each scene shows a still frame and the button is disabled.
