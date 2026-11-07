@@ -89,6 +89,7 @@ app.include_router(shows.router,   prefix="/api/shows",   tags=["shows"])
 app.include_router(sports.router,  prefix="/api/sports",  tags=["sports"])
 app.include_router(cfb.router,     prefix="/api/cfb",     tags=["cfb"])
 app.include_router(kglw.router,    prefix="/api/kglw",    tags=["kglw"])
+app.include_router(film.public,    prefix="/api/film",    tags=["film"])
 
 # Write path — these append to JSONL logs (api/store.py), never to DuckDB.
 # Personal: over the public tunnel they need the write key (api/auth.py).

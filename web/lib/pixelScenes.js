@@ -659,7 +659,67 @@ const sports = {
   },
 };
 
-const SCENES = { cfb, week, fitness, reading, music, kglw, sports };
+// ---------------- Film ----------------
+// A small cinema. The screen in the middle plays the latest film's 5-second loop: 40 frames of 64×32 from a PNG
+// strip (/api/film/strip), the light-theme GIF in light mode and the LED-panel (dark-palette) GIF in dark mode.
+// Velvet curtains fill the rest of the width, tied back at the screen's edges; the front row's seat backs run
+// along the bottom with the gray cat asleep on one. The strip is loaded by PixelScene before its URL is set
+// (loadStrip), so draw() only ever sees a decoded image. Light from the top-left: the folds' shadow is on the right.
+const STRIPS = new Map();
+export function loadStrip(url) {
+  if (!url) return Promise.resolve();
+  let img = STRIPS.get(url);
+  if (!img) { img = new Image(); img.src = url; STRIPS.set(url, img); }
+  return img.decode().catch(() => {});
+}
+const stripFor = (data, P) => { const img = STRIPS.get(P.dark ? data.stripDark : data.stripLight); return img && img.complete && img.naturalWidth ? img : null; };
+const SCREEN_W = 64, STRIP_FRAMES = 40;
+function screenFrame(ctx, img, n, x) {
+  if (img) ctx.drawImage(img, (n % STRIP_FRAMES) * SCREEN_W, 0, SCREEN_W, H, x, 0, SCREEN_W, H);
+}
+const film = {
+  ms: 125, stride: 0, still: 20,
+  draw(ctx, W, n, P, data) {
+    const sx = Math.max(0, Math.floor((W - SCREEN_W) / 2)), ex = sx + SCREEN_W;
+    px(ctx, P.board, 0, 0, W, H);
+    const img = stripFor(data, P);
+    if (img) screenFrame(ctx, img, n, sx);
+    else px(ctx, P['white-d'], sx, 0, SCREEN_W, H);            // a blank screen until the strip arrives
+    // curtains: folds every 4px, darker on the right of each fold; the inner edge sweeps back to a tie at y=21
+    const curtain = (x0, x1, inner, dir) => {
+      for (let x = x0; x < x1; x++) {
+        const fold = ((dir > 0 ? x - x0 : x1 - 1 - x) % 4);
+        const col = fold === 3 ? P['plate-d'] : P.plate;
+        for (let y = 0; y < H - 5; y++) {
+          const tie = Math.abs(y - 21), sweep = Math.max(0, 6 - Math.floor(tie / 2));   // gathered toward the tie
+          if (dir > 0 ? x > inner - sweep : x < inner + sweep) continue;
+          px(ctx, col, x, y);
+        }
+      }
+    };
+    if (sx > 0) { curtain(0, sx + 3, sx + 2, 1); curtain(ex - 3, W, ex - 3, -1); }
+    px(ctx, P['plate-d'], 0, 0, W, 2);                          // valance
+    for (let x = 1; x < W; x += 4) px(ctx, P.plate, x, 2);      // its scalloped hem
+    // front row of seat backs, outside the screen's width so they never cover the film
+    for (let x = 1; x + 5 <= W; x += 7) {
+      if (x + 5 > sx - 1 && x < ex + 1) continue;
+      px(ctx, P.stand, x, H - 5, 5, 5); px(ctx, P.outline, x, H - 5, 5, 1);
+    }
+    const seat = sx > 16 ? sx - 14 : -1;                         // the gray cat, asleep on a seat back left of the screen
+    if (seat >= 0) drawSprite(ctx, toGrid(CURL[Math.floor(n / 8) % 2]), seat, H - 9, { C: P['gray-c'], S: P['gray-s'] }, P.outline);
+  },
+};
+// A Screening Room tile: just the loop, centred, on the auditorium dark.
+const loop = {
+  ms: 125, stride: 0, still: 20,
+  draw(ctx, W, n, P, data) {
+    px(ctx, P.board, 0, 0, W, H);
+    const img = stripFor(data, P);
+    screenFrame(ctx, img, n, Math.max(0, Math.floor((W - SCREEN_W) / 2)));
+  },
+};
+
+const SCENES = { cfb, week, fitness, reading, music, kglw, sports, film, loop };
 
 function mount(el) {
   if (!el.querySelector('canvas')) return () => {};

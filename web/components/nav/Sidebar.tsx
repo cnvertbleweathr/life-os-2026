@@ -19,6 +19,7 @@ export const NAV: NavItem[] = [
   { kind: "link", href: "/goals",   label: "Goals",            icon: "goals" },
   { kind: "link", href: "/fitness", label: "Fitness",          icon: "fitness", area: "run" },
   { kind: "link", href: "/reading", label: "Reading",          icon: "reading", area: "read" },
+  { kind: "link", href: "/film",    label: "Film",             icon: "film",    area: "film" },
   { kind: "section", label: "Degenerates Corner" },
   { kind: "link", href: "/cfb",     label: "College Football", icon: "cfb",     area: "edge" },
   { kind: "section", label: "Play" },
