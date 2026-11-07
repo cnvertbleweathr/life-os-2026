@@ -94,7 +94,11 @@ async def crossfit_log(limit: int = 50):
     df = df.sort_values("date", ascending=False).head(limit)
     df["date"] = df["date"].dt.strftime("%Y-%m-%d")
     df["is_pr"] = df["pr"].astype(str).str.strip().str.upper() == "PR"
-    cols = ["date", "title", "barbell_lift", "best_result_raw", "best_result_unit", "is_pr"]
+    # best_result_display is the score as SugarWOD shows it ("18:25", "4+7", "185"); score_type says what
+    # kind it is (Load, Reps, Rounds + Reps…; blank for timed workouts). Without them a time of 41:08
+    # reads as "2468".
+    cols = ["date", "title", "barbell_lift", "best_result_raw", "best_result_unit", "best_result_display",
+            "score_type", "rx_or_scaled", "is_pr"]
     available = [c for c in cols if c in df.columns]
     raw_rows = df[available].to_dict(orient="records")
     return [{k: _clean(v) for k, v in row.items()} for row in raw_rows]

@@ -1,493 +1,369 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fitnessApi, type FitnessSummary, type CrossfitEntry, type RunDay } from "@/lib/api";
-import {
-  Card, PageHead, K, Empty, Loading, ErrorState,
-} from "@/components/ui/primitives";
-import { OnsIcon } from "@/components/ui/icons";
-import { Sparkline } from "@/components/ui/viz";
+// Fitness (Logbook Color). Running is blue, CrossFit amber, everywhere on the page. Real data only:
+//   runs        /fitness/run-days (every 2026 run from strava.activities) + /fitness/summary (YTD totals)
+//   crossfit    /fitness/crossfit (SugarWOD export; score shown as SugarWOD displays it, with its type)
+//   goals       /goals/progress (running_miles, crossfit_classes, marathon_completed, squat_max_lbs)
+//   readiness   /checkin/today — owner-only, read only when a write key is already saved (no prompt on load)
+// Fixes from docs/design/critique.md §5: readiness on the page, charts with scales, WOD scores with units,
+// "heaviest logged set" instead of "current max", a heatmap that fills its card and works by tap.
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+import { useEffect, useMemo, useState } from "react";
+import { fitnessApi, goalsApi, checkinApi, hasWriteKey, type FitnessSummary, type CrossfitEntry, type RunDay, type Goal, type Checkin } from "@/lib/api";
+import { PageHead, Loading, ErrorState } from "@/components/ui/primitives";
+import { PixelScene } from "@/components/ui/PixelScene";
 
-interface DayActivity {
-  date: string; // YYYY-MM-DD
-  ran: boolean;
-  crossfit: boolean;
-  runMiles: number;
-  cfTitle: string | null;
-}
+const TZ = "America/Denver";
+const DAY = 86_400_000;
+const isoDenver = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const fromIso = (iso: string) => { const [y, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d, 12)); };
+const addDays = (iso: string, n: number) => new Date(fromIso(iso).getTime() + n * DAY).toISOString().slice(0, 10);
+const daysBetween = (a: string, b: string) => Math.round((fromIso(b).getTime() - fromIso(a).getTime()) / DAY);
+const fmt = (iso: string, o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...o }).format(fromIso(iso));
+const short = (iso: string) => fmt(iso, { month: "short", day: "numeric" });
+const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+const clock = (s: number) => { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = String(s % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`; };
+const pace = (secPerMile: number) => clock(secPerMile);
+const one = (x: number) => (Math.round(x * 10) / 10).toFixed(1);
 
-// Training heatmap — real per-day data, grouped into month columns, with hover tooltip
-function TrainingHeatmap({ days }: { days: Map<string, DayActivity> }) {
-  const [hover, setHover] = useState<{ d: DayActivity; x: number; y: number } | null>(null);
-
-  // Build the last ~26 weeks as a calendar grid, oldest first, grouped by month
-  const today = new Date();
-  const start = new Date(today);
-  start.setDate(start.getDate() - 26 * 7);
-  // Align to the previous Sunday so weeks are clean columns
-  start.setDate(start.getDate() - start.getDay());
-
-  const weeks: Date[][] = [];
-  let cursor = new Date(start);
-  while (cursor <= today) {
-    const week: Date[] = [];
-    for (let d = 0; d < 7; d++) {
-      week.push(new Date(cursor));
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    weeks.push(week);
+/** A SugarWOD score as words: "18:25" for time, "4+7 rounds", "73 reps", "185 lb". */
+function score(c: CrossfitEntry): [string, string] {
+  const d = c.best_result_display ?? (c.best_result_raw != null ? String(c.best_result_raw) : "");
+  switch (c.score_type) {
+    case "Load": return [`${d} lb`, ""];
+    case "Reps": return [d, "reps"];
+    case "Rounds + Reps": return [d, "rounds"];
+    case "Meters": return [`${d} m`, ""];
+    case "Checkbox": return ["Done", ""];
+    case "Other / Text": return [d || "–", ""];
+    default: return d.includes(":") ? [d, "for time"] : [d || "–", ""];
   }
-
-  const gap = 2.5;
-  const cols = weeks.length;
-  const rows = 7;
-
-  // Month label positions — first week column where a new month starts
-  const monthLabels: { col: number; label: string }[] = [];
-  let lastMonth = -1;
-  weeks.forEach((week, c) => {
-    const m = week[3].getMonth(); // mid-week, avoids edge flicker
-    if (m !== lastMonth) {
-      monthLabels.push({ col: c, label: MONTHS[m] });
-      lastMonth = m;
-    }
-  });
-
-  const RUN_RGB = "29,85,54";
-  const CF_RGB = "154,106,30";
-
-  const fill = (a: DayActivity | undefined) => {
-    if (!a) return "var(--frame)";
-    if (a.ran && a.crossfit) return "var(--hue)";
-    if (a.ran) return `rgba(${RUN_RGB},${Math.min(1, 0.4 + a.runMiles / 10).toFixed(2)})`;
-    if (a.crossfit) return `rgba(${CF_RGB},0.78)`;
-    return "var(--frame)";
-  };
-
-  return (
-    <div style={{ position: "relative", maxWidth: 640 }}>
-      <div
-        className="grid font-mono text-faint mb-1"
-        style={{ fontSize: 8, gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 0 }}
-      >
-        {weeks.map((week, c) => {
-          const m = monthLabels.find((ml) => ml.col === c);
-          return <span key={c}>{m ? m.label : ""}</span>;
-        })}
-      </div>
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: `${gap}px`, marginTop: 6 }}
-      >
-        {weeks.map((week, c) => (
-          <div key={c} className="grid" style={{ gridTemplateRows: `repeat(${rows}, 1fr)`, gap: `${gap}px` }}>
-            {week.map((day, r) => {
-              if (day > today) {
-                return <div key={r} style={{ aspectRatio: "1" }} />;
-              }
-              const key = day.toISOString().slice(0, 10);
-              const a = days.get(key);
-              const both = a?.ran && a?.crossfit;
-              return (
-                <div
-                  key={r}
-                  onMouseEnter={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setHover({ d: a ?? { date: key, ran: false, crossfit: false, runMiles: 0, cfTitle: null }, x: rect.x, y: rect.y });
-                  }}
-                  onMouseLeave={() => setHover(null)}
-                  style={{
-                    aspectRatio: "1",
-                    borderRadius: 2,
-                    background: fill(a),
-                    border: both ? "1.2px solid var(--warn)" : "none",
-                    boxSizing: "border-box",
-                  }}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </div>
-      {hover && (
-        <div
-          className="font-mono fixed z-10 pointer-events-none"
-          style={{
-            left: hover.x, top: hover.y - 46, fontSize: 9.5,
-            background: "var(--ink)", color: "var(--sheet)", padding: "5px 8px",
-            borderRadius: 4, whiteSpace: "nowrap",
-          }}
-        >
-          {new Date(hover.d.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          {!hover.d.ran && !hover.d.crossfit && " — rest"}
-          {hover.d.ran && ` — ${hover.d.runMiles.toFixed(1)}mi run`}
-          {hover.d.crossfit && ` — ${hover.d.cfTitle ?? "CrossFit"}`}
-        </div>
-      )}
-      <div className="flex items-center gap-4 mt-3 font-mono text-muted" style={{ fontSize: 9 }}>
-        <span className="flex items-center gap-[5px]">
-          <span className="rounded-sm" style={{ width: 9, height: 9, background: `rgba(${RUN_RGB},0.8)` }} /> RUN
-        </span>
-        <span className="flex items-center gap-[5px]">
-          <span className="rounded-sm" style={{ width: 9, height: 9, background: `rgba(${CF_RGB},0.8)` }} /> CROSSFIT
-        </span>
-        <span className="flex items-center gap-[5px]">
-          <span className="rounded-sm" style={{ width: 9, height: 9, background: "var(--hue)", border: "1.5px solid var(--warn)", boxSizing: "border-box" }} /> BOTH
-        </span>
-      </div>
-    </div>
-  );
 }
 
-// Mini bar chart for weekly volume
-function MiniVol({ data, color, h = 70, labels }: { data: number[]; color: string; h?: number; labels?: string[] }) {
-  const max = Math.max(...data, 1);
-  return (
-    <div>
-      <div className="flex items-end gap-[5px]" style={{ height: h }}>
-        {data.map((v, i) => (
-          <div key={i} className="flex-1 flex flex-col justify-end" style={{ height: "100%" }}>
-            <div
-              className="rounded-sm"
-              style={{
-                height: v > 0 ? `${Math.max(2, (v / max) * (h - 4))}px` : 0,
-                background: v === 0 ? "var(--border)" : color,
-              }}
-              title={`${v}`}
-            />
-          </div>
-        ))}
-      </div>
-      {labels && (
-        <div className="flex justify-between mt-1.5 font-mono text-faint" style={{ fontSize: 8 }}>
-          {labels.map((l, i) => <span key={i}>{l}</span>)}
-        </div>
-      )}
-    </div>
-  );
-}
+const READINESS: Array<[number, string, string]> = [
+  [0.78, "Primed", "a hard session or a long run is on"],
+  [0.6, "Steady", "train as planned"],
+  [0.42, "Manage load", "keep it easy: an easy run or skill work"],
+  [0, "Recover", "rest, walk or do mobility today"],
+];
 
-function MiniStat({ v, u, l, color }: { v: string | number; u: string; l: string; color?: string }) {
-  return (
-    <div>
-      <div className="font-serif font-bold leading-none" style={{ fontSize: 24, color: color ?? "var(--ink)" }}>
-        {v}<span className="font-mono font-normal ml-0.5 text-faint" style={{ fontSize: 10 }}>{u}</span>
-      </div>
-      <div className="font-mono text-faint mt-[5px]" style={{ fontSize: 8.5, letterSpacing: "0.5px" }}>{l}</div>
-    </div>
-  );
-}
+type Day = { iso: string; runs: RunDay[]; cf: CrossfitEntry[] };
 
 export default function FitnessPage() {
-  const [data, setData] = useState<FitnessSummary | null>(null);
-  const [crossfit, setCrossfit] = useState<CrossfitEntry[] | null>(null);
-  const [runDays, setRunDays] = useState<RunDay[] | null>(null);
+  const [sum, setSum] = useState<FitnessSummary | null>(null);
+  const [runs, setRuns] = useState<RunDay[] | null>(null);
+  const [cf, setCf] = useState<CrossfitEntry[] | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [checkin, setCheckin] = useState<Checkin | null | "private">("private");
   const [error, setError] = useState<string | null>(null);
+  const [today, setToday] = useState<string | null>(null);
+  const [sel, setSel] = useState<string | null>(null);
+  const [allRuns, setAllRuns] = useState(false);
+  const [allCf, setAllCf] = useState(false);
+  const [allLifts, setAllLifts] = useState(false);
 
   useEffect(() => {
-    const year = new Date().getFullYear();
-    Promise.all([fitnessApi.summary(), fitnessApi.crossfit(200), fitnessApi.runDays(year)])
-      .then(([f, cf, rd]) => { setData(f); setCrossfit(cf); setRunDays(rd); })
+    const t = isoDenver(new Date());
+    setToday(t);
+    const year = +t.slice(0, 4);
+    Promise.all([fitnessApi.summary(), fitnessApi.runDays(year), fitnessApi.crossfit(500)])
+      .then(([s, r, c]) => { setSum(s); setRuns(r); setCf(c); })
       .catch((e) => setError(e.message));
+    goalsApi.progress().then(setGoals).catch(() => {});
+    if (hasWriteKey()) checkinApi.today().then(setCheckin).catch(() => setCheckin("private"));
   }, []);
 
-  if (error) return <ErrorState message={error} />;
-  if (!data || !crossfit || !runDays) return <Loading />;
+  const data = useMemo(() => {
+    if (!runs || !cf || !today) return null;
+    const y = +today.slice(0, 4);
+    const daysInYear = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 366 : 365;
+    const dayOfYear = daysBetween(`${y}-01-01`, today) + 1;
+    const yearFrac = dayOfYear / daysInYear, daysLeft = daysInYear - dayOfYear, weeksLeft = daysLeft / 7, weeksGone = dayOfYear / 7;
 
-  const { running_summary: rs, recent_runs, weekly_miles } = data;
-  const weeklyRunData = weekly_miles.map((w) => w.miles);
-  const paceSeries = [...recent_runs].reverse().map((r) => 12 - r.pace);
+    const byDay = new Map<string, Day>();
+    const day = (iso: string) => byDay.get(iso) ?? (byDay.set(iso, { iso, runs: [], cf: [] }), byDay.get(iso)!);
+    runs.forEach((r) => day(r.start_date.slice(0, 10)).runs.push(r));
+    cf.forEach((c) => day(c.date).cf.push(c));
 
-  // ── Build the real per-day activity map for the heatmap ──
-  // Uses runDays (full-year, no cap, from strava.activities directly)
-  // instead of recent_runs (capped to last 30 days/10 rows server-side).
-  // Multiple runs on the same date get summed into one cell.
-  const days = new Map<string, DayActivity>();
-  for (const r of runDays) {
-    const key = r.start_date.slice(0, 10);
-    const existing = days.get(key);
-    if (existing) {
-      existing.ran = true;
-      existing.runMiles += r.distance_miles;
-    } else {
-      days.set(key, { date: key, ran: true, crossfit: false, runMiles: r.distance_miles, cfTitle: null });
-    }
-  }
-  for (const c of crossfit) {
-    const key = c.date;
-    const existing = days.get(key);
-    if (existing) {
-      existing.crossfit = true;
-      existing.cfTitle = c.title;
-    } else {
-      days.set(key, { date: key, ran: false, crossfit: true, runMiles: 0, cfTitle: c.title });
-    }
-  }
+    // Weeks run Monday to Sunday, from the week holding Jan 1 to this one.
+    const firstMon = addDays(`${y}-01-01`, -((fromIso(`${y}-01-01`).getUTCDay() + 6) % 7));
+    const weeks: string[] = [];
+    for (let m = firstMon; m <= today; m = addDays(m, 7)) weeks.push(m);
+    const weekMiles = weeks.map((m) => Array.from({ length: 7 }, (_, i) => byDay.get(addDays(m, i))).reduce((a, d) => a + (d ? d.runs.reduce((b, r) => b + r.distance_miles, 0) : 0), 0));
+    const weekClasses = weeks.map((m) => Array.from({ length: 7 }, (_, i) => byDay.get(addDays(m, i))).filter((d) => d && d.cf.length).length);
 
-  // ── Derive CrossFit stats from the real log ──
-  const now = new Date();
-  const weekAgo = new Date(now);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  const classDates = new Set(crossfit.map((c) => c.date));
-  const classesYtd = classDates.size;
-  const classesThisWeek = [...classDates].filter((d) => new Date(d) >= weekAgo).length;
+    const miles = runs.reduce((a, r) => a + r.distance_miles, 0);
+    const since28 = addDays(today, -27);
+    const miles28 = runs.filter((r) => r.start_date.slice(0, 10) >= since28).reduce((a, r) => a + r.distance_miles, 0);
+    const classDays = Array.from(new Set(cf.map((c) => c.date))).sort();
+    const classes28 = classDays.filter((d) => d >= since28).length;
+    const newestCf = classDays[classDays.length - 1] ?? null;
+    const trainDays = Array.from(byDay.values()).filter((d) => d.iso.startsWith(String(y)) && (d.runs.length || d.cf.length)).length;
+    const trainDays28 = Array.from(byDay.values()).filter((d) => d.iso >= since28 && (d.runs.length || d.cf.length)).length;
+    const longest = runs.reduce<RunDay | null>((a, r) => (!a || r.distance_miles > a.distance_miles ? r : a), null);
+    const totalSec = runs.reduce((a, r) => a + r.moving_time_s, 0);
 
-  // Weekly class counts, last 12 weeks
-  const cfWeekly: number[] = [];
-  const cfWeekLabels: string[] = [];
-  for (let i = 11; i >= 0; i--) {
-    const wkStart = new Date(now);
-    wkStart.setDate(wkStart.getDate() - i * 7 - now.getDay());
-    const wkEnd = new Date(wkStart);
-    wkEnd.setDate(wkEnd.getDate() + 7);
-    const count = [...classDates].filter((d) => {
-      const dt = new Date(d);
-      return dt >= wkStart && dt < wkEnd;
-    }).length;
-    cfWeekly.push(count);
-    if (i % 3 === 0) cfWeekLabels.push(MONTHS[wkStart.getMonth()]);
-  }
+    // Heaviest logged working set per barbell lift (SugarWOD "Load" scores). Not a tested max.
+    const lifts = new Map<string, { lift: string; best: CrossfitEntry; latest: CrossfitEntry; n: number }>();
+    cf.filter((c) => c.barbell_lift && c.best_result_raw != null && (c.score_type ?? "Load") === "Load").forEach((c) => {
+      const l = lifts.get(c.barbell_lift!);
+      if (!l) lifts.set(c.barbell_lift!, { lift: c.barbell_lift!, best: c, latest: c, n: 1 });
+      else { l.n++; if (c.best_result_raw! > l.best.best_result_raw!) l.best = c; if (c.date > l.latest.date) l.latest = c; }
+    });
 
-  // Lifts: group entries with a barbell_lift + numeric result, take history per lift
-  const liftHistory = new Map<string, CrossfitEntry[]>();
-  for (const c of crossfit) {
-    if (c.barbell_lift && c.barbell_lift.trim() && c.best_result_raw != null) {
-      const list = liftHistory.get(c.barbell_lift) ?? [];
-      list.push(c);
-      liftHistory.set(c.barbell_lift, list);
-    }
-  }
-  // "Current" max = most recent dated entry per lift; show up to 4 lifts by recency
-  const currentMaxes = [...liftHistory.entries()]
-    .map(([lift, entries]) => {
-      const sorted = entries.sort((a, b) => a.date.localeCompare(b.date));
-      const latest = sorted[sorted.length - 1];
-      return { lift, latest, history: sorted };
-    })
-    .sort((a, b) => b.latest.date.localeCompare(a.latest.date))
-    .slice(0, 4);
+    return {
+      y, yearFrac, daysLeft, weeksLeft, weeksGone, byDay, weeks, weekMiles, weekClasses, miles, miles28, classDays, classes28,
+      newestCf, trainDays, trainDays28, longest, totalSec,
+      lifts: Array.from(lifts.values()).sort((a, b) => b.latest.date.localeCompare(a.latest.date)),
+    };
+  }, [runs, cf, today]);
 
-  const recentWods = crossfit.slice(0, 8);
+  if (error) return <div className="ons-page" style={{ padding: "34px 44px 48px" }}><ErrorState message={error} /></div>;
+  if (!sum || !data || !today || !runs || !cf) return <Loading label="Loading fitness…" />;
 
-  // Avg workout days per week, across all of 2026.
-  //
-  // Now computed from REAL daily-granularity data on both sides —
-  // runDays gives exact run dates for the full year (no more 1-day/week
-  // credit approximation), and crossfit class dates were already exact.
-  // A day counts once whether it had a run, a CrossFit class, or both.
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const daysElapsed = Math.floor((now.getTime() - yearStart.getTime()) / 86400000) + 1;
-  const weeksElapsed = Math.max(1, daysElapsed / 7);
+  const d = data;
+  const goal = (k: string) => goals.find((g) => g.goal_key === k);
+  const milesGoal = goal("running_miles")?.target_numeric ?? null;
+  const classGoal = goal("crossfit_classes")?.target_numeric ?? null;
+  const squatGoal = goal("squat_max_lbs")?.target_numeric ?? null;
+  const marathon = goal("marathon_completed");
+  const classes = d.classDays.length;
+  const daysSinceCf = d.newestCf ? daysBetween(d.newestCf, today) : null;
+  const avgPaceSec = d.miles ? d.totalSec / d.miles : 0;
 
-  const workoutDaysThisYear = [...days.values()].filter(
-    (a) => (a.ran || a.crossfit) && new Date(a.date + "T00:00:00").getFullYear() === now.getFullYear()
-  ).length;
+  type Pace = { cls: "ok" | "risk" | "off"; label: string; perWeek: number };
+  const paceOf = (cur: number, target: number): Pace => {
+    const left = Math.max(0, target - cur), perWeek = left / Math.max(d.weeksLeft, 0.1), avg = cur / Math.max(d.weeksGone, 0.1);
+    if (left === 0) return { cls: "ok", label: "Done", perWeek: 0 };
+    if (cur >= target * d.yearFrac) return { cls: "ok", label: "On track", perWeek };
+    if (avg > 0 && perWeek > avg * 3) return { cls: "off", label: "Out of reach", perWeek };
+    return { cls: "risk", label: "Behind", perWeek };
+  };
+  const mp = milesGoal ? paceOf(d.miles, milesGoal) : null;
+  const cp = classGoal ? paceOf(classes, classGoal) : null;
+  const ready = checkin !== "private" && checkin?.logged_at ? READINESS.find(([min]) => checkin.readiness >= min)! : null;
+  const backSquat = d.lifts.find((l) => /back squat/i.test(l.lift));
 
-  const avgWorkoutDaysPerWeek = workoutDaysThisYear / weeksElapsed;
+  const lede = (
+    <>
+      {milesGoal && mp ? (
+        <>
+          <b>{Math.round(d.miles)} of {milesGoal} miles</b> in {plural(runs.length, "run")}.{" "}
+          {mp.cls === "ok" ? <>You&apos;re on pace; {one(mp.perWeek)} mi a week finishes it.</>
+            : <>The rest needs <b>{one(mp.perWeek)} mi a week</b> through Dec 31, and the last four weeks averaged {one(d.miles28 / 4)}{mp.perWeek > d.miles28 / 4 ? ", so add a run or stretch the long one" : ""}.</>}
+        </>
+      ) : <><b>{one(d.miles)} miles</b> in {plural(runs.length, "run")} this year.</>}{" "}
+      {classGoal && cp && (
+        <>
+          <b>{classes} of {classGoal} CrossFit classes</b>
+          {cp.cls === "off" ? <>: {classGoal} is out of reach this year ({classGoal - classes} in {Math.round(d.weeksLeft)} weeks would be {Math.round(cp.perWeek)} a week).</>
+            : cp.cls === "ok" ? <>, on pace.</> : <>, {one(cp.perWeek)} a week to finish.</>}{" "}
+        </>
+      )}
+      {daysSinceCf != null && daysSinceCf > 6 && <>SugarWOD&apos;s newest record is {short(d.newestCf!)}, {daysSinceCf} days ago; if you&apos;ve been going, the export is stale. </>}
+      {ready && <>Today&apos;s check-in says <b>{ready[1].toLowerCase()}</b>: {ready[2]}.</>}
+    </>
+  );
+
+  // ── Training calendar ──────────────────────────────────────────────────────
+  const selDay = sel ?? Array.from(d.byDay.keys()).filter((k) => k <= today).sort().pop() ?? today;
+  const selFacts = d.byDay.get(selDay);
+  const maxWeekMiles = Math.max(1, ...d.weekMiles);
+  const maxWeekClasses = Math.max(1, ...d.weekClasses);
+  // A week belongs to the month its Thursday falls in; label the first week of each month.
+  const monthOf = (m: string) => fmt(addDays(m, 3), { month: "short" });
+  const monthStarts = d.weeks.map((m, i) => (i === 0 ? "Jan" : monthOf(m) !== monthOf(d.weeks[i - 1]) ? monthOf(m) : ""));
+  const pick = (e: React.SyntheticEvent) => { const iso = (e.target as HTMLElement).dataset?.date; if (iso) setSel(iso); };
+
+  const runsDesc = [...runs].sort((a, b) => b.start_date.localeCompare(a.start_date));
+  const cfDesc = [...cf].sort((a, b) => b.date.localeCompare(a.date));
+
+  // ── Pace chart: every run's pace across the year, with a scale ────────────
+  const paces = runs.map((r) => ({ iso: r.start_date.slice(0, 10), s: r.moving_time_s / r.distance_miles, mi: r.distance_miles }));
+  const pLo = Math.floor(Math.min(...paces.map((p) => p.s)) / 30) * 30;
+  const pHi = Math.max(pLo + 90, Math.min(Math.ceil(Math.max(...paces.map((p) => p.s)) / 30) * 30, Math.ceil((avgPaceSec + 120) / 30) * 30));
+  const slow = paces.filter((p) => p.s > pHi);
+  const PW = 320, PH = 150, PL = 40, PB = 20;
+  const xOf = (iso: string) => PL + (daysBetween(`${d.y}-01-01`, iso) / Math.max(1, daysBetween(`${d.y}-01-01`, today))) * (PW - PL - 8);
+  const yOf = (s: number) => 6 + ((Math.min(s, pHi) - pLo) / Math.max(1, pHi - pLo)) * (PH - PB - 12);
+  const ticks = Array.from({ length: Math.floor((pHi - pLo) / 30) + 1 }, (_, i) => pLo + i * 30).filter((t, i, a) => a.length <= 5 || i % 2 === 0 || t === pHi);
 
   return (
-    <div className="ons-page ons-scroll" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
+    <div className="ons-page" style={{ padding: "34px 44px 48px", maxWidth: 1380, margin: "0 auto" }}>
       <PageHead
         title="Fitness"
-        kicker="Running + CrossFit · Strava + SugarWOD"
-        right={
-          <div className="font-mono text-right text-faint" style={{ fontSize: 9.5 }}>
-            YTD 2026 · DENVER<br />{rs.total_runs} RUNS · {classesYtd} CLASSES
-          </div>
-        }
+        kicker={`${d.y} through ${fmt(today, { weekday: "short", month: "short", day: "numeric" })} · runs from Strava · CrossFit from SugarWOD${d.newestCf ? `, newest record ${short(d.newestCf)}` : ""}`}
+        sub={lede}
+        scene={<PixelScene scene="fitness" data={{ classes, miles: Math.round(d.miles), squat: backSquat?.best.best_result_raw ?? "" }}
+          label={`a gym: the whiteboard shows ${classes} classes, a lifter squats ${backSquat ? `${backSquat.best.best_result_raw} lb` : "a loaded bar"}, a runner on a treadmill at ${Math.round(d.miles)} miles`} />}
       />
 
-      {/* Training consistency heatmap — smaller, month-grouped, hoverable */}
-      <Card style={{ marginBottom: 26, padding: "16px 20px" }}>
-        <div className="flex justify-between items-center mb-1">
-          <K>Training Consistency</K>
-          <div className="flex items-center gap-4">
-            <span className="font-mono" style={{ fontSize: 11 }}>
-              <span className="font-serif font-bold" style={{ fontSize: 15, color: "var(--hue)" }}>
-                {avgWorkoutDaysPerWeek.toFixed(1)}
-              </span>
-              <span className="text-faint"> / 7 days · avg this year</span>
-            </span>
-            <span className="font-mono text-faint" style={{ fontSize: 9 }}>HOVER A DAY FOR DETAIL</span>
-          </div>
-        </div>
-        <div className="font-mono text-faint mb-3" style={{ fontSize: 8.5 }}>
-          CrossFit and running both counted by exact day — full year, no cap, sourced directly from strava.activities and your SugarWOD log.
-        </div>
-        <TrainingHeatmap days={days} />
-      </Card>
+      <div className="ons-tiles" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <section className="ons-tile t t-run">
+          <h2>Running</h2>
+          <div className="big n">{one(d.miles)} mi</div>
+          <p>{milesGoal ? `of ${milesGoal} · ` : ""}{plural(runs.length, "run")} · {pace(avgPaceSec)} /mi average</p>
+          {milesGoal && <div className="ons-bar" style={{ marginTop: "auto" }}><b style={{ width: `${Math.min(100, (d.miles / milesGoal) * 100)}%` }} /><i style={{ left: `${d.yearFrac * 100}%` }} /></div>}
+        </section>
+        <section className="ons-tile">
+          <h2>Miles needed</h2>
+          <div className="big n">{mp ? `${one(mp.perWeek)}/wk` : "–"}</div>
+          <p>{milesGoal ? <>{Math.max(0, Math.round(milesGoal - d.miles))} mi to go in {plural(d.daysLeft, "day")}. Last 4 weeks: {one(d.miles28 / 4)}/wk.</> : "No mileage goal wired."}</p>
+          {mp && <p className="tnote"><span className={`ons-badge ${mp.cls}`}>{mp.label}</span></p>}
+        </section>
+        <section className="ons-tile t t-lift">
+          <h2>CrossFit classes</h2>
+          <div className="big n">{classes}</div>
+          <p>{classGoal ? `of ${classGoal} · ` : ""}{plural(d.classes28, "class", "classes")} in the last 4 weeks</p>
+          {classGoal && <div className="ons-bar" style={{ marginTop: "auto" }}><b style={{ width: `${Math.min(100, (classes / classGoal) * 100)}%` }} /><i style={{ left: `${d.yearFrac * 100}%` }} /></div>}
+        </section>
+        <section className="ons-tile">
+          <h2>Training days</h2>
+          <div className="big n">{one(d.trainDays / Math.max(1, d.weeksGone))}/wk</div>
+          <p>Days with a run or a class, {d.y} average. Last 4 weeks: {one(d.trainDays28 / 4)}/wk.</p>
+          {cp && <p className="tnote"><span className={`ons-badge ${cp.cls}`}>CrossFit: {cp.label.toLowerCase()}</span></p>}
+        </section>
+      </div>
 
-      {/* Split: Running (left) / CrossFit (right) */}
-      <div className="ons-stack grid gap-[30px] items-start" style={{ gridTemplateColumns: "1fr 1fr" }}>
-        {/* Running */}
-        <div>
-          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid var(--hue)", paddingTop: 12 }}>
-            <div className="flex items-center gap-[9px]">
-              <span className="text-green"><OnsIcon name="fitness" size={18} stroke={1.8} /></span>
-              <div>
-                <div className="font-serif font-bold text-ink leading-none" style={{ fontSize: 19 }}>Running</div>
-                <div className="font-mono text-faint mt-[3px]" style={{ fontSize: 8.5, letterSpacing: "1px" }}>STRAVA</div>
-              </div>
+      <div className="ons-grid">
+        <section className="ons-card s12" aria-labelledby="cal-h">
+          <div className="ons-ch"><h2 id="cal-h">The year in training</h2><span className="aside">{plural(d.trainDays, "training day")} · {plural(runs.length, "run")} · {plural(classes, "class", "classes")} · tap a day</span></div>
+          <div className="ons-calwrap ons-scroll" ref={(el) => { if (el && !el.dataset.scrolled) { el.scrollLeft = el.scrollWidth; el.dataset.scrolled = "1"; } }}>
+            <div className="ons-cal" style={{ ["--wks" as string]: d.weeks.length }} onMouseOver={pick} onClick={pick}
+                 role="img" aria-label={`${d.y} training calendar: ${plural(d.trainDays, "training day")}, ${plural(runs.length, "run")} and ${plural(classes, "CrossFit class", "CrossFit classes")}. Busiest week ${one(maxWeekMiles)} miles.`}>
+              <span />
+              {monthStarts.map((m, i) => <span key={i} className="mo">{m}</span>)}
+              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((lab, r) => (
+                <FragmentRow key={r} label={lab}>
+                  {d.weeks.map((m) => {
+                    const iso = addDays(m, r);
+                    if (iso > today || iso < `${d.y}-01-01`) return <i key={iso} className="f" />;
+                    const f = d.byDay.get(iso), run = !!f?.runs.length, lift = !!f?.cf.length;
+                    const cls = [run && lift ? "b" : run ? "r" : lift ? "c" : "", iso === today && "now", iso === selDay && "sel"].filter(Boolean).join(" ");
+                    return <i key={iso} className={cls} data-date={iso} />;
+                  })}
+                </FragmentRow>
+              ))}
+              <span className="lab">Miles</span>
+              {d.weekMiles.map((v, i) => <span key={i} className="bar" title={`Week of ${short(d.weeks[i])}: ${one(v)} mi`}>{v > 0 && <b style={{ height: `${Math.max(6, (v / maxWeekMiles) * 100)}%` }} />}</span>)}
+              <span className="lab">Classes</span>
+              {d.weekClasses.map((v, i) => <span key={i} className="bar c" title={`Week of ${short(d.weeks[i])}: ${plural(v, "class", "classes")}`}>{v > 0 && <b style={{ height: `${Math.max(12, (v / maxWeekClasses) * 100)}%` }} />}</span>)}
             </div>
           </div>
-
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <MiniStat v={rs.ytd_miles} u="mi" l="YTD MILES" color="var(--hue)" />
-            <MiniStat v={rs.avg_pace_min_mile} u="/mi" l="AVG PACE" />
-            <MiniStat v={rs.total_runs} u="" l="TOTAL RUNS" />
+          <div className="ons-caldetail" aria-live="polite">
+            <b>{fmt(selDay, { weekday: "short", month: "short", day: "numeric" })}</b>
+            {!selFacts || (!selFacts.runs.length && !selFacts.cf.length) ? <span className="text-muted">Rest day</span> : null}
+            {selFacts?.runs.map((r) => <span key={r.strava_id} className="l-run ons-mk ons-n">Run {r.distance_miles.toFixed(2)} mi · {clock(r.moving_time_s)} · {pace(r.moving_time_s / r.distance_miles)} /mi</span>)}
+            {selFacts?.cf.map((c, i) => { const [v, k] = score(c); return <span key={i} className="l-lift ons-mk">{c.title} · <span className="ons-n">{v}</span>{k ? ` ${k}` : ""}</span>; })}
           </div>
+          <div className="ons-legend">
+            <span><i style={{ background: "var(--run-mark)" }} />Run</span>
+            <span><i style={{ background: "var(--lift-mark)" }} />CrossFit</span>
+            <span><i style={{ background: "linear-gradient(135deg, var(--run-mark) 50%, var(--lift-mark) 50%)" }} />Both</span>
+            <span><i style={{ background: "var(--rule)" }} />Rest</span>
+            <span>Bars: weekly miles (busiest {one(maxWeekMiles)}) and classes (most {maxWeekClasses}).</span>
+          </div>
+        </section>
 
-          <Card style={{ marginBottom: 22 }}>
-            <K style={{ marginBottom: 14 }}>Pace Trend · last {recent_runs.length} runs</K>
-            {paceSeries.length > 1 ? (
-              <div className="text-green">
-                <Sparkline data={paceSeries} w={420} h={82} stroke="var(--hue)" sw={2.2} fill="var(--hue)" dot />
-              </div>
-            ) : (
-              <Empty message="Need more runs for a trend line." />
-            )}
-          </Card>
+        <section className="ons-card s8" aria-labelledby="runs-h">
+          <div className="ons-ch"><h2 id="runs-h">Runs</h2><span className="aside">{one(d.miles)} mi · {clock(d.totalSec)} moving · Strava</span></div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="ons-table l-run">
+              <thead><tr><th>Date</th><th className="r">Distance</th><th className="r">Time</th><th className="r">Pace</th><th className="hide-p" /></tr></thead>
+              <tbody>
+                {(allRuns ? runsDesc : runsDesc.slice(0, 10)).map((r) => (
+                  <tr key={r.strava_id}>
+                    <td style={{ whiteSpace: "nowrap" }}><span className="hide-p">{fmt(r.start_date, { weekday: "short" })}, </span>{short(r.start_date)}{r === d.longest && <> <span className="ons-side">Longest</span></>}</td>
+                    <td className="r ons-n">{r.distance_miles.toFixed(2)} mi</td>
+                    <td className="r ons-n">{clock(r.moving_time_s)}</td>
+                    <td className="r ons-n">{pace(r.moving_time_s / r.distance_miles)} /mi</td>
+                    <td className="r hide-p"><a className="ons-link" href={`https://www.strava.com/activities/${r.strava_id}`} target="_blank" rel="noreferrer">Strava</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {runsDesc.length > 10 && <button type="button" className="ons-tap ons-btn" style={{ marginTop: 12 }} onClick={() => setAllRuns((v) => !v)}>{allRuns ? "Show the latest 10" : `Show all ${runsDesc.length} runs`}</button>}
+          {d.longest && d.longest.distance_miles >= 26.2 && marathon && !marathon.current_value && (
+            <p className="ons-note">Your {short(d.longest.start_date)} run was {d.longest.distance_miles.toFixed(1)} mi, longer than a marathon. The marathon goal is a manual entry in goals/{d.y}.yaml and still reads not done.</p>
+          )}
+        </section>
 
-          <Card style={{ marginBottom: 22 }}>
-            <K style={{ marginBottom: 14 }}>Weekly Volume · {weeklyRunData.length} wk</K>
-            <MiniVol data={weeklyRunData} color="var(--hue)" />
-          </Card>
-
-          <Card pad={0}>
-            <div style={{ padding: "16px 18px 8px" }}><K>Recent Runs</K></div>
-            <div style={{ padding: "0 18px 12px" }}>
-              {recent_runs.length === 0 ? (
-                <Empty message="No recent runs." />
+        <div className="s4 ons-col no-stretch">
+          {checkin !== "private" && (
+            <section className="ons-card t t-check" aria-labelledby="ready-h">
+              <div className="ons-ch"><h2 id="ready-h">Today&apos;s call</h2><span className="aside">From the check-in</span></div>
+              {ready && checkin ? (
+                <p className="m-0" style={{ fontSize: 14, lineHeight: "20px" }}><b>{ready[1]}</b> · readiness <span className="ons-n">{Math.round(checkin.readiness * 100)}</span>. {ready[2][0].toUpperCase() + ready[2].slice(1)}.</p>
               ) : (
-                recent_runs.map((r, i) => (
-                  <div key={i} className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "10px 6px", margin: "0 -6px" }}>
-                    <span className="grid place-items-center shrink-0 text-green" style={{ width: 26, height: 26, borderRadius: 6, background: "var(--hue-soft)" }}>
-                      <OnsIcon name="fitness" size={15} stroke={1.7} />
-                    </span>
-                    <div className="flex-1">
-                      <div style={{ fontSize: 13.5 }}>{r.miles.toFixed(2)} mi</div>
-                      <div className="font-mono text-faint mt-px" style={{ fontSize: 10.5 }}>
-                        {r.minutes.toFixed(0)} min · {r.pace.toFixed(1)}/mi
-                      </div>
-                    </div>
-                    <span className="font-mono text-muted" style={{ fontSize: 10 }}>
-                      {r.run_date.slice(5, 10)}
-                    </span>
-                  </div>
-                ))
+                <p className="m-0" style={{ fontSize: 14, lineHeight: "20px" }}>No check-in yet today. <a href="/checkin" className="ons-link" style={{ color: "inherit" }}>Check in</a> to get a training call.</p>
               )}
-            </div>
-          </Card>
+            </section>
+          )}
+          <section className="ons-card" aria-labelledby="pace-h">
+            <div className="ons-ch"><h2 id="pace-h">Pace by run</h2><span className="aside">min per mile · faster is higher</span></div>
+            <svg viewBox={`0 0 ${PW} ${PH}`} width="100%" role="img" aria-label={`Pace for each of ${runs.length} runs this year, from ${pace(pLo)} to ${pace(pHi)} per mile; average ${pace(avgPaceSec)}.`} style={{ display: "block", overflow: "visible" }}>
+              {ticks.map((t) => (
+                <g key={t}>
+                  <line x1={PL} x2={PW - 4} y1={yOf(t)} y2={yOf(t)} stroke="var(--rule)" />
+                  <text x={PL - 6} y={yOf(t) + 4} textAnchor="end" fontSize="12" fill="var(--muted)" fontFamily="IBM Plex Mono, monospace">{pace(t)}</text>
+                </g>
+              ))}
+              <line x1={PL} x2={PW - 4} y1={yOf(avgPaceSec)} y2={yOf(avgPaceSec)} stroke="var(--run-ink)" strokeDasharray="3 3" />
+              {paces.map((p, i) => <circle key={i} cx={xOf(p.iso)} cy={yOf(p.s)} r={p.mi >= 10 ? 4.5 : 3} fill={p.s > pHi ? "var(--sheet)" : "var(--run-mark)"} stroke={p.s > pHi ? "var(--run-mark)" : "var(--sheet)"} strokeWidth={p.s > pHi ? 1.5 : 1}><title>{`${short(p.iso)}: ${p.mi.toFixed(2)} mi at ${pace(p.s)} /mi`}</title></circle>)}
+              {["01", "04", "07", "10"].map((m) => { const iso = `${d.y}-${m}-01`; return iso <= today ? <text key={m} x={xOf(iso)} y={PH - 4} fontSize="12" fill="var(--muted)">{fmt(iso, { month: "short" })}</text> : null; })}
+            </svg>
+            <p className="ons-note">Dashed line: the {d.y} average, {pace(avgPaceSec)} /mi. Larger dots are runs of 10 miles or more.{slow.length > 0 && <> {slow.length === 1 ? "One run" : `${slow.length} runs`} slower than {pace(pHi)} ({slow.map((p) => `${short(p.iso)}, ${pace(p.s)}`).join("; ")}) {slow.length === 1 ? "sits" : "sit"} on the bottom edge as {slow.length === 1 ? "an open dot" : "open dots"}.</>}</p>
+          </section>
         </div>
 
-        {/* CrossFit */}
-        <div>
-          <div className="flex justify-between items-center mb-4" style={{ borderTop: "2.5px solid var(--warn)", paddingTop: 12 }}>
-            <div className="flex items-center gap-[9px]">
-              <span style={{ color: "var(--warn)" }}><OnsIcon name="habits" size={18} stroke={1.8} /></span>
-              <div>
-                <div className="font-serif font-bold text-ink leading-none" style={{ fontSize: 19 }}>CrossFit</div>
-                <div className="font-mono text-faint mt-[3px]" style={{ fontSize: 8.5, letterSpacing: "1px" }}>SUGARWOD</div>
-              </div>
-            </div>
-            <span className="font-mono text-faint" style={{ fontSize: 9 }}>{classesYtd} CLASSES YTD</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <MiniStat v={classesYtd} u="" l="CLASSES YTD" color="var(--warn)" />
-            <MiniStat v={classesThisWeek} u="" l="THIS WEEK" />
-            <MiniStat v={currentMaxes.length} u="" l="LIFTS TRACKED" />
-          </div>
-
-          <Card accent accentColor="var(--warn)" style={{ marginBottom: 22 }}>
-            <div className="flex justify-between items-center mb-4">
-              <K color="var(--warn)">Current Maxes</K>
-              <span className="font-mono text-faint" style={{ fontSize: 9 }}>MOST RECENT LOGGED</span>
-            </div>
-            {currentMaxes.length === 0 ? (
-              <Empty message="No lift entries with a barbell_lift + numeric result found in your SugarWOD log." />
-            ) : (
-              <div className="grid grid-cols-2">
-                {currentMaxes.map((m, i) => {
-                  const vals = m.history.map((h) => h.best_result_raw as number);
-                  const gain = vals[vals.length - 1] - vals[0];
+        <section className="ons-card s8" aria-labelledby="cf-h">
+          <div className="ons-ch"><h2 id="cf-h">CrossFit sessions</h2><span className="aside">{plural(cf.length, "score")} on {plural(classes, "day")} · SugarWOD</span></div>
+          <div style={{ overflowX: "auto" }}>
+            <table className="ons-table l-lift">
+              <thead><tr><th>Date</th><th>Workout</th><th className="r">Score</th><th className="r hide-p">Level</th></tr></thead>
+              <tbody>
+                {(allCf ? cfDesc : cfDesc.slice(0, 12)).map((c, i) => {
+                  const [v, k] = score(c);
                   return (
-                    <div
-                      key={m.lift}
-                      style={{
-                        padding: "14px 14px 14px 0",
-                        borderRight: i % 2 === 0 ? "1px solid var(--rule)" : "none",
-                        borderTop: i > 1 ? "1px solid var(--rule)" : "none",
-                        paddingLeft: i % 2 === 1 ? 16 : 0,
-                      }}
-                    >
-                      <div className="font-mono uppercase text-muted" style={{ fontSize: 9, letterSpacing: "0.8px" }}>
-                        {m.lift}
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-1.5">
-                        <span className="font-serif font-bold leading-none" style={{ fontSize: 26, color: "var(--warn)" }}>
-                          {m.latest.best_result_raw}
-                        </span>
-                        <span className="font-mono text-faint" style={{ fontSize: 9 }}>
-                          {m.latest.best_result_unit ?? "lb"}
-                        </span>
-                      </div>
-                      {vals.length > 1 && (
-                        <div className="my-2" style={{ color: "var(--warn)" }}>
-                          <Sparkline data={vals} w={120} h={22} stroke="var(--warn)" sw={1.6} fill="var(--warn)" dot />
-                        </div>
-                      )}
-                      <div className="font-mono" style={{ fontSize: 8.5, color: gain > 0 ? "var(--hue)" : "var(--faint)" }}>
-                        {vals.length > 1 ? `${gain >= 0 ? "+" : ""}${gain.toFixed(0)} ${m.latest.best_result_unit ?? "lb"} since first log` : "single entry"}
-                      </div>
-                    </div>
+                    <tr key={i}>
+                      <td style={{ whiteSpace: "nowrap" }}><span className="hide-p">{fmt(c.date, { weekday: "short" })}, </span>{short(c.date)}</td>
+                      <td>{c.title}{c.is_pr && <> <span className="ons-badge ok">PR</span></>}</td>
+                      <td className="r" style={{ whiteSpace: "nowrap" }}><span className="ons-n">{v}</span>{k && <span className="text-muted" style={{ fontSize: 13 }}> {k}</span>}</td>
+                      <td className="r hide-p">{c.rx_or_scaled ? <span className={`ons-badge ${c.rx_or_scaled === "RX" ? "none" : "risk"}`}>{c.rx_or_scaled === "RX" ? "Rx" : "Scaled"}</span> : null}</td>
+                    </tr>
                   );
                 })}
-              </div>
-            )}
-          </Card>
+              </tbody>
+            </table>
+          </div>
+          {cfDesc.length > 12 && <button type="button" className="ons-tap ons-btn" style={{ marginTop: 12 }} onClick={() => setAllCf((v) => !v)}>{allCf ? "Show the latest 12" : `Show all ${cfDesc.length} scores`}</button>}
+        </section>
 
-          <Card style={{ marginBottom: 22 }}>
-            <K style={{ marginBottom: 14 }}>Weekly Classes · 12 wk</K>
-            <MiniVol data={cfWeekly} color="var(--warn)" labels={cfWeekLabels} />
-          </Card>
-
-          <Card pad={0}>
-            <div style={{ padding: "16px 18px 8px" }}><K>Recent WODs</K></div>
-            <div style={{ padding: "0 18px 12px" }}>
-              {recentWods.length === 0 ? (
-                <Empty message="No recent CrossFit entries." />
-              ) : (
-                recentWods.map((c, i) => (
-                  <div key={i} className="ons-row flex items-center gap-3 border-t border-border-2" style={{ padding: "10px 6px", margin: "0 -6px" }}>
-                    <span
-                      className="grid place-items-center shrink-0"
-                      style={{ width: 26, height: 26, borderRadius: 6, background: c.is_pr ? "var(--risk)" : "var(--risk)", color: "var(--warn)" }}
-                    >
-                      <OnsIcon name="habits" size={15} stroke={1.7} />
-                    </span>
-                    <div className="flex-1">
-                      <div style={{ fontSize: 13.5 }}>
-                        {c.title}
-                        {c.is_pr && <span className="text-green ml-1.5" style={{ fontSize: 11 }}>★ PR</span>}
-                      </div>
-                      <div className="font-mono text-faint mt-px" style={{ fontSize: 10.5 }}>
-                        {c.barbell_lift ? `${c.barbell_lift} · ` : ""}
-                        {c.best_result_raw != null ? `${c.best_result_raw} ${c.best_result_unit ?? ""}`.trim() : "—"}
-                      </div>
-                    </div>
-                    <span className="font-mono text-muted" style={{ fontSize: 10 }}>
-                      {c.date.slice(5)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
+        <section className="ons-card s4" aria-labelledby="lift-h">
+          <div className="ons-ch"><h2 id="lift-h">Lifts</h2><span className="aside">Heaviest logged set</span></div>
+          {d.lifts.length ? (
+            <table className="ons-table l-lift">
+              <thead><tr><th>Lift</th><th className="r">Heaviest</th><th className="r">Sessions</th></tr></thead>
+              <tbody>
+                {(allLifts ? d.lifts : d.lifts.slice(0, 8)).map((l) => (
+                  <tr key={l.lift}>
+                    <td>{l.lift}<span className="sub">{short(l.best.date)}{l.latest.date !== l.best.date ? ` · last ${short(l.latest.date)}` : ""}</span></td>
+                    <td className="r ons-n">{l.best.best_result_raw} lb</td>
+                    <td className="r ons-n">{l.n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <p className="ons-note m-0">No barbell lifts with a load score in SugarWOD this year.</p>}
+          {d.lifts.length > 8 && <button type="button" className="ons-tap ons-btn" style={{ marginTop: 12 }} onClick={() => setAllLifts((v) => !v)}>{allLifts ? "Show the latest 8" : `Show all ${d.lifts.length} lifts`}</button>}
+          <p className="ons-note">The heaviest working set logged in SugarWOD, not a tested one-rep max.{squatGoal ? <> The {squatGoal} lb squat goal isn&apos;t wired to SugarWOD{backSquat ? `; the heaviest back squat logged is ${backSquat.best.best_result_raw} lb (${short(backSquat.best.date)})` : ""}.</> : null}</p>
+        </section>
       </div>
     </div>
   );
+}
+
+function FragmentRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return <><span className="lab">{label}</span>{children}</>;
 }

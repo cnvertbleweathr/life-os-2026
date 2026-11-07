@@ -1,7 +1,8 @@
 // Pixel-art title scenes for ONS (DESIGN.md → Pixel Scenes), ported from the reference build
 // docs/design/directions/6-logbook-color/px.js. Usage: components/ui/PixelScene.tsx.
-// Data comes from the element's dataset: data-scene ("cfb" | "week"), data-record (CFB scoreboard),
-// data-wx ("sun"|"partly"|"cloudy"|"wind"|"rain"|"snow") and data-temp (This week).
+// Data comes from the element's dataset: data-scene ("cfb" | "week" | "fitness" | "reading"), data-record (CFB
+// scoreboard), data-wx ("sun"|"partly"|"cloudy"|"wind"|"rain"|"snow") and data-temp (This week), data-classes /
+// data-miles / data-squat (Fitness), data-shelf / data-goal (Reading).
 // Pixel-art title loops, built to the pixel-art-sprites skill (.claude/skills/pixel-art-sprites):
 //  · Integer scaling in DEVICE pixels; image-rendering: pixelated.
 //  · Characters on a 20×18 frame. 6-frame run cycle (patterns.md "run: 6"): contact → down → float, then
@@ -107,7 +108,8 @@ const px = (ctx, col, x, y, w = 1, h = 1) => { ctx.fillStyle = col; ctx.fillRect
 const KEYS = ['outline', 'skin', 'skin-d', 'team', 'team-d', 'foe', 'foe-d', 'white', 'white-d', 'mask', 'ball', 'hair', 'run', 'run-d', 'navy', 'navy-d',
   'stand', 'track', 'grass', 'grass2', 'grass-d', 'line', 'post', 'board', 'sky', 'cloud', 'sun', 'mtn', 'mtn-d', 'snow', 'hill', 'hill2', 'tree', 'tree-d', 'trunk',
   'ground', 'ground2', 'star', 'bloom1', 'bloom2', 'sky-o', 'cloud-o', 'rain', 'leaf',
-  'blackdog', 'collar', 'tan', 'tan-d', 'muzzle', 'tabby', 'tabby-s', 'gray-c', 'gray-s', 'eye'];
+  'blackdog', 'collar', 'tan', 'tan-d', 'muzzle', 'tabby', 'tabby-s', 'gray-c', 'gray-s', 'eye',
+  'gym', 'mat', 'mat2', 'plate', 'plate-d', 'lift', 'lift-d', 'wall', 'wall-d', 'wood', 'wood-d', 'read', 'read-d', 'lamp', 'glow', 'rug'];
 function palette() {
   const cs = getComputedStyle(document.documentElement), P = { dark: document.documentElement.dataset.theme === 'dark' };
   KEYS.forEach(k => P[k] = cs.getPropertyValue('--px-' + k).trim());
@@ -279,7 +281,195 @@ const week = {
   },
 };
 
-const SCENES = { cfb, week };
+
+// ---------------- Fitness ----------------
+// A gym: the WOD whiteboard shows this year's class count; a lifter squats the heaviest back squat logged this
+// year (plates per side add up to it); the jogger runs on a treadmill whose console shows the year's miles.
+// The lifter is a front view, 30×18 because the bar runs past the 20-px body. Feet stay planted; the body drops
+// through the squat and the knees track out. The squat is an action, not a cycle (patterns.md "attack"): a long
+// hold at lockout, a controlled descent, a short hold at the bottom, a faster drive up, then chalk off the hands.
+const LIFT_POSES = [
+  { d: 0, knee: [[12, 14], [16, 14]] }, // lockout
+  { d: 2, knee: [[10, 15], [18, 15]] }, // half
+  { d: 3, knee: [[9, 15], [19, 15]] },  // bottom, knees out
+];
+const SQUAT_TICKS = [0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 1, 0, 0, 0, 0]; // 120 ms ticks; chalk on ticks 12–13
+const PLATE_H = { 45: 4, 35: 4, 25: 3, 10: 2, 5: 1 };                 // half-heights in art pixels
+function platesFor(load) {
+  let side = Math.max(0, (Number(load) || 135) - 45) / 2; const out = [];
+  for (const p of [45, 35, 25, 10, 5]) while (side >= p && out.length < 4) { out.push(p); side -= p; }
+  return out.length ? out : [45];
+}
+function buildLifter(p, plates) {
+  const W2 = 30, g = Array.from({ length: FH }, () => Array(W2).fill('.'));
+  const set = (x, y, c) => { if (y >= 0 && y < FH && x >= 0 && x < W2) g[y][x] = c; };
+  const top = 1 + p.d, barY = top + 4, hip = 12 + p.d;
+  // bar, collars and plates sit behind the body
+  for (let x = 1; x <= 28; x++) set(x, barY, 'b');
+  set(8, barY, 'c'); set(21, barY, 'c');
+  let xl = 7, xr = 22;
+  plates.forEach(w => {
+    const h = PLATE_H[w];
+    for (let y = barY - h; y <= barY + h; y++) { set(xl - 1, y, 'P'); set(xl, y, 'Q'); set(xr, y, 'P'); set(xr + 1, y, 'Q'); }
+    xl -= 2; xr += 2;
+  });
+  // head (front view) and neck
+  ['HHHH', 'eSSe', 'SSSS', 'tSSt'].forEach((r, y) => [...r].forEach((c, x) => set(13 + x, top + y, c)));
+  set(14, barY, 's'); set(15, barY, 's');
+  // shoulders, torso (shade on the right: light from the top-left), shorts
+  for (let x = 11; x <= 18; x++) set(x, barY + 1, x === 18 ? 'k' : 'j');
+  for (let y = barY + 2; y <= hip - 3; y++) for (let x = 12; x <= 17; x++) set(x, y, x === 17 ? 'k' : 'j');
+  for (let y = hip - 2; y <= hip; y++) for (let x = 12; x <= 17; x++) set(x, y, 'r');
+  // arms: hands on the bar outside the shoulders, elbows under it
+  [10, 19].forEach(x => { set(x, barY, 's'); set(x, barY + 1, 's'); set(x, barY + 2, 'k'); });
+  // legs: hip → knee → planted ankle, 2 px wide; shoes don't move
+  const leg = (hx, K, ax) => {
+    line(hx, hip, K[0], K[1], (x, y) => { set(x, y, 'p'); set(x + 1, y, 'p'); });
+    line(K[0], K[1], ax, 16, (x, y) => { set(x, y, 'p'); set(x + 1, y, 'p'); });
+  };
+  leg(12, p.knee[0], 12); leg(16, p.knee[1], 16);
+  [11, 12, 13, 16, 17, 18].forEach(x => set(x, 17, 'x'));
+  return g;
+}
+const fitness = {
+  ms: 120, stride: 3, still: 0,
+  draw(ctx, W, n, P, data) {
+    // wall with a CrossFit-amber band, baseboard, rubber floor with tile seams
+    px(ctx, P.gym, 0, 0, W, 28);
+    px(ctx, P.lift, 0, 19, W, 2);
+    px(ctx, P.mat2, 0, 27, W, 1);
+    px(ctx, P.mat, 0, 28, W, H - 28);
+    for (let x = 7; x < W; x += 16) px(ctx, P.mat2, x, 28, 1, H - 28);
+    // whiteboard: the year's class count and two lines of marker
+    const bx = 4, classes = String(data.classes || '').replace(/\D/g, '').slice(0, 3);
+    px(ctx, P['white-d'], bx, 3, 26, 15); px(ctx, P.white, bx + 1, 4, 24, 13); px(ctx, P['white-d'], bx + 2, 17, 22, 1);
+    if (classes) text(ctx, classes, bx + 3, 6, P.navy);
+    px(ctx, P.navy, bx + 3, 13, 9, 1); px(ctx, P.collar, bx + 14, 13, 6, 1); px(ctx, P.run, bx + 3, 15, 13, 1);
+    // kettlebells by the wall
+    [[bx + 2, P['navy-d']], [bx + 8, P['plate-d']], [bx + 13, P['navy-d']]].forEach(([x, c]) => { px(ctx, c, x, 25, 4, 3); px(ctx, c, x + 1, 23, 2, 1); px(ctx, c, x, 24); px(ctx, c, x + 3, 24); });
+    // squat rack and platform, lifter in front
+    const lx = Math.max(bx + 30, Math.round(W * 0.43) - 15), ly = 11;
+    px(ctx, P.wood, lx - 2, 28, 34, 2); px(ctx, P['wood-d'], lx - 2, 30, 34, 1);
+    [lx - 1, lx + 30].forEach(x => { px(ctx, P['white-d'], x, 4, 1, 24); px(ctx, P.mask, x, 4, 1, 1); });
+    px(ctx, P.mask, lx - 1, 14, 2, 1); px(ctx, P.mask, lx + 29, 14, 2, 1); // J-hooks
+    const t = n % SQUAT_TICKS.length, pose = LIFT_POSES[SQUAT_TICKS[t]];
+    drawSprite(ctx, buildLifter(pose, platesFor(data.squat)), lx, ly, { H: P.hair, S: P.skin, s: P.skin, t: P['skin-d'], e: P.outline, j: P.lift, k: P['lift-d'], r: P.navy, p: P.skin, x: P.white, b: P['white-d'], c: P.mask, P: P.plate, Q: P['plate-d'] }, P.outline);
+    if (t === 12 || t === 13) { const up = t - 12; [[lx + 9, 13], [lx + 11, 12], [lx + 20, 13], [lx + 18, 12], [lx + 10, 11], [lx + 19, 11]].forEach(([x, y], i) => { if (i < 4 || up) px(ctx, P.white, x, y - up); }); }
+    // treadmill: the belt moves one foot-travel per frame, so the support foot stays planted on it
+    const tx = Math.max(lx + 36, Math.min(W - 50, Math.round(W * 0.72) - 16)), d = n * this.stride, DL = 34;
+    px(ctx, P.outline, tx, 27, DL, 1); px(ctx, P.mat2, tx, 28, DL, 2); px(ctx, P.outline, tx + 1, 30, 2, 1); px(ctx, P.outline, tx + DL - 3, 30, 2, 1);
+    for (let x = 0; x < DL; x++) if ((x + d) % 8 === 0) px(ctx, P['white-d'], tx + x, 27);
+    // upright at the front of the deck, handrail at hand height, console out in front of the runner
+    const miles = String(data.miles || '').replace(/\D/g, '').slice(0, 4), cw = Math.max(3, miles.length) * 4 + 3, ux = tx + DL - 2;
+    px(ctx, P['white-d'], ux, 14, 1, 13); px(ctx, P['white-d'], tx + 20, 16, ux - tx - 20, 1);
+    px(ctx, P.outline, ux - 2, 6, cw + 2, 8); px(ctx, P.board, ux - 1, 7, cw, 6);
+    if (miles) text(ctx, miles, ux + 1, 8, P.post);
+    drawSprite(ctx, SPR.jogger[n % 6], tx + 6, 9, { H: P.hair, s: P.skin, t: P['skin-d'], e: P.outline, j: P.run, k: P['run-d'], w: P.run, r: P.navy, p: P.skin, q: P['skin-d'], x: P.white }, P.outline);
+  },
+};
+
+// ---------------- Reading ----------------
+// A reading room. The top shelf holds one slot per book in the year's goal, filled with the books finished so
+// far (fiction teal, nonfiction navy, unclassified grey). The reader turns a page every few seconds; the brown
+// tabby lies on the chair back flicking its tail; the gray cat sleeps on the rug. 2-frame loops for the props.
+const READER = [
+  '....................',
+  '.......HHHH.........',
+  '......HHHHHs........',
+  '......HHHHse........',
+  '......HHHsss........',
+  '.......Htss.........',
+  '......jjjjj.........',
+  '.....jjjjjjjss......',
+  '.....jjjjk...sBWWB..',
+  '.....jjjjk....BBBB..',
+  '.....jjjjk..........',
+  '.....rrrrrrrrrr.....',
+  '.....rrrrrrrrrrr....',
+  '..............pp....',
+  '..............pp....',
+  '..............pp....',
+  '..............xxxx..',
+  '....................',
+];
+const LOAF = [ // brown tabby lying on the chair back, 10×6; frame 2 flicks the tail up
+  ['.......C.C', '.......CCC', '..SCSCSCCe', '.CCCCCCCC.', 'T.........', 'T.........'],
+  ['.......C.C', '.......CCC', '..SCSCSCCe', 'TCCCCCCCC.', '.T........', '..........'],
+];
+const CURL = [ // gray cat asleep, 8×4; breathing
+  ['...C.C..', '..CCCCS.', '.SCSCCCC', 'CCCCCCCC'],
+  ['........', '..CCCCS.', '.SCSCCCC', 'CCCCCCCC'],
+];
+const reading = {
+  ms: 160, stride: 0, still: 0,
+  draw(ctx, W, n, P, data) {
+    const t = n % 48;
+    px(ctx, P.wall, 0, 0, W, 24);
+    px(ctx, P['wall-d'], 0, 19, W, 5);
+    // lamp glow on the wall, behind everything else
+    const ox = Math.round(W * 0.46) - 6, tx = ox + 24, lampX = Math.max(tx + 14, Math.round(W * 0.84));
+    // a soft halo around the shade: solid inside, checker-dithered at the rim (no smoothing, no new colour)
+    for (let y = 0; y < 19; y++) for (let x = lampX - 12; x <= lampX + 12; x++) {
+      const r = ((x - lampX) / 12) ** 2 + ((y - 5) / 9) ** 2;
+      if (r < 0.55 || (r < 1 && (x + y) % 2 === 0)) px(ctx, P.glow, x, y);
+    }
+    // floor: planks and a rug
+    px(ctx, P.wood, 0, 24, W, H - 24);
+    for (const y of [27, 30]) px(ctx, P['wood-d'], 0, y, W, 1);
+    for (let x = 0; x < W; x += 9) { px(ctx, P['wood-d'], x, 25 + (x % 2 ? 0 : 3), 1, 2); }
+    px(ctx, P.rug, ox - 18, 25, 48, 4); px(ctx, P['plate-d'], ox - 18, 28, 48, 1);
+    // bookshelf; the top shelf is this year's goal
+    const sx = 4, shelf = String(data.shelf || ''), goal = Math.min(11, Math.max(shelf.length, Number(data.goal) || 0));
+    px(ctx, P['wall-d'], sx, 2, 26, 22); px(ctx, P['wood-d'], sx, 2, 1, 22); px(ctx, P['wood-d'], sx + 25, 2, 1, 22);
+    for (const y of [2, 9, 16, 23]) px(ctx, P.wood, sx, y, 26, 1);
+    const SPINE = { f: [P.read, P['read-d']], n: [P.navy, P['navy-d']], u: [P['white-d'], P.mask] };
+    for (let i = 0; i < goal; i++) {
+      const x = sx + 2 + i * 2;
+      if (i < shelf.length) { const [a, b] = SPINE[shelf[i]] || SPINE.u, h = 4 + Math.floor(rnd(i + 3) * 3); px(ctx, a, x, 9 - h, 1, h); px(ctx, b, x + 1, 9 - h, 1, h); }
+      else px(ctx, P.wood, x, 8, 2, 1); // an empty slot: a mark on the shelf where the book goes
+    }
+    const DECOR = [P['team-d'], P.navy, P.tree, P.plate, P['lift-d'], P.hair, P['white-d'], P['read-d']];
+    for (const y of [16, 23]) for (let x = sx + 2, k = y; x < sx + 24; k++) {
+      const w = rnd(k * 7) > 0.7 ? 2 : 1, h = 4 + Math.floor(rnd(k * 3) * 3);
+      if (rnd(k * 11) > 0.9) { x++; continue; }
+      px(ctx, DECOR[Math.floor(rnd(k * 5) * DECOR.length)], x, y - h, Math.min(w, sx + 24 - x), h); x += w;
+    }
+    // window between the shelf and the chair: sky by day, stars at night
+    const wx = Math.round((sx + 26 + ox - 6) / 2) - 10;
+    if (ox - (sx + 26) > 30) {
+      px(ctx, P.wood, wx - 1, 3, 22, 15); px(ctx, P.sky, wx, 4, 20, 12);
+      if (P.dark) for (let i = 0; i < 6; i++) { if (rnd(i + Math.floor(n / 4) * 7) > 0.2) px(ctx, P.star, wx + 1 + Math.floor(rnd(i * 13) * 18), 5 + Math.floor(rnd(i * 29) * 9)); }
+      else tiles(ctx, CLOUD, wx + 2 + (Math.floor(n / 12) % 12), 6, { C: P.cloud });
+      px(ctx, P.wood, wx + 10, 4, 1, 12); px(ctx, P.wood, wx, 10, 20, 1); px(ctx, P['wood-d'], wx - 2, 17, 24, 1);
+    }
+    // the gray cat asleep on the rug
+    drawSprite(ctx, toGrid(CURL[Math.floor(n / 6) % 2]), ox - 14, 23, { C: P['gray-c'], S: P['gray-s'] }, P.outline);
+    // armchair back and seat, then the reader, then the near armrest
+    const oy = 7;
+    px(ctx, P.read, ox, oy + 3, 6, 14); px(ctx, P.read, ox + 1, oy + 2, 4, 1); px(ctx, P['read-d'], ox + 5, oy + 3, 1, 14);
+    px(ctx, P.read, ox + 4, oy + 13, 13, 2); px(ctx, P['read-d'], ox + 4, oy + 15, 13, 1);
+    px(ctx, P['wood-d'], ox + 1, oy + 16, 1, 2); px(ctx, P['wood-d'], ox + 15, oy + 16, 1, 2);
+    const g = toGrid(READER);
+    if (t === 44) { g[7][16] = 'W'; g[6][16] = 'W'; }          // a page lifts
+    if (t === 45) { g[7][15] = 'W'; g[6][14] = 'W'; g[5][14] = 'W'; } // and turns toward the reader
+    if (t === 30) g[3][10] = 's';                               // a blink
+    drawSprite(ctx, g, ox, oy, { H: P.hair, s: P.skin, t: P['skin-d'], e: P.outline, j: P['team-d'], k: P['team-d'], r: P.navy, p: P.navy, x: P['white-d'], B: P['lift-d'], W: P.white }, P.outline);
+    // the near armrest, in front of the reader's lap
+    px(ctx, P.read, ox + 3, oy + 9, 11, 3); px(ctx, P['read-d'], ox + 3, oy + 12, 11, 1); px(ctx, P['read-d'], ox + 13, oy + 9, 1, 3);
+    // the brown tabby on the chair back
+    drawSprite(ctx, toGrid(LOAF[Math.floor(n / 5) % 3 === 2 ? 1 : 0]), ox - 1, oy - 2, { C: P.tabby, S: P['tabby-s'], e: P.eye, T: P.tabby }, P.outline);
+    // side table with a mug; steam alternates
+    px(ctx, P.wood, tx, 16, 9, 1); px(ctx, P['wood-d'], tx, 17, 9, 1); px(ctx, P['wood-d'], tx + 1, 18, 1, 6); px(ctx, P['wood-d'], tx + 7, 18, 1, 6);
+    px(ctx, P.lift, tx + 3, 13, 3, 3); px(ctx, P['lift-d'], tx + 6, 14, 1, 1);
+    const st = Math.floor(n / 3) % 2;
+    px(ctx, P['white-d'], tx + 3 + st, 11); px(ctx, P['white-d'], tx + 4 - st, 10); px(ctx, P['white-d'], tx + 4 + st, 9);
+    // floor lamp
+    px(ctx, P['wood-d'], lampX, 7, 1, 17); px(ctx, P['wood-d'], lampX - 2, 23, 5, 1);
+    px(ctx, P.lamp, lampX - 2, 3, 5, 1); px(ctx, P.lamp, lampX - 3, 4, 7, 3);
+  },
+};
+
+const SCENES = { cfb, week, fitness, reading };
 
 function mount(el) {
   if (!el.querySelector('canvas')) return () => {};
@@ -313,7 +503,9 @@ function mount(el) {
   const ro = new ResizeObserver(size); ro.observe(el);
   const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }); io.observe(el);
   const mo1 = new MutationObserver(() => { P = palette(); draw(true); }); mo1.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-  const mo2 = new MutationObserver(() => draw(true)); mo2.observe(el, { attributes: true, attributeFilter: ['data-wx', 'data-temp', 'data-record'] });
+  // Redraw when the page passes new data (any data-* attribute); the engine's own aria/title changes don't count.
+  const mo2 = new MutationObserver(rs => { if (rs.some(r => r.attributeName && r.attributeName.startsWith('data-') && r.attributeName !== 'data-scene')) draw(true); });
+  mo2.observe(el, { attributes: true });
   document.addEventListener('visibilitychange', sync);
   reduce.addEventListener('change', onReduce);
   size(); sync();
