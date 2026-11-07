@@ -1,0 +1,18 @@
+# /etc/systemd/system/ons-display.service — the ONS LED panel player.
+# Install: see README.md. Starts as root (rpi-rgb-led-matrix needs GPIO), then
+# the library drops to the daemon user once the panel is set up.
+[Unit]
+Description=ONS LED panel player (64x32)
+Wants=network-online.target
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/ons-display
+ExecStart=/usr/bin/python3 /opt/ons-display/ons_display.py
+Restart=always
+RestartSec=5
+# Logs: journalctl -u ons-display -f
+
+[Install]
+WantedBy=multi-user.target
