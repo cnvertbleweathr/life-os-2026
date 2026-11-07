@@ -35,10 +35,45 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 import sys; sys.path.insert(0, str(ROOT))
 
-# Unload FastAPI before any DuckDB-touching imports (openclaw validates on import)
+# Unload FastAPI before any DuckDB-touching imports (openclaw validates on import).
+# The API must come back however this script ends: atexit runs on normal exit, sys.exit and
+# uncaught exceptions, including a crash during the imports below.
+import atexit as _atexit
 import subprocess as _sp
-_sp.run(["launchctl", "unload", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
-import time as _time; _time.sleep(3)
+import time as _time
+_API_PLIST = str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")
+_DB_PATH = ROOT / "data" / "warehouse" / "ons.duckdb"
+_api_reloaded = False
+
+
+def _reload_api() -> None:
+    global _api_reloaded
+    if not _api_reloaded:
+        _api_reloaded = True
+        _sp.run(["launchctl", "load", _API_PLIST], check=False)
+
+
+def _wait_for_db_lock(timeout_s: int = 120) -> None:
+    """Wait until uvicorn has really exited and released the DuckDB lock.
+
+    `launchctl unload` returns before the process is gone (it reports "Unload failed: 5" when
+    the job is slow to stop), so a fixed sleep is a race. On 2026-11-07 the API still held the
+    lock 3s later, the openclaw import crashed, and the API was never reloaded."""
+    import duckdb as _ddb
+    deadline = _time.monotonic() + timeout_s
+    while True:
+        try:
+            _ddb.connect(str(_DB_PATH), read_only=False).close()
+            return
+        except _ddb.IOException:
+            if _time.monotonic() > deadline:
+                raise
+            _time.sleep(2)
+
+
+_atexit.register(_reload_api)
+_sp.run(["launchctl", "unload", _API_PLIST], check=False)
+_wait_for_db_lock()
 
 try:
     from openclaw.orchestrator import run_openclaw_tier1
@@ -707,8 +742,7 @@ def main() -> int:
                 aborted_at = step.name
                 print(f"\n  ⛔ Required step '{step.name}' failed — aborting.\n")
 
-    import subprocess as _sp
-    _sp.run(["launchctl", "load", str(Path.home() / "Library/LaunchAgents/com.ons.fastapi.plist")], check=False)
+    _reload_api()
 
     total_s = (datetime.now() - sync_start).total_seconds()
 
