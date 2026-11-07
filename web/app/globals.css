@@ -37,6 +37,10 @@
   --px-sky-o: #b9c3cf; --px-cloud-o: #dfe4ea; --px-rain: #4f7fb8; --px-leaf: #d08a2e;
   --px-blackdog: #2e2d33; --px-collar: #d23b3b; --px-tan: #c98a45; --px-tan-d: #7d4f22; --px-muzzle: #3a2a22;
   --px-tabby: #a46a34; --px-tabby-s: #5b3818; --px-gray-c: #9097a2; --px-gray-s: #555b66; --px-eye: #8cc14a;
+  /* Fitness (gym) and Reading (room) scenes */
+  --px-gym: #d3d9e1; --px-mat: #3e434b; --px-mat2: #555b65; --px-plate: #c0453a; --px-plate-d: #8a2c25;
+  --px-lift: #c27a12; --px-lift-d: #8a5208; --px-wall: #eadfca; --px-wall-d: #d6c4a3; --px-wood: #9b6439; --px-wood-d: #6b4122;
+  --px-read: #17907c; --px-read-d: #0e6556; --px-lamp: #f3d8a0; --px-glow: #f6ecd8; --px-rug: #c4694a;
 
   --ok: #d9f2e2; --ok-ink: #0d3a22; --risk: #fff0d6; --risk-ink: #7a430a; --off: #fde6e6; --off-ink: #7d1c20; --none: #eef0ee; --none-ink: #3e443e;
   /* legacy Almanac names, re-pointed (see tailwind.config.js) */
@@ -71,6 +75,9 @@
   --px-sky-o: #1a222c; --px-cloud-o: #2b3542; --px-rain: #6d9bd3; --px-leaf: #a86d22;
   --px-blackdog: #34333b; --px-collar: #d94a4a; --px-tan: #b07a3d; --px-tan-d: #6a431c; --px-muzzle: #2a1d17;
   --px-tabby: #94602f; --px-tabby-s: #4f3015; --px-gray-c: #7c838e; --px-gray-s: #474c56; --px-eye: #9fd35a;
+  --px-gym: #1d222b; --px-mat: #121519; --px-mat2: #262b33; --px-plate: #b4443b; --px-plate-d: #7a2b25;
+  --px-lift: #e39d36; --px-lift-d: #a66e1e; --px-wall: #28211b; --px-wall-d: #1d1814; --px-wood: #5c3b22; --px-wood-d: #3a2414;
+  --px-read: #2a9a85; --px-read-d: #1b6a5c; --px-lamp: #f0cd85; --px-glow: #3a3121; --px-rug: #6e3424;
 
   --ok: #143222; --ok-ink: #a9e9c4; --risk: #382810; --risk-ink: #f6cf8b; --off: #3d191c; --off-ink: #ffb8bb; --none: #232924; --none-ink: #c3cac4;
   --faint: #8f9891; --warn: #f6cf8b; --series2: #8fb3dd;
@@ -239,6 +246,9 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .t-edge { --t: var(--edge); --t-ink: var(--edge-ink); --t-mark: var(--edge-mark); }
 .t-habit { --t: var(--habit); --t-ink: var(--habit-ink); --t-mark: var(--habit-mark); }
 .t-check { --t: var(--check); --t-ink: var(--check-ink); --t-mark: var(--check-mark); }
+.t-run { --t: var(--run); --t-ink: var(--run-ink); --t-mark: var(--run-mark); }
+.t-lift { --t: var(--lift); --t-ink: var(--lift-ink); --t-mark: var(--lift-mark); }
+.t-read { --t: var(--read); --t-ink: var(--read-ink); --t-mark: var(--read-mark); }
 .dog { --l: var(--edge); --l-ink: var(--edge-ink); --l-mark: var(--edge-mark); }
 .fav { --l: var(--check); --l-ink: var(--check-ink); --l-mark: var(--check-mark); }
 
@@ -325,6 +335,7 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
   .ons-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .ons-grid > * { grid-column: auto !important; }
   .ons-card { padding: 16px; }
+  .ons-ch { flex-wrap: wrap; row-gap: 2px; }
   .ons-tiles { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px 20px; padding: 0 16px 4px; scroll-padding: 0 16px; scrollbar-width: none; }
   .ons-tile { flex: 0 0 84%; scroll-snap-align: start; }
   .ons-table .hide-p { display: none; }
@@ -428,3 +439,47 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .ons-habit-strip i.none { background: var(--rule); }
 
 .ons-ticker-viewport::-webkit-scrollbar { display: none; }
+
+/* Links inside cards and tables */
+.ons-link { color: var(--hue); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--hue) 40%, transparent); text-underline-offset: 3px; }
+.ons-link:hover { text-decoration-color: var(--hue); }
+/* Bars inside a tinted tile: the track is a wash of the tile's ink */
+.ons-tile.t .ons-bar { background: color-mix(in srgb, var(--t-ink) 14%, transparent); }
+.ons-tile.t .ons-bar b { background: var(--t-mark); }
+.ons-tile.t .ons-bar i { background: var(--t-ink); }
+
+/* Fitness: the year in training (weeks across, Monday to Sunday down, weekly bars under) */
+.ons-calwrap { overflow-x: auto; }
+.ons-cal { display: grid; grid-template-columns: 52px repeat(var(--wks), minmax(13px, 1fr)); gap: 3px; min-width: calc(52px + var(--wks) * 16px); }
+.ons-cal > span { font-size: 12px; line-height: 16px; color: var(--muted); white-space: nowrap; }
+.ons-cal > span.mo { overflow: visible; }
+.ons-cal > i { display: block; height: 16px; border-radius: 3px; background: var(--rule); cursor: pointer; }
+.ons-cal > i.f { background: transparent; cursor: default; }
+.ons-cal > i.r { background: var(--run-mark); }
+.ons-cal > i.c { background: var(--lift-mark); }
+.ons-cal > i.b { background: linear-gradient(135deg, var(--run-mark) 50%, var(--lift-mark) 50%); }
+.ons-cal > i.now { box-shadow: inset 0 0 0 2px var(--hue); }
+.ons-cal > i.r.now, .ons-cal > i.c.now, .ons-cal > i.b.now { outline: 2px solid var(--hue); outline-offset: 1px; box-shadow: none; }
+.ons-cal > i.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+.ons-cal > span.lab { align-self: end; }
+.ons-cal > span.bar { height: 36px; display: flex; align-items: flex-end; margin-top: 6px; }
+.ons-cal > span.bar.c { height: 22px; margin-top: 0; }
+.ons-cal > span.bar b { display: block; width: 100%; border-radius: 2px 2px 0 0; background: var(--run-mark); }
+.ons-cal > span.bar.c b { background: var(--lift-mark); }
+.ons-caldetail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--rule); font-size: 13px; min-height: 37px; }
+.ons-caldetail .ons-mk + .ons-mk { margin-top: 0; }
+.ons-caldetail .ons-mk { white-space: normal; }
+
+/* Reading: kind of book. Fiction is the full tint, nonfiction an outline, unclassified dashed (a missing value) */
+.ons-kind { display: inline-block; font-size: 12px; font-weight: 500; line-height: 20px; padding: 0 7px; border-radius: 4px; white-space: nowrap; }
+.ons-kind.f { background: var(--read); color: var(--read-ink); }
+.ons-kind.n { box-shadow: inset 0 0 0 1px var(--read-mark); color: var(--read-ink); }
+.ons-kind.u { outline: 1px dashed var(--muted); outline-offset: -1px; color: var(--muted); font-weight: 400; }
+.ons-mix { display: flex; gap: 3px; height: 12px; }
+.ons-mix i { display: block; border-radius: 3px; }
+.ons-mix i.f { background: var(--read-mark); }
+.ons-mix i.n { background: var(--read); box-shadow: inset 0 0 0 1px var(--read-mark); }
+.ons-mix i.u { outline: 1px dashed var(--muted); outline-offset: -1px; }
+
+/* Short notes and ledes: avoid a single word on the last line */
+.ons-note, .ons-tile p, .ons-pagehead p { text-wrap: pretty; }

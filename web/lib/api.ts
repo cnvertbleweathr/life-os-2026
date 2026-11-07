@@ -285,6 +285,11 @@ export interface CrossfitEntry {
   barbell_lift: string | null;
   best_result_raw: number | null;
   best_result_unit: string | null;
+  /** The score as SugarWOD shows it: "18:25", "4+7", "185". */
+  best_result_display?: string | null;
+  /** "Load" | "Reps" | "Rounds + Reps" | "Meters" | "Checkbox" | "Other / Text"; null for timed workouts. */
+  score_type?: string | null;
+  rx_or_scaled?: "RX" | "SCALED" | null;
   is_pr: boolean;
 }
 

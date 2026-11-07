@@ -316,13 +316,15 @@ One small looping pixel-art scene sits beside each page title. Scenes are built 
 
 - **Size:** a canvas 32 art-pixels tall, as wide as its box. Up to 460px wide on desktop; a 64px banner on phones.
 - **Integer scaling in device pixels**, with `image-rendering: pixelated`. Never a fractional scale.
-- **Characters:** 20×18 frames. Runs use 6 frames (contact, down, float, mirrored), with hip → knee → foot legs, arms opposite the legs and a 1px bob. Animals and small props use 2-frame gaits.
+- **Characters:** 20×18 frames. Runs use 6 frames (contact, down, float, mirrored), with hip → knee → foot legs, arms opposite the legs and a 1px bob. Animals and small props use 2-frame gaits. An action that isn't a cycle (the Fitness squat) is timed like one: hold, controlled descent, short hold, faster drive, then the effect. A character holding a wide prop (the barbell) may use a wider frame.
 - **No sliding:** the ground scrolls exactly one foot-travel per frame.
 - **One outline rule:** every character gets a generated 1px outer outline; scenery gets none. Light comes from the top-left.
 - **Closed palette:** `--px-*` tokens in both themes, separate from UI tokens. A character's fill never matches the outline colour (the silhouette test).
 - **Content:** the scene is about the page and uses its real data where it can:
   - the season record on the CFB scoreboard;
   - today's weather and temperature on This Week;
+  - on Fitness, the year's class count on the gym whiteboard, plates on the squat bar that add up to the heaviest back squat logged, and the year's miles on the treadmill console;
+  - on Reading, a top shelf with one slot per book in the year's goal, filled with the books finished (fiction teal, nonfiction navy, unclassified grey);
   - the owner's own pets (a black dog, a chihuahua-beagle, a puggle, a brown tabby, a gray striped cat).
 - **Motion rules:**
   - Draw only when the frame changes.

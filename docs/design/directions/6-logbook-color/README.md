@@ -124,7 +124,7 @@ Each page has a pixel-art loop in a right-hand column under the action buttons. 
 - Clicking a scene pauses every scene. The choice is saved as `ons-px-paused`.
 - With `prefers-reduced-motion` on, each scene shows a still frame and the button is disabled.
 
-**Ideas for the other pages** (not built):
+**Ideas for the other pages** (Fitness and Reading are built in `web/lib/pixelScenes.js`, with real data: see DESIGN.md → Pixel Scenes):
 
 | Page | Loop |
 |---|---|
