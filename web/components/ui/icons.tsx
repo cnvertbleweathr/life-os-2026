@@ -26,6 +26,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <line x1="12" y1="6.5" x2="12" y2="19.7" />
     </>
   ),
+  film: (
+    <>
+      <rect x="4" y="5" width="16" height="14" rx="1.5" />
+      <line x1="8" y1="5" x2="8" y2="19" />
+      <line x1="16" y1="5" x2="16" y2="19" />
+      <path d="M4 9h4M4 12h4M4 15h4M16 9h4M16 12h4M16 15h4" />
+    </>
+  ),
   goals: (
     <>
       <circle cx="12" cy="12" r="8.5" />

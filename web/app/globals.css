@@ -25,6 +25,7 @@
   --plan: #fbe3ea;  --plan-ink: #6b1631;  --plan-mark: #c2456b;
   --edge: #fde3cf;  --edge-ink: #6a2b06;  --edge-mark: #d9661c;
   --wx: #e6ebf2;    --wx-ink: #263247;    --wx-mark: #5b6f8f;
+  --film: #fae5fd;  --film-ink: #4e1d56;  --film-mark: #a044ae;
 
 
   --px-outline: #1d2230; --px-skin: #e5ad85; --px-skin-d: #b97a56; --px-team: #d9661c; --px-team-d: #96400f;
@@ -63,6 +64,7 @@
   --plan: #371722;  --plan-ink: #ffc2d2;  --plan-mark: #e66b91;
   --edge: #3a1f0c;  --edge-ink: #ffcca4;  --edge-mark: #f08a45;
   --wx: #1d2433;    --wx-ink: #c5d0e3;    --wx-mark: #7f95ba;
+  --film: #301834;  --film-ink: #f4cafb;  --film-mark: #d280df;
 
 
   --px-outline: #07090d; --px-skin: #d29c76; --px-skin-d: #a06a49; --px-team: #f08a45; --px-team-d: #b0561f;
@@ -249,6 +251,7 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .t-run { --t: var(--run); --t-ink: var(--run-ink); --t-mark: var(--run-mark); }
 .t-lift { --t: var(--lift); --t-ink: var(--lift-ink); --t-mark: var(--lift-mark); }
 .t-read { --t: var(--read); --t-ink: var(--read-ink); --t-mark: var(--read-mark); }
+.t-film { --t: var(--film); --t-ink: var(--film-ink); --t-mark: var(--film-mark); }
 .dog { --l: var(--edge); --l-ink: var(--edge-ink); --l-mark: var(--edge-mark); }
 .fav { --l: var(--raised); --l-ink: var(--ink); --l-mark: var(--ink-2); }
 
@@ -319,6 +322,46 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .ons-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .ons-legend i { width: 14px; height: 10px; border-radius: 3px; }
 
+/* Film. Magenta is film. Where a watch was logged: both is the full tint, Letterboxd alone an outline,
+   Plex alone dashed (a missing value: no Letterboxd entry, so no rating). */
+.ons-src { display: inline-block; font-size: 12px; font-weight: 500; line-height: 20px; padding: 0 7px; border-radius: 4px; white-space: nowrap; }
+.ons-src.both { background: var(--film); color: var(--film-ink); }
+.ons-src.lb { box-shadow: inset 0 0 0 1px var(--film-mark); color: var(--film-ink); }
+.ons-src.px { outline: 1px dashed var(--muted); outline-offset: -1px; color: var(--muted); font-weight: 400; }
+.ons-film-link { color: var(--ink); font-weight: 500; text-decoration: none; }
+.ons-film-link:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--film-mark); }
+.ons-months { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; }
+.ons-months li { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.ons-months .bar { width: 100%; height: 64px; display: flex; align-items: flex-end; background: var(--l); border-radius: 3px; }
+.ons-months .bar b { display: block; width: 100%; background: var(--l-mark); border-radius: 3px; }
+.ons-months .n { font-size: 12px; line-height: 16px; min-height: 16px; color: var(--ink-2); }
+.ons-months .lab { font-size: 12px; line-height: 16px; color: var(--muted); }
+.ons-reel { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 20px 16px; }
+.ons-reel-item { min-width: 0; }
+/* 2:1 like the loop itself, so the integer scale (height ÷ 32) always fits the width: no cropped frames */
+.ons-reel-item .ons-scene { background: var(--px-board); height: auto; aspect-ratio: 2 / 1; }
+.ons-reel-item .cap { margin-top: 8px; font-size: 14px; line-height: 20px; }
+.ons-reel-item .cap b { font-weight: 500; }
+.ons-reel-item .cap .sub { display: block; font-size: 13px; line-height: 18px; color: var(--muted); }
+.ons-queue ul { list-style: none; margin: 0; padding: 0; }
+.ons-queue-row { padding: 16px 0; border-top: 1px solid var(--rule); }
+.ons-queue-row:first-child { border-top: 0; padding-top: 0; }
+.ons-queue-row .head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 10px; }
+.ons-queue-row h3 { font: 600 15px/20px "IBM Plex Sans", system-ui, sans-serif; margin: 0; }
+.ons-queue-row .head .ons-n { font-size: 12px; }
+.ons-queue-row .fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px 12px; }
+.ons-queue-row label { display: flex; flex-direction: column; gap: 4px; grid-column: span 2; min-width: 0; }
+.ons-queue-row label.wide { grid-column: span 3; }
+.ons-queue-row label > span { font-size: 12px; line-height: 16px; color: var(--muted); }
+.ons-queue-row .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ons-queue-row .err { margin: 0; font-size: 13px; color: var(--neg); }
+@media (max-width: 767px) {
+  .ons-queue-row .fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .ons-queue-row label, .ons-queue-row label.wide { grid-column: span 2; }
+  .ons-queue-row label:has(.ons-n) { grid-column: span 1; }
+  .ons-reel { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+}
+
 /* Kickoff strip */
 .ons-kick { position: relative; margin: 0 0 8px 128px; }
 .ons-kick .hr { position: absolute; top: 0; bottom: 18px; width: 1px; background: var(--rule); }
@@ -362,6 +405,7 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .l-plan  { --l: var(--plan);  --l-ink: var(--plan-ink);  --l-mark: var(--plan-mark); }
 .l-edge  { --l: var(--edge);  --l-ink: var(--edge-ink);  --l-mark: var(--edge-mark); }
 .l-read  { --l: var(--read);  --l-ink: var(--read-ink);  --l-mark: var(--read-mark); }
+.l-film  { --l: var(--film);  --l-ink: var(--film-ink);  --l-mark: var(--film-mark); }
 .l-wx    { --l: var(--wx);    --l-ink: var(--wx-ink);    --l-mark: var(--wx-mark); }
 .ons-weekwrap { overflow-x: auto; }
 .ons-week { display: grid; grid-template-columns: 128px repeat(7, minmax(0, 1fr)); }

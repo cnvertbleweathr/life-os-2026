@@ -1111,3 +1111,131 @@ export const kglwApi = {
       `/kglw/jamchart?limit=${limit}${recommendedOnly ? "&recommended=true" : ""}`
     ),
 };
+
+// ── Film ─────────────────────────────────────────────────────────────────────
+// /api/film (api/routers/film.py). Watches, library and scene are public; the
+// review queue is owner only. plex_clip GIFs reach only the owner, so strips are
+// fetched with the write key when this device has it and handed to the scene
+// engine as object URLs.
+
+export type FilmSource = "letterboxd" | "plex" | "both";
+export type RenderMode = "sprite" | "plex_clip" | "motif";
+export type CatalogStatus = "suggested" | "approved" | "rejected" | "rendered";
+
+export interface FilmWatch {
+  watch_id: string;
+  film_key: string;
+  tmdb_id: number | null;
+  title: string;
+  film_year: number | null;
+  watch_date: string;
+  watch_year: number;
+  source: FilmSource;
+  rating: number | null;
+  liked: boolean;
+  has_review: boolean;
+  is_rewatch: boolean;
+  watch_number: number;
+  letterboxd_url: string | null;
+  plex_plays: number;
+  /** A rendered GIF this device may see. */
+  gif: boolean;
+}
+
+export interface LibraryFilm {
+  film_key: string;
+  tmdb_id: number | null;
+  title: string;
+  year: number | null;
+  scene_label: string | null;
+  scene_note: string | null;
+  render_mode: RenderMode;
+  rendered_at: string | null;
+}
+
+export interface FilmLibrary {
+  films: LibraryFilm[];
+  counts: Record<CatalogStatus, number>;
+}
+
+export interface FilmScene {
+  film_key: string;
+  title: string;
+  year: number | null;
+  scene_label: string | null;
+  strip: "gif" | "motif";
+  version: string | null;
+}
+
+export interface CatalogRow {
+  film_key: string;
+  tmdb_id: number | null;
+  title: string;
+  year: number | null;
+  scene_label: string | null;
+  scene_note: string | null;
+  suggested_timestamp_s: number | null;
+  suggestion_confidence: "low" | "medium" | "high" | null;
+  render_mode: RenderMode;
+  clip_start: number | null;
+  clip_end: number | null;
+  plex_file: string | null;
+  status: CatalogStatus;
+  suggested_at: string | null;
+}
+
+export interface CatalogEdit {
+  scene_label?: string;
+  scene_note?: string;
+  render_mode?: RenderMode;
+  clip_start?: number | null;
+  clip_end?: number | null;
+}
+
+const enc = (key: string) => key.split("/").map(encodeURIComponent).join("/");
+const stripCache = new Map<string, Promise<string>>();
+
+async function ownerSend<T>(path: string, method: "POST" | "PATCH", body?: unknown): Promise<T> {
+  const res = await ownerFetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res, path));
+  return res.json();
+}
+
+export const filmApi = {
+  watches: () => get<FilmWatch[]>("/film/watches"),
+  library: async (): Promise<FilmLibrary> => {
+    // With the key, the owner also sees plex_clip GIFs; without it, ask nothing.
+    if (!hasWriteKey()) return get<FilmLibrary>("/film/library");
+    return ownerGet<FilmLibrary>("/film/library");
+  },
+  scene: () => (hasWriteKey() ? ownerGet<FilmScene | null>("/film/scene") : get<FilmScene | null>("/film/scene")),
+  queue: () => ownerGet<CatalogRow[]>("/film/queue"),
+  approve: (key: string, edits: CatalogEdit = {}) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}/approve`, "POST", edits),
+  edit: (key: string, edits: CatalogEdit) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}`, "PATCH", edits),
+  reject: (key: string) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}/reject`, "POST"),
+  /** An object URL for the film's 40-frame strip; cached per film, theme and version. */
+  strip: (key: string, theme: "light" | "dark", opts: { motif?: boolean; version?: string | null } = {}): Promise<string> => {
+    const q = new URLSearchParams({ theme });
+    if (opts.motif) q.set("fallback", "motif");
+    if (opts.version) q.set("v", opts.version);
+    const path = `/film/strip/${enc(key)}?${q}`;
+    let hit = stripCache.get(path);
+    if (!hit) {
+      hit = (async () => {
+        const headers = new Headers();
+        const t = storedToken();
+        if (t) headers.set("X-ONS-Write-Token", t);
+        const res = await fetch(`${API_BASE}${path}`, { headers });
+        if (!res.ok) throw new Error(`strip ${res.status}`);
+        return URL.createObjectURL(await res.blob());
+      })();
+      hit.catch(() => stripCache.delete(path));
+      stripCache.set(path, hit);
+    }
+    return hit;
+  },
+};

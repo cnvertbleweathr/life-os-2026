@@ -36,6 +36,7 @@ module.exports = {
         // life areas: tint / ink / mark
         run: area("run"), lift: area("lift"), read: area("read"), habit: area("habit"),
         check: area("check"), plan: area("plan"), edge: area("edge"), wx: area("wx"),
+        film: area("film"),
 
         // ── Almanac names, re-pointed so un-migrated pages follow the new system ──
         canvas:       v("raised"),
