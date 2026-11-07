@@ -13,8 +13,11 @@ Usage:
   python pipelines/letterboxd_pipeline.py --dry-run
 
 Tables created in DuckDB:
-  letterboxd.diary_entries     — watched films with dates, ratings, reviews
-  letterboxd.films_summary     — YTD counts, avg rating, top genres
+  letterboxd.diary_entries     — watched films with dates, ratings, reviews and
+                                 the TMDB movie id (the join key for mart_film_watches)
+
+The feed only holds the latest ~50 entries; merging on entry_id keeps the
+older ones, so history builds up as the daily sync runs.
 
 Config:
   Set LETTERBOXD_USERNAME in .env or pass via --username
@@ -25,7 +28,7 @@ import argparse
 import os
 import re
 import xml.etree.ElementTree as ET
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
@@ -37,6 +40,10 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
 RSS_BASE = "https://letterboxd.com/{username}/rss/"
+
+
+def db_path() -> str:
+    return os.getenv("ONS_DUCKDB_PATH", str(ROOT / "data" / "warehouse" / "ons.duckdb"))
 
 # Letterboxd RSS uses a custom namespace for film metadata
 LB_NS  = "https://letterboxd.com"
@@ -95,91 +102,125 @@ def _extract_review(description: str | None) -> str | None:
     return clean or None
 
 
-@dlt.resource(
-    name="diary_entries",
-    write_disposition="merge",
-    primary_key="entry_id",
-)
-def letterboxd_diary(username: str) -> Iterator[dict]:
-    """Fetch Letterboxd diary entries from RSS feed."""
-    url = RSS_BASE.format(username=username)
+def _text(item: ET.Element, tag: str) -> str | None:
+    el = item.find(tag)
+    if el is None or el.text is None:
+        return None
+    return el.text.strip() or None
 
+
+def _int_or_none(text: str | None) -> int | None:
     try:
-        resp = requests.get(
-            url,
-            headers={"User-Agent": "ons-2026/1.0 (personal use)"},
-            timeout=15,
-        )
-        resp.raise_for_status()
-    except requests.exceptions.HTTPError as e:
-        if resp.status_code == 404:
-            raise SystemExit(
-                f"Letterboxd user '{username}' not found or feed is private.\n"
-                f"Check LETTERBOXD_USERNAME in .env"
-            )
-        raise
+        return int(text) if text else None
+    except ValueError:
+        return None
 
-    root = ET.fromstring(resp.text)
+
+def parse_feed(xml_text: str, username: str) -> list[dict]:
+    """Turn the RSS document into diary rows. Pure, so it can be tested offline.
+
+    Keeps watches and reviews (guid `letterboxd-watch-…` / `letterboxd-review-…`);
+    skips lists and anything else the feed carries."""
+    root = ET.fromstring(xml_text)
     channel = root.find("channel")
     if channel is None:
-        return
+        return []
 
-    items = channel.findall("item")
-    print(f"  Found {len(items)} diary entries for @{username}")
+    ingested_at = datetime.now(timezone.utc).isoformat()
+    rows: list[dict] = []
+    for item in channel.findall("item"):
+        title_raw = _text(item, "title") or ""
+        link      = _text(item, "link") or ""
+        guid      = _text(item, "guid") or link
 
-    for item in items:
-        title_el = item.find("title")
-        link_el  = item.find("link")
-        desc_el  = item.find("description")
-        guid_el  = item.find("guid")
+        entry_type = None
+        if guid.startswith("letterboxd-watch-"):
+            entry_type = "watch"
+        elif guid.startswith("letterboxd-review-"):
+            entry_type = "review"
+        else:
+            continue  # lists, stories
 
-        title_raw = (title_el.text or "") if title_el is not None else ""
-        link      = (link_el.text or "") if link_el is not None else ""
-        guid      = (guid_el.text or link) if guid_el is not None else link
-
-        # Parse film title and year from title like "The Godfather, 1972 - ★★★★★"
+        # Fall back to parsing "The Godfather, 1972 - ★★★★★" when the namespaced tags are absent.
         film_title = title_raw
         rating_str = None
         if " - " in title_raw:
-            parts      = title_raw.rsplit(" - ", 1)
-            film_title = parts[0].strip()
-            rating_str = parts[1].strip() if len(parts) > 1 else None
-
-        # Remove year from title if present: "The Godfather, 1972" → "The Godfather"
+            film_title, rating_str = (part.strip() for part in title_raw.rsplit(" - ", 1))
         film_year_inline = None
         year_match = re.search(r",\s*(\d{4})$", film_title)
         if year_match:
             film_year_inline = int(year_match.group(1))
             film_title = film_title[:year_match.start()].strip()
 
+        film_title = _text(item, f"{{{LB_NS}}}filmTitle") or film_title
+        film_year  = _parse_year(item) or film_year_inline
+
+        member_rating = _text(item, f"{{{LB_NS}}}memberRating")
+        try:
+            rating = float(member_rating) if member_rating else _parse_rating(rating_str)
+        except ValueError:
+            rating = _parse_rating(rating_str)
+
         watched_date = _parse_watched_date(item)
-        film_year    = _parse_year(item) or film_year_inline
-        rating       = _parse_rating(rating_str)
-        review       = _extract_review(
-            (desc_el.text or "") if desc_el is not None else None
-        )
+        rewatch = (_text(item, f"{{{LB_NS}}}rewatch") or "").lower() == "yes"
+        liked   = (_text(item, f"{{{LB_NS}}}memberLike") or "").lower() == "yes"
 
-        # Rewatch detection
-        rewatch_el = item.find(f"{{{LB_NS}}}rewatch")
-        is_rewatch = (rewatch_el is not None and
-                      rewatch_el.text and
-                      rewatch_el.text.strip().lower() == "yes")
-
-        # Unique entry ID: guid or constructed from title + date
-        entry_id = guid or f"{film_title}_{watched_date}"
-
-        yield {
-            "entry_id":     entry_id,
-            "film_title":   film_title,
-            "film_year":    film_year,
-            "watched_date": watched_date,
-            "rating":       rating,
-            "review":       review,
-            "is_rewatch":   is_rewatch,
-            "film_url":     link,
+        rows.append({
+            "entry_id":        guid or f"{film_title}_{watched_date}",
+            "entry_type":      entry_type,
+            "film_title":      film_title,
+            "film_year":       film_year,
+            "tmdb_id":         _int_or_none(_text(item, f"{{{TMDB_NS}}}movieId")),
+            "watched_date":    watched_date,
+            "rating":          rating,
+            "liked":           liked,
+            "review":          _extract_review(_text(item, "description")),
+            "is_rewatch":      rewatch,
+            "film_url":        link,
             "letterboxd_user": username,
-            "ingested_at":  datetime.utcnow().isoformat(),
-        }
+            "ingested_at":     ingested_at,
+        })
+    return rows
+
+
+def fetch_feed(username: str) -> str:
+    url = RSS_BASE.format(username=username)
+    resp = requests.get(
+        url,
+        headers={"User-Agent": "ons-2026/1.0 (personal use)"},
+        timeout=15,
+    )
+    if resp.status_code == 404:
+        raise SystemExit(
+            f"Letterboxd user '{username}' not found or feed is private.\n"
+            f"Check LETTERBOXD_USERNAME in .env"
+        )
+    resp.raise_for_status()
+    return resp.text
+
+
+@dlt.resource(
+    name="diary_entries",
+    write_disposition="merge",
+    primary_key="entry_id",
+    # Nullable columns are declared: dlt drops a column that is null in every row of a
+    # load, and stg_letterboxd__diary selects them by name.
+    columns={
+        "tmdb_id":      {"data_type": "bigint"},
+        "film_year":    {"data_type": "bigint"},
+        "rating":       {"data_type": "double"},
+        "review":       {"data_type": "text"},
+        "watched_date": {"data_type": "text"},
+        "liked":        {"data_type": "bool"},
+        "is_rewatch":   {"data_type": "bool"},
+        "entry_type":   {"data_type": "text"},
+    },
+)
+def letterboxd_diary(username: str) -> Iterator[dict]:
+    """Fetch Letterboxd diary entries from RSS feed."""
+    rows = parse_feed(fetch_feed(username), username)
+    print(f"  Found {len(rows)} diary entries for @{username}")
+    yield from rows
 
 
 def build_summary(username: str) -> list[dict]:
@@ -188,14 +229,14 @@ def build_summary(username: str) -> list[dict]:
     Called after the DLT pipeline completes.
     """
     import duckdb
-    db_path = ROOT / "data" / "warehouse" / "ons.duckdb"
-    if not db_path.exists():
+    path = Path(db_path())
+    if not path.exists():
         return []
 
     try:
-        con = duckdb.connect(str(db_path), read_only=True)
+        con = duckdb.connect(str(path), read_only=True)
         year = date.today().year
-        rows = con.execute(f"""
+        rows = con.execute("""
             SELECT
                 count(*)                                    AS films_watched,
                 round(avg(rating) FILTER (WHERE rating IS NOT NULL), 2) AS avg_rating,
@@ -204,9 +245,9 @@ def build_summary(username: str) -> list[dict]:
                 min(watched_date)                           AS first_watch,
                 max(watched_date)                           AS last_watch
             FROM letterboxd.diary_entries
-            WHERE year(watched_date::date) = {year}
-              AND letterboxd_user = '{username}'
-        """).df()
+            WHERE year(watched_date::date) = ?
+              AND letterboxd_user = ?
+        """, [year, username]).df()
         con.close()
         return rows.to_dict(orient="records")
     except Exception:
@@ -226,15 +267,15 @@ def main() -> int:
     print(f"Letterboxd pipeline — @{args.username}")
 
     if args.dry_run:
-        print("[dry-run] Would fetch:", RSS_BASE.format(username=args.username))
-        print("[dry-run] Would load into: letterboxd.diary_entries")
+        rows = parse_feed(fetch_feed(args.username), args.username)
+        print(f"[dry-run] Parsed {len(rows)} entries; would merge into letterboxd.diary_entries")
+        for r in rows[:5]:
+            print(f"  {r['watched_date']}  tmdb={r['tmdb_id']}  {r['rating']}  {r['film_title']} ({r['film_year']})")
         return 0
 
     pipeline = dlt.pipeline(
         pipeline_name="letterboxd",
-        destination=dlt.destinations.duckdb(
-            str(ROOT / "data" / "warehouse" / "ons.duckdb")
-        ),
+        destination=dlt.destinations.duckdb(db_path()),
         dataset_name="letterboxd",
     )
 
