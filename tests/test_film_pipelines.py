@@ -136,3 +136,32 @@ def test_plex_without_config_exits_zero(tmp_path):
     assert proc.returncode == 0, proc.stderr
     assert "skipping" in proc.stdout
     assert not (tmp_path / "ons.duckdb").exists()
+
+
+def test_plex_full_reloads_plays_older_than_the_cursor(tmp_path, monkeypatch):
+    """A play that appears in history with a viewedAt before the cursor (e.g. a
+    shared user's account added later, or a row deleted from the warehouse) is
+    skipped by an incremental run but comes back with full=True."""
+    import duckdb
+
+    monkeypatch.setattr(px, "PAGE_SIZE", 2)
+    db, dlt_dir = str(tmp_path / "ons.duckdb"), str(tmp_path / "dlt")
+    meta = {"1": {"Guid": [{"id": "tmdb://348"}]}, "2": {"Guid": [{"id": "tmdb://1700"}]}}
+    newer = {"historyKey": "new", "ratingKey": "1", "type": "movie", "viewedAt": 2000}
+    older = {"historyKey": "old", "ratingKey": "2", "type": "movie", "viewedAt": 1000}
+
+    def keys():
+        with duckdb.connect(db, read_only=True) as con:
+            return sorted(r[0] for r in con.sql("select history_key from plex.history").fetchall())
+
+    px.run(FakeClient([newer], meta), None, destination_path=db, pipelines_dir=dlt_dir)
+    assert keys() == ["new"]
+
+    px.run(FakeClient([newer, older], meta), None, destination_path=db, pipelines_dir=dlt_dir)
+    assert keys() == ["new"]          # incremental: older than the cursor, skipped
+
+    px.run(FakeClient([newer, older], meta), None, full=True, destination_path=db, pipelines_dir=dlt_dir)
+    assert keys() == ["new", "old"]   # full: really reloads all history
+
+    px.run(FakeClient([newer, older], meta), None, destination_path=db, pipelines_dir=dlt_dir)
+    assert keys() == ["new", "old"]   # and the next incremental run keeps it, no duplicates

@@ -203,6 +203,26 @@ def plex_history_resource(client: PlexClient, account_id: str | None, full: bool
     return history
 
 
+def run(client: PlexClient, account_id: str | None, full: bool = False,
+        destination_path: str | None = None, pipelines_dir: str | None = None):
+    """Load plex.history.
+
+    full=True re-reads all history. Passing since=0 to the generator isn't enough:
+    dlt's incremental still drops rows older than its stored last_value. So a full
+    run uses refresh="drop_resources", which drops plex.history and the resource's
+    state (the cursor) before loading, and every play is reloaded."""
+    pipeline = dlt.pipeline(
+        pipeline_name="plex",
+        destination=dlt.destinations.duckdb(destination_path or db_path()),
+        dataset_name="plex",
+        pipelines_dir=pipelines_dir,
+    )
+    return pipeline.run(
+        plex_history_resource(client, account_id, full)(),
+        refresh="drop_resources" if full else None,
+    )
+
+
 def _account_id() -> str | None:
     raw = os.getenv("PLEX_ACCOUNT_ID", "1").strip()
     return None if raw.lower() in ("", "all") else raw
@@ -211,7 +231,7 @@ def _account_id() -> str | None:
 def main() -> int:
     p = argparse.ArgumentParser(description="Load Plex movie watch history into DuckDB.")
     p.add_argument("--dry-run", action="store_true", help="fetch and print; write nothing")
-    p.add_argument("--full", action="store_true", help="ignore the incremental cursor")
+    p.add_argument("--full", action="store_true", help="drop plex.history and its cursor, then reload all history")
     args = p.parse_args()
 
     url, token = os.getenv("PLEX_URL", "").strip(), os.getenv("PLEX_TOKEN", "").strip()
@@ -230,12 +250,7 @@ def main() -> int:
             print(f"  {r['watched_date']}  tmdb={r['tmdb_id']}  {r['title']} ({r['film_year']})")
         return 0
 
-    pipeline = dlt.pipeline(
-        pipeline_name="plex",
-        destination=dlt.destinations.duckdb(db_path()),
-        dataset_name="plex",
-    )
-    load_info = pipeline.run(plex_history_resource(client, account_id, args.full)())
+    load_info = run(client, account_id, full=args.full)
     print(f"✅ Loaded: {load_info}")
     return 0
 

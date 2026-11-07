@@ -13,4 +13,5 @@ models:
       - name: source
         tests:
           - accepted_values:
-              values: ['letterboxd', 'plex', 'both']
+              arguments:
+                values: ['letterboxd', 'plex', 'both']
