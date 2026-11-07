@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play hue options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* Existing area tokens copied from web/app/globals.css; candidates A–C are proposals only. */
+  .light { --frame:#edf1ee; --sheet:#fff; --raised:#f4f6f4; --line:#dde3de; --ink:#141714; --muted:#596059;
+    --run:#dcefff; --run-ink:#0a3a80; --run-mark:#2a6fd6; --lift:#fdecc8; --lift-ink:#663a00; --lift-mark:#c27a12;
+    --read:#d4f2ea; --read-ink:#0b4840; --read-mark:#17907c; --habit:#e0f3d5; --habit-ink:#1f4a12; --habit-mark:#3f8f2a;
+    --check:#ebe5fc; --check-ink:#37217a; --check-mark:#6d4fd1; --plan:#fbe3ea; --plan-ink:#6b1631; --plan-mark:#c2456b;
+    --edge:#fde3cf; --edge-ink:#6a2b06; --edge-mark:#d9661c; --wx:#e6ebf2; --wx-ink:#263247; --wx-mark:#5b6f8f;
+    --a:#fae5fd; --a-ink:#4e1d56; --a-mark:#a044ae; --b:#f1efcd; --b-ink:#3b3704; --b-mark:#80770e;
+    --c:#d0f4ff; --c-ink:#043c49; --c-mark:#07829b; }
+  .dark { --frame:#0f1210; --sheet:#171b18; --raised:#1f2420; --line:#2b322d; --ink:#edf1ee; --muted:#9ea7a0;
+    --run:#142a45; --run-ink:#b8d8ff; --run-mark:#5d9ff2; --lift:#352508; --lift-ink:#f7d394; --lift-mark:#e39d36;
+    --read:#0e302a; --read-ink:#a2e6d6; --read-mark:#33b89f; --habit:#182c12; --habit-ink:#c2e8ae; --habit-mark:#63b549;
+    --check:#251c42; --check-ink:#d2c6ff; --check-mark:#9479f2; --plan:#371722; --plan-ink:#ffc2d2; --plan-mark:#e66b91;
+    --edge:#3a1f0c; --edge-ink:#ffcca4; --edge-mark:#f08a45; --wx:#1d2433; --wx-ink:#c5d0e3; --wx-mark:#7f95ba;
+    --a:#301834; --a-ink:#f4cafb; --a-mark:#d280df; --b:#262407; --b-ink:#e4de98; --b-mark:#b9ae40;
+    --c:#012831; --c-ink:#a6e7fa; --c-mark:#31b9da; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 400 14px/20px "IBM Plex Sans", system-ui, sans-serif; background: #edf1ee; color: #141714; }
+  main { max-width: 1240px; margin: 0 auto; padding: 32px 24px 48px; }
+  h1 { font: 600 24px/30px "IBM Plex Sans", sans-serif; margin: 0 0 6px; }
+  .lede { max-width: 70ch; color: #2c312c; margin: 0 0 24px; text-wrap: pretty; }
+  .themes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .theme { background: var(--frame); color: var(--ink); border-radius: 10px; padding: 16px; }
+  .theme > h2 { font: 500 12px/16px "IBM Plex Mono", monospace; color: var(--muted); margin: 0 0 12px; }
+  .sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .row { display: grid; grid-template-columns: 112px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .row:first-of-type { border-top: 0; padding-top: 0; }
+  .who { font-weight: 600; } .who small { display: block; font: 400 12px/16px "IBM Plex Mono", monospace; color: var(--muted); }
+  .demo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .lane { background: var(--t); color: var(--i); font: 500 12px/24px "IBM Plex Sans", sans-serif; padding: 0 10px; border-radius: 5px; box-shadow: inset 3px 0 0 var(--m); }
+  .chip { color: var(--i); background: var(--t); font: 500 11px/18px "IBM Plex Mono", monospace; padding: 0 6px; border-radius: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--m); }
+  .bar { width: 96px; height: 6px; border-radius: 4px; background: var(--raised); overflow: hidden; } .bar i { display: block; height: 100%; width: 62%; background: var(--m); }
+  .tile { background: var(--t); color: var(--i); border-radius: 6px; padding: 6px 10px; font: 600 15px/20px "IBM Plex Sans", sans-serif; }
+  .tile span { display: block; font: 400 11px/14px "IBM Plex Sans", sans-serif; opacity: .82; }
+  .strip { display: flex; gap: 4px; margin-top: 4px; } .strip b { flex: 1; height: 18px; border-radius: 4px; background: var(--m); }
+  .strip b.cand { outline: 2px solid var(--ink); outline-offset: 1px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 24px; background: #fff; border-radius: 8px; overflow: hidden; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 12px; border-top: 1px solid #dde3de; vertical-align: top; }
+  th { font: 500 12px/16px "IBM Plex Mono", monospace; color: #596059; border-top: 0; }
+  .note { color: #596059; font-size: 13px; margin-top: 12px; max-width: 80ch; }
+  @media (max-width: 860px) { .themes { grid-template-columns: 1fr; } table { font-size: 13px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>A hue for Play (Music, King Gizzard, Sports)</h1>
+  <p class="lede">The eight area hues sit, in OKLCH, at 3° (plans), 48° (CFB), 70° (CrossFit), 139° (habits), 177° (reading), 258° (running and weather) and 290° (check-in). The three widest gaps are at about 105°, 218° and 322°, so each option sits in the middle of one of them. Every option uses the same tint, ink and mark recipe as the existing areas.</p>
+
+  <div class="themes">
+  <section class="theme light"><h2>Light</h2><div class="sheet" id="L"></div></section>
+  <section class="theme dark"><h2>Dark</h2><div class="sheet" id="D"></div></section>
+  </div>
+
+  <table>
+    <thead><tr><th>Option</th><th>Light: tint / ink / mark</th><th>Dark: tint / ink / mark</th><th>Ink on tint</th><th>Mark on sheet</th><th>Nearest existing mark (ΔE OK)</th></tr></thead>
+    <tbody>
+      <tr><td><b>A Magenta</b> 322°</td><td>#fae5fd / #4e1d56 / #a044ae</td><td>#301834 / #f4cafb / #d280df</td><td>10.8 · 11.2</td><td>5.3 · 6.5</td><td>check-in 11, plans 13 (both themes)</td></tr>
+      <tr><td><b>B Olive</b> 104°</td><td>#f1efcd / #3b3704 / #80770e</td><td>#262407 / #e4de98 / #b9ae40</td><td>10.4 · 11.4</td><td>4.6 · 7.6</td><td>habits 9, CrossFit 11 (light) · CrossFit 7 (dark)</td></tr>
+      <tr><td><b>C Cerulean</b> 218°</td><td>#d0f4ff / #043c49 / #07829b</td><td>#012831 / #a6e7fa / #31b9da</td><td>10.3 · 11.4</td><td>4.5 · 7.5</td><td>weather 7, reading 7 (light) · reading and running 9 (dark)</td></tr>
+    </tbody>
+  </table>
+  <p class="note">The contrast columns give light · dark. Every option clears 4.5:1 for ink text on its tint by a wide margin and 3:1 for marks on the sheet. For comparison, the closest existing pairs are CrossFit and CFB at ΔE 6 (5 in dark), and running and check-in at 10.</p>
+  <ul class="note">
+    <li><b>Magenta</b> separates best (11 or more from every existing mark in both themes) and reads as "stage lights".</li>
+    <li><b>Olive</b> is clear in light but drifts toward CrossFit amber in dark.</li>
+    <li><b>Cerulean</b> sits between reading teal and the blues; it is the easiest to confuse.</li>
+  </ul>
+</main>
+<script>
+  const areas = [["run","Running"],["lift","CrossFit"],["read","Reading"],["habit","Habits"],["check","Check-in"],["plan","Plans"],["edge","CFB"],["wx","Weather"]];
+  const opts = [["a","A Magenta","322°"],["b","B Olive","104°"],["c","C Cerulean","218°"]];
+  for (const id of ["L","D"]) {
+    const el = document.getElementById(id);
+    el.innerHTML = opts.map(([k, name, h]) => {
+      const v = `--t:var(--${k});--i:var(--${k}-ink);--m:var(--${k}-mark)`;
+      const strip = areas.map(([a]) => `<b title="${a}" style="background:var(--${a}-mark)"></b>`).join("") + `<b class="cand" title="${name}" style="background:var(--${k}-mark)"></b>`;
+      return `<div class="row" style="${v}"><div class="who">${name}<small>${h}</small></div><div>
+        <div class="demo"><span class="lane">King Gizzard</span><span class="chip">MUSIC</span><span class="dot"></span><span class="bar"><i></i></span>
+        <span class="tile">388 h<span>listening</span></span></div><div class="strip">${strip}</div></div></div>`;
+    }).join("") + `<div class="row"><div class="who">Existing<small>for reference</small></div><div class="demo">${areas.map(([a, n]) =>
+      `<span class="lane" style="--t:var(--${a});--i:var(--${a}-ink);--m:var(--${a}-mark)">${n}</span>`).join("")}</div></div>`;
+  }
+</script>
+</body>
+</html>

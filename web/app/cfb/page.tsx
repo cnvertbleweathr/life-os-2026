@@ -882,7 +882,7 @@ function KickoffStrip({ picks }: { picks: ParsedPick[] }) {
       </div>
       <div className="ons-legend">
         <span><i style={{ background: "var(--edge-mark)" }} />Underdog pick</span>
-        <span><i style={{ background: "var(--check-mark)" }} />Favorite pick</span>
+        <span><i style={{ background: "var(--ink-2)" }} />Favorite pick</span>
         {others.length > 0 && <span>Also: {others.map(x => `${fmtDay(x.kick!, { weekday: "short" })} ${fmtTime(x.kick!)} ${x.team}`).join(" · ")}</span>}
       </div>
     </>

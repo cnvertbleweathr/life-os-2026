@@ -57,6 +57,24 @@
         ],
         "createdAt": "2026-11-06T20:33:33.402Z",
         "reason": "Archived alternative directions keep their own fonts; DESIGN.md now documents the chosen Logbook Color (IBM Plex)."
+      },
+      {
+        "rule": "design-system-font",
+        "value": "plex sans\",sans-serif",
+        "createdAt": "2026-11-07T17:35:04.993Z",
+        "reason": "Claude: IBM Plex Sans/Mono are the DESIGN.md fonts; detector misparses the quoted family"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "plex sans\",system-ui,sans-serif",
+        "createdAt": "2026-11-07T17:35:05.040Z",
+        "reason": "Claude: IBM Plex Sans/Mono are the DESIGN.md fonts; detector misparses the quoted family"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "plex mono\",monospace",
+        "createdAt": "2026-11-07T17:35:05.088Z",
+        "reason": "Claude: IBM Plex Sans/Mono are the DESIGN.md fonts; detector misparses the quoted family"
       }
     ]
   }

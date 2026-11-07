@@ -209,7 +209,7 @@ The *tint* fills lane labels, marks and tinted cards. The *ink* is text on that 
 On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6`/`#7d1c20`, not wired `#eef0ee`/`#3e443e`. Dark: `#143222`/`#a9e9c4`, `#382810`/`#f6cf8b`, `#3d191c`/`#ffb8bb`, `#232924`/`#c3cac4`.
 
 ### Named Rules
-**The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. The one sanctioned overlap is violet: "things you write" on Home and "favourite picks" on the slate, which never share a page. Adding a ninth area reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
+**The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. Violet means only "things you write" (check-in and capture); favourite picks on the slate use plain ink, so no hue has two meanings. Adding a ninth area reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
 
 **The Play Pages Are Neutral Rule.** Music, King Gizzard and Sports have no area colour of their own: ink, rules, neutral pills and the forest system colour only. An existing area colour appears there only when that area does (college football rows on Sports keep CFB tangerine and link to Degenerates Corner). Giving Play a hue is an owner decision.
 
@@ -298,7 +298,7 @@ A table of goal, progress bar, "Needs" (the rate required) and state pill. Each 
 A 13px label, a 26px figure, a short line, then one visual: a per-week chart, a season bar, a pipeline checklist (green check circles for done, dashed circles for to-do, with right-aligned mono detail) or a link.
 
 ### Kickoff strip (CFB signature)
-Games on a 9 am–midnight axis. Each bar is a tint with a 3px mark edge: tangerine for underdog picks, violet for favourites. Labels on the left give pick and line. On phones it becomes a list. The picks table repeats the side colour in its Side chip and score bar.
+Games on a 9 am–midnight axis. Each bar is a tint with a 3px mark edge: tangerine for underdog picks, plain ink on a raised fill for favourites. Labels on the left give pick and line. On phones it becomes a list. The picks table repeats the side colour in its Side chip and score bar.
 
 ### Status pills
 20px high, 4px radius, 12px Sans 500. They wrap to two lines on phones rather than truncating.
