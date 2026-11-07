@@ -4,9 +4,9 @@ api/film_catalog.py: the film scene catalog, one row per film.
 The catalog is the reference record for each film's 5-second pixel GIF: which
 scene it shows, how it will be rendered, and where it is in the review flow:
 
-  suggested ──approve──▶ approved ──(Phase 3 renderer)──▶ rendered
-      │                     │
-      └──reject──▶ rejected ◀┘          (a rejected row can be edited and approved later)
+  suggested ──approve──▶ approved ──render──▶ rendered
+      │                     ▲    ◀──edit────────┘   (editing a rendered row re-queues it)
+      └──reject──▶ rejected ┘                       (a rejected row can be edited and approved later)
 
 Storage follows the ONS write path (see api/store.py): the API never writes to
 DuckDB, so every change appends a full snapshot of the film's row to
@@ -19,6 +19,7 @@ Writers:
   scripts/film_suggest_scenes.py   new rows, status "suggested" (daily sync, after dbt)
   api/routers/film.py              approve / edit / reject (owner only)
   scripts/film_catalog.py          the same three from the command line
+  scripts/film_gif_render.py       marks approved rows rendered (daily sync, after suggestions)
 
 Render mode is decided by rule, not by the model (copyright matters too much
 to leave to a suggestion):
@@ -189,11 +190,13 @@ def _apply_edits(row: dict[str, Any], edits: dict[str, Any]) -> dict[str, Any]:
 
 
 def edit(film_key: str, edits: dict[str, Any]) -> dict[str, Any]:
+    """Edit a row. Editing a rendered row sends it back to approved and clears
+    its GIF paths, so the renderer makes it again on the next run."""
     row = get(film_key)
+    new = _apply_edits(row, edits)
     if row["status"] == "rendered":
-        raise CatalogError("this film's GIF is already rendered; re-rendering arrives with the renderer",
-                           status=409)
-    return _write(_apply_edits(row, edits))
+        new = {**new, "status": "approved", "gif_web": None, "gif_matrix": None, "rendered_at": None}
+    return _write(new)
 
 
 def approve(film_key: str, edits: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -210,6 +213,14 @@ def approve(film_key: str, edits: dict[str, Any] | None = None) -> dict[str, Any
 
 def reject(film_key: str) -> dict[str, Any]:
     row = get(film_key)
-    if row["status"] == "rendered":
-        raise CatalogError("this film's GIF is already rendered", status=409)
-    return _write({**row, "status": "rejected", "rejected_at": timestamp(), "approved_at": None})
+    return _write({**row, "status": "rejected", "rejected_at": timestamp(), "approved_at": None,
+                   "gif_web": None, "gif_matrix": None, "rendered_at": None})
+
+
+def mark_rendered(film_key: str, gif_web: str, gif_matrix: str) -> dict[str, Any]:
+    """Called by the renderer (scripts/film_gif_render.py). Paths are relative to the data dir."""
+    row = get(film_key)
+    if row["status"] not in ("approved", "rendered"):
+        raise CatalogError(f"{film_key} is {row['status']}, not approved", status=409)
+    return _write({**row, "status": "rendered", "gif_web": gif_web, "gif_matrix": gif_matrix,
+                   "rendered_at": timestamp()})
