@@ -23,6 +23,7 @@ from api.auth import require_owner
 from api.routers import (
     cfb,
     checkin,
+    film,
     fitness,
     goals,
     habits,
@@ -94,6 +95,7 @@ app.include_router(kglw.router,    prefix="/api/kglw",    tags=["kglw"])
 owner_only = [Depends(require_owner)]
 app.include_router(checkin.router, prefix="/api/checkin", tags=["checkin"], dependencies=owner_only)
 app.include_router(inbox.router,   prefix="/api/inbox",   tags=["inbox"],   dependencies=owner_only)
+app.include_router(film.router,    prefix="/api/film",    tags=["film"],    dependencies=owner_only)
 
 @app.get("/api/health")
 async def health():
