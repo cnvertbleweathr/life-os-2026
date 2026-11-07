@@ -554,7 +554,8 @@ def build_steps(year: int) -> List[Step]:
             tags=["dbt"],
         ),
         # Film scene catalog: suggest a scene for each newly watched film
-        # (one Claude call per film, within the shared AI budget), then mirror
+        # (one Claude call per film, within the shared AI budget), render the
+        # GIF of every approved film that has none, then mirror
         # data/film/scene_catalog.jsonl into film.scene_catalog. The load runs
         # every day so approvals made through the API reach the warehouse.
         Step(
@@ -563,6 +564,13 @@ def build_steps(year: int) -> List[Step]:
             run_if_exists=ROOT / "scripts/film_suggest_scenes.py",
             tags=["film", "ai"],
             timeout_s=600,
+        ),
+        Step(
+            name="film_gif_render",
+            cmd=["python3", "scripts/film_gif_render.py"],
+            run_if_exists=ROOT / "scripts/film_gif_render.py",
+            tags=["film"],
+            timeout_s=900,
         ),
         Step(
             name="film_catalog",

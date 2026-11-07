@@ -171,3 +171,8 @@ __MACOSX/
 # Dev servers (scripts/dev.sh): scratch write logs and a separate Next build dir
 .dev-data/
 web/.next-dev/
+
+# Film GIFs (scripts/film_gif_render.py). Already covered by data/**; listed so it stays
+# ignored if that rule changes: plex_clip GIFs are a personal-use derivative of
+# copyrighted films and must never be committed or served publicly.
+data/film/gifs/
