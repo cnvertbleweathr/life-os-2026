@@ -517,6 +517,27 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # Film — Letterboxd diary (public RSS) + Plex watch history.
+        # Must run before dbt so mart_film_watches rebuilds on fresh data.
+        # Plex exits 0 with a notice until PLEX_URL / PLEX_TOKEN are set;
+        # stg_plex__history is empty until then.
+        # ------------------------------------------------------------------
+        Step(
+            name="letterboxd",
+            cmd=["python3", "pipelines/letterboxd_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/letterboxd_pipeline.py",
+            tags=["film", "pipelines"],
+            timeout_s=300,
+        ),
+        Step(
+            name="plex",
+            cmd=["python3", "pipelines/plex_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/plex_pipeline.py",
+            tags=["film", "pipelines"],
+            timeout_s=600,
+        ),
+
+        # ------------------------------------------------------------------
         # Goals + dbt — always run, required
         # ------------------------------------------------------------------
         Step(

@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: mart_film_watches
+    description: One row per film per watch date, from Letterboxd and Plex.
+    columns:
+      - name: watch_id
+        tests: [unique, not_null]
+      - name: film_key
+        tests: [not_null]
+      - name: watch_date
+        tests: [not_null]
+      - name: source
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['letterboxd', 'plex', 'both']
