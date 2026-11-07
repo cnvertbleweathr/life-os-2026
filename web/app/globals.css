@@ -250,7 +250,7 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .t-lift { --t: var(--lift); --t-ink: var(--lift-ink); --t-mark: var(--lift-mark); }
 .t-read { --t: var(--read); --t-ink: var(--read-ink); --t-mark: var(--read-mark); }
 .dog { --l: var(--edge); --l-ink: var(--edge-ink); --l-mark: var(--edge-mark); }
-.fav { --l: var(--check); --l-ink: var(--check-ink); --l-mark: var(--check-mark); }
+.fav { --l: var(--raised); --l-ink: var(--ink); --l-mark: var(--ink-2); }
 
 .ons-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
 .ons-grid .s4 { grid-column: span 4; } .ons-grid .s8 { grid-column: span 8; } .ons-grid .s12 { grid-column: span 12; }
