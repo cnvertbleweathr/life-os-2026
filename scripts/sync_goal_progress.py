@@ -120,7 +120,8 @@ def build_rows(year: int) -> list[dict]:
     if spotify_csv.exists():
         import pandas as _pd
         sp = _pd.read_csv(spotify_csv)
-        v = sp.get("minutes_streamed_ytd", sp.get("total_minutes"))
+        # spotify_metrics.py writes spotify_minutes_ytd; the other names are older layouts.
+        v = next((sp[c] for c in ("spotify_minutes_ytd", "minutes_streamed_ytd", "total_minutes") if c in sp.columns), None)
         if v is not None:
             try:
                 spotify_minutes = int(float(v.iloc[0]))

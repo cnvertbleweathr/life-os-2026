@@ -211,6 +211,8 @@ On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6
 ### Named Rules
 **The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. The one sanctioned overlap is violet: "things you write" on Home and "favourite picks" on the slate, which never share a page. Adding a ninth area reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
 
+**The Play Pages Are Neutral Rule.** Music, King Gizzard and Sports have no area colour of their own: ink, rules, neutral pills and the forest system colour only. An existing area colour appears there only when that area does (college football rows on Sports keep CFB tangerine and link to Degenerates Corner). Giving Play a hue is an owner decision.
+
 **The Forest Is The System Rule.** Forest marks what the system knows about you right now: today, selected, focused. Area colours never do those jobs.
 
 **The Two Themes, One Token Rule.** Every colour exists as a token in both themes. Never hard-code a hex in a component; a colour that only works in one theme is a bug.
@@ -325,6 +327,9 @@ One small looping pixel-art scene sits beside each page title. Scenes are built 
   - today's weather and temperature on This Week;
   - on Fitness, the year's class count on the gym whiteboard, plates on the squat bar that add up to the heaviest back squat logged, and the year's miles on the treadmill console;
   - on Reading, a top shelf with one slot per book in the year's goal, filled with the books finished (fiction teal, nonfiction navy, unclassified grey);
+  - on Music, the date of your artists' next Denver show on the gig poster and the year's listening hours on the amp;
+  - on King Gizzard, the number of shows the band has played on the marquee (the lizard in the wizard hat is an original character);
+  - on Sports, the score of your most relevant game today on the rink scoreboard;
   - the owner's own pets (a black dog, a chihuahua-beagle, a puggle, a brown tabby, a gray striped cat).
 - **Motion rules:**
   - Draw only when the frame changes.

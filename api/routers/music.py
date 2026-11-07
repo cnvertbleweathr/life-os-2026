@@ -102,6 +102,28 @@ async def top_tracks(limit: int = 20):
         return []
 
 
+@router.get("/by-month")
+async def by_month():
+    """Listening minutes per month this year (Denver time) and the newest play in the export, so the page
+    can say how current the Spotify history is (it's a manual export, not a live feed)."""
+    if not STREAMS_CLEAN.exists():
+        return {"months": [], "last_played": None}
+    try:
+        df = pd.read_csv(STREAMS_CLEAN, usecols=["played_at", "ms_played"])
+        df["played_at"] = pd.to_datetime(df["played_at"], errors="coerce", utc=True).dt.tz_convert("America/Denver")
+        df = df[df["played_at"].dt.year == date.today().year]
+        if df.empty:
+            return {"months": [], "last_played": None}
+        m = df.groupby(df["played_at"].dt.month)["ms_played"].sum() / 60000
+        return {
+            "months": [{"month": int(k), "minutes": round(float(v), 1)} for k, v in m.items()],
+            "days": int(df["played_at"].dt.date.nunique()),
+            "last_played": df["played_at"].max().date().isoformat(),
+        }
+    except Exception:
+        return {"months": [], "last_played": None}
+
+
 AOTD_CACHE    = ROOT / "data" / "music" / "artist_of_day"
 MY_ARTISTS    = ROOT / "data" / "spotify" / "processed" / "my_artists.json"
 UA            = {"User-Agent": "ONS-personal-dashboard/1.0 (github.com/cnvertbleweathr/life-os-2026)"}
