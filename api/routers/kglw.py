@@ -117,24 +117,12 @@ async def kglw_shows(
     return [_parse_show_tags(r) for r in rows]
 
 
-@router.get("/shows/{show_id}")
-async def kglw_show_detail(show_id: int, request: Request):
-    """Single show with full detail."""
-    db = get_db(request)
-
-    show = query_one(db, """
-        SELECT * FROM kglw.shows WHERE show_id = ?
-    """, [show_id])
-
-    if not show:
-        return None
-
-    return _parse_show_tags(show)
-
-
 @router.get("/shows/on-this-day")
 async def kglw_on_this_day(request: Request, month: int | None = None, day: int | None = None):
     """
+    Declared before /shows/{show_id}: FastAPI matches routes in order, and "on-this-day" used to be parsed as
+    a show id (422).
+
     Shows played on this calendar date in any year — for the
     "On This Day" card on the Globe page. Defaults to today.
     """
@@ -152,6 +140,21 @@ async def kglw_on_this_day(request: Request, month: int | None = None, day: int 
     """, [m, d])
 
     return rows
+
+
+@router.get("/shows/{show_id}")
+async def kglw_show_detail(show_id: int, request: Request):
+    """Single show with full detail."""
+    db = get_db(request)
+
+    show = query_one(db, """
+        SELECT * FROM kglw.shows WHERE show_id = ?
+    """, [show_id])
+
+    if not show:
+        return None
+
+    return _parse_show_tags(show)
 
 
 # ── Songs ────────────────────────────────────────────────────────────────────

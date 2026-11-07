@@ -469,7 +469,197 @@ const reading = {
   },
 };
 
-const SCENES = { cfb, week, fitness, reading };
+// ---------------- Music ----------------
+// A listening room. The poster on the wall carries the date of your artists' next Denver show; the amp's display
+// shows the year's listening hours. The listener nods on the beat (2 frames); the record's highlight turns and
+// the woofers pump (2-frame props); a note drifts up now and then.
+const LISTENER = [
+  '.......OOOO.........',
+  '......OHHHHO........',
+  '......HHHHHs........',
+  '.....PHHHHse........',
+  '.....PHHHsss........',
+  '.......Htss.........',
+  '......jjjjj.........',
+  '.....jjjjjjj........',
+  '.....jjjjkjjss......',
+  '.....jjjjk..........',
+  '.....jjjjk..........',
+  '.....rrrrrrrrrr.....',
+  '.....rrrrrrrrrrr....',
+  '..............pp....',
+  '..............pp....',
+  '..............pp....',
+  '..............xxxx..',
+  '....................',
+];
+const NOTE = ['.11', '.1.', '11.', '11.'];
+const music = {
+  ms: 150, stride: 0, still: 0,
+  draw(ctx, W, n, P, data) {
+    px(ctx, P.wall, 0, 0, W, 26);
+    px(ctx, P['wall-d'], 0, 22, W, 4);
+    px(ctx, P.wood, 0, 26, W, H - 26); px(ctx, P['wood-d'], 0, 29, W, 1);
+    // record shelf: sleeves standing in two cubbies
+    const sx = 4;
+    px(ctx, P['wood-d'], sx, 10, 26, 16); px(ctx, P['wall-d'], sx + 1, 11, 24, 6); px(ctx, P['wall-d'], sx + 1, 18, 24, 7);
+    const SLEEVE = [P.plate, P.navy, P.lift, P.read, P['team-d'], P.white, P.foe, P['tree']];
+    for (const [y0, h] of [[11, 6], [18, 7]]) for (let x = sx + 2, k = y0; x < sx + 24; x += 2, k++) {
+      if (rnd(k * 13) > 0.85) continue;
+      px(ctx, SLEEVE[Math.floor(rnd(k * 7) * SLEEVE.length)], x, y0 + (h - 5), 1, 5); px(ctx, P['wood-d'], x + 1, y0 + (h - 5), 1, 5);
+    }
+    // gig poster: the next show by one of your artists
+    const pxp = sx + 32, poster = String(data.poster || '').replace(/[^0-9-]/g, '').slice(0, 5);
+    px(ctx, P.foe, pxp, 3, 20, 15); px(ctx, P['foe-d'], pxp, 15, 20, 3);
+    if (poster) text(ctx, poster, pxp + 2 + Math.floor((16 - poster.length * 4) / 2), 6, P.white);
+    for (let x = 0; x < 16; x++) px(ctx, P.post, pxp + 2 + x, 12 + (x % 4 < 2 ? 0 : 1));
+    // the listener in a chair, facing the turntable
+    const cx = Math.max(pxp + 22, Math.round(W * 0.42) - 12), cy = 8;
+    px(ctx, P.navy, cx, cy + 3, 6, 15); px(ctx, P.navy, cx + 1, cy + 2, 4, 1); px(ctx, P['navy-d'], cx + 5, cy + 3, 1, 15);
+    px(ctx, P.navy, cx + 4, cy + 13, 13, 3); px(ctx, P['navy-d'], cx + 4, cy + 16, 13, 1);
+    const nod = n % 4 < 2 ? 0 : 1;
+    const g = toGrid(LISTENER);
+    if (nod) { for (let y = 6; y > 0; y--) g[y] = g[y - 1].slice(); g[0] = [...'....................']; }
+    drawSprite(ctx, g, cx, cy, { O: P.mask, P: P.plate, H: P.hair, s: P.skin, t: P['skin-d'], e: P.outline, j: P.lift, k: P['lift-d'], r: P['run-d'], p: P['run-d'], x: P.white }, P.outline);
+    px(ctx, P.navy, cx + 3, cy + 10, 11, 3); px(ctx, P['navy-d'], cx + 13, cy + 10, 1, 3); // near armrest
+    // speakers, cabinet with the amp display, turntable on top
+    const tx = Math.max(cx + 30, Math.round(W * 0.7) - 15), pump = n % 2;
+    [tx - 9, tx + 32].forEach(x => {
+      px(ctx, P.mat, x, 12, 7, 14); px(ctx, P.mat2, x + 1, 13, 5, 3);
+      px(ctx, P.mat2, x + 1 - pump, 18 - pump, 5 + pump * 2, 5 + pump * 2); px(ctx, P.mat, x + 3, 20, 1, 1);
+    });
+    px(ctx, P.wood, tx, 17, 30, 9); px(ctx, P['wood-d'], tx, 17, 30, 1); px(ctx, P['wood-d'], tx + 1, 26, 2, 1); px(ctx, P['wood-d'], tx + 27, 26, 2, 1);
+    const hrs = String(data.hours || '').replace(/\D/g, '').slice(0, 4), dw = Math.max(3, hrs.length) * 4 + 3;
+    px(ctx, P.outline, tx + 3, 19, dw + 2, 7); px(ctx, P.board, tx + 4, 20, dw, 5);
+    if (hrs) text(ctx, hrs, tx + 6, 20, P.post);
+    px(ctx, P.mask, tx + dw + 8, 21, 2, 2); px(ctx, P.mask, tx + dw + 12, 21, 2, 2); // knobs
+    // turntable: plinth, record seen from above at a low angle, tonearm
+    px(ctx, P['wood-d'], tx + 4, 14, 22, 3);
+    const rx = tx + 6;
+    px(ctx, P.board, rx + 2, 10, 12, 1); px(ctx, P.board, rx, 11, 16, 2); px(ctx, P.board, rx + 2, 13, 12, 1);
+    px(ctx, P.plate, rx + 6, 11, 4, 2);
+    const HI = [[rx + 3, 11], [rx + 7, 10], [rx + 12, 11], [rx + 8, 13]];
+    const [hx, hy] = HI[Math.floor(n / 2) % 4]; px(ctx, P['white-d'], hx, hy, 2, 1);
+    px(ctx, P['white-d'], tx + 23, 9, 1, 5); px(ctx, P['white-d'], tx + 18, 9, 5, 1); px(ctx, P.mask, tx + 17, 10, 1, 1);
+    // a note drifts up from the record every few seconds
+    const life = n % 24;
+    if (life < 14) tiles(ctx, NOTE, rx + 4 - (life >> 2), 6 - (life >> 1), { 1: P.outline });
+  },
+};
+
+// ---------------- King Gizzard ----------------
+// An original character: a lizard in a wizard hat playing a flute on a small stage. The marquee shows how many
+// shows the band has played. 2-frame loops: hat tip and tail flick, spotlights swap, the crowd bobs, notes rise.
+const LIZARD = [
+  '.........M........',
+  '........MM........',
+  '........MMm.......',
+  '.......MyMm.......',
+  '.......MMMmm......',
+  '......MMMMMmm.....',
+  '....mmmmmmmmmmm...',
+  '.......GGGGG......',
+  '.......GGGeGGG....',
+  '.......GGGGGGGG...',
+  '........GGGgGfFfff',
+  '.......GGGGGGG....',
+  '......GGbbbGGG....',
+  '......GGbbbGG.....',
+  '......GGbbbGG.....',
+  '......GGbbbGG.....',
+  '......GGGGGGG.....',
+  '......GGg.GGg.....',
+  '......GG...GG.....',
+  '......GGG..GGG....',
+];
+const TAIL = [[[5, 14], [4, 15], [3, 16], [2, 17], [2, 18], [3, 19]], [[5, 14], [4, 15], [3, 15], [2, 14], [1, 13], [1, 12]]];
+const kglw = {
+  ms: 180, stride: 0, still: 0,
+  draw(ctx, W, n, P, data) {
+    const f = n % 2, beat = Math.floor(n / 2);
+    // curtain with folds
+    px(ctx, P.stand, 0, 0, W, 24);
+    for (let x = 3; x < W; x += 6) px(ctx, P['navy-d'], x, 0, 1, 24);
+    // marquee: shows played, bulbs chase
+    const shows = String(data.shows || '').replace(/\D/g, '').slice(0, 4), mw = Math.max(3, shows.length) * 4 + 7;
+    px(ctx, P.outline, 4, 2, mw + 2, 11); px(ctx, P.board, 5, 3, mw, 9);
+    for (let x = 5; x < 5 + mw; x += 2) { px(ctx, (x + beat) % 4 < 2 ? P.post : P['lift-d'], x, 3); px(ctx, (x + beat) % 4 < 2 ? P['lift-d'] : P.post, x, 11); }
+    if (shows) text(ctx, shows, 8, 5, P.post);
+    // lamp bar: lamps alternate on the beat
+    const lx = Math.max(mw + 30, Math.round(W * 0.45) - 9);
+    px(ctx, P.outline, 0, 0, W, 2);
+    for (let x = 6, k = 0; x < W; x += 12, k++) { const on = (k + beat) % 2 === 0; px(ctx, on ? P.post : P.mask, x, 2, 3, 1); if (on) for (let y = 3; y < 7; y++) if ((x + y) % 2 === 0) px(ctx, P.post, x + 1, y); }
+    // stage, a pool of light under the player, amp stacks, a drum kit
+    px(ctx, P.wood, 0, 24, W, 3); px(ctx, P['wood-d'], 0, 27, W, 1);
+    for (let x = lx - 2; x <= lx + 20; x++) for (let y = 24; y <= 26; y++) if ((x + y) % 2 === 0 && Math.abs(x - lx - 9) < 12 - (y - 24) * 2) px(ctx, P.sun, x, y);
+    [lx - 16, lx + 24].forEach(x => { px(ctx, P.mat, x, 12, 9, 12); px(ctx, P.mat2, x + 1, 13, 7, 1); px(ctx, P.mat2, x + 2, 16, 5, 5); px(ctx, P.mat, x + 4, 18, 1, 1); });
+    const dx = lx + 38;
+    if (dx + 18 < W) {
+      px(ctx, P.white, dx + 4, 17, 9, 7); px(ctx, P.plate, dx + 4, 19, 9, 1); px(ctx, P['white-d'], dx + 12, 17, 1, 7); // bass drum
+      px(ctx, P.mask, dx, 18, 4, 2); px(ctx, P.mask, dx + 14, 17, 4, 2); px(ctx, P['white-d'], dx + 1, 20, 1, 4); px(ctx, P['white-d'], dx + 15, 19, 1, 5); // toms on stands
+      const hit = f ? 1 : 0; px(ctx, P.post, dx - 2, 13 + hit, 6, 1); px(ctx, P['white-d'], dx + 1, 14 + hit, 1, 10); // cymbal shakes
+    }
+    // the lizard
+    const g = toGrid(LIZARD);
+    if (f) { g[0][9] = '.'; g[0][10] = 'M'; }
+    TAIL[f].forEach(([x, y]) => { g[y][x] = 'g'; });
+    drawSprite(ctx, g, lx, 4, { M: P.foe, m: P['foe-d'], y: P.post, G: P.grass, g: P['grass-d'], b: P.hill2, e: P.outline, f: P['white-d'], F: P.mask }, P.outline);
+    // notes rising from the flute
+    for (let i = 0; i < 2; i++) { const life = (n + i * 9) % 18; if (life < 12) tiles(ctx, NOTE, lx + 19 + (life >> 2), 13 - life, { 1: P.white }); }
+    // the pit and the crowd, lit from the stage, bobbing on the beat
+    px(ctx, P.board, 0, 28, W, H - 28);
+    for (let x = 1; x < W; x += 3) {
+      const i = x * 7, h = rnd(i), up = rnd(i + beat * 13) < 0.3 ? 1 : 0, c = h < 0.5 ? P.mask : P.navy;
+      px(ctx, c, x, 29 - up, 2, 3 + up);
+      if (rnd(i + beat * 29) < 0.08) px(ctx, c, x + (h < 0.25 ? -1 : 2), 26 - up, 1, 3);
+    }
+  },
+};
+
+// ---------------- Sports ----------------
+// A rink. A skater carries the puck in and scores; the goal light flashes. The scoreboard shows the score of
+// your most relevant game today (live, then final, then the next one at 0-0). Skating glides, so the ice may
+// move under the skates; the stride is a 2-frame push.
+const SKATER = [
+  ['.........NNN........', '........NNNNs.......', '........NNNse.......', '.......jjjjss.......', '......jjjjjjj.......', '.....jjjwjjjjss.....', '.....jjjjjjj..sS....', '......jjjjjj....S...', '......rrrrrr.....S..', '......rr..rr......S.', '.....rr....rr.....SS', '....kk......kk......', '....xxxx....xxxx....'],
+  ['.........NNN........', '........NNNNs.......', '........NNNse.......', '.......jjjjss.......', '......jjjjjjj.......', '.....jjjwjjjjss.....', '.....jjjjjjj..sS....', '......jjjjjj....S...', '......rrrrrr.....S..', '.......rrrr.......S.', '.......rrrr.......SS', '......kk.kk.........', '.....xxxxxxxx.......'],
+];
+const sports = {
+  ms: 120, stride: 3, still: 0,
+  draw(ctx, W, n, P, data) {
+    const d = n * this.stride, f = Math.floor(n / 2) % 2;
+    // stands, scoreboard, boards with ad panels, ice with blue and red lines
+    px(ctx, P.stand, 0, 0, W, 12);
+    const crowd = [P.plate, P.navy, P.white, P['white-d']], off = Math.floor(d / 6), beat = Math.floor(n / 3);
+    for (let x = 1; x < W; x += 2) for (let y = 1; y < 11; y += 2) { const i = (x + off) * 7 + y * 131, h = rnd(i); if (h < 0.35) continue; px(ctx, crowd[Math.floor(h * 97) % 4], x, y - (rnd(i + beat * 17) < 0.08 ? 1 : 0)); }
+    const sb = String(data.board || '').replace(/[^0-9-]/g, '').slice(0, 7);
+    if (sb) { const bw = sb.length * 4 + 5, bx = Math.round(W / 2 - bw / 2); px(ctx, P.outline, bx - 1, 0, bw + 2, 9); px(ctx, P.board, bx, 1, bw, 7); text(ctx, sb, bx + 3, 2, P.collar); }
+    px(ctx, P.white, 0, 12, W, 4);
+    for (let k = Math.floor(d / 40) - 1; k <= Math.floor((d + W) / 40) + 1; k++) { const x = k * 40 - d; px(ctx, [P.run, P.plate, P.lift][((k % 3) + 3) % 3], x + 4, 13, 20, 2); }
+    px(ctx, P.mask, 0, 16, W, 1);
+    px(ctx, P.white, 0, 17, W, H - 17);
+    for (let x = 0; x < W; x++) { const wx = x + d; if (wx % 120 === 0) px(ctx, P.run, x, 17, 2, H - 17); if (wx % 120 === 60) px(ctx, P.plate, x, 17, 1, H - 17); if ((wx * 7) % 23 === 0) px(ctx, P['white-d'], x, 20 + (wx % 9)); }
+    // a net every 260 px; when the skater reaches it the puck goes in and the light flashes
+    const sx = Math.floor(W * 0.38) - 10;
+    let goal = false;
+    for (let k = Math.floor(d / 260) - 1; k <= Math.floor(d / 260) + 1; k++) {
+      const gx = k * 260 + 230 - d; if (gx > W + 20 || gx < -30) continue;
+      px(ctx, P.plate, gx - 6, 17, 1, H - 17); // goal line
+      px(ctx, P.plate, gx, 20, 1, 10); px(ctx, P.plate, gx, 20, 9, 1); px(ctx, P.plate, gx + 8, 20, 1, 10);
+      for (let y = 21; y < 30; y += 2) for (let x = gx + 1; x < gx + 8; x += 2) px(ctx, P['white-d'], x, y);
+      if (sx + 22 >= gx - 2 && sx + 22 <= gx + 14) goal = true;
+      if (goal) { px(ctx, n % 2 ? P.collar : P.plate, gx + 3, 16, 3, 2); }
+    }
+    // skater with stick and puck
+    const g = toGrid(SKATER[f]);
+    px(ctx, P['white-d'], sx + 5, 30, 12, 1); // shadow on the ice
+    drawSprite(ctx, g, sx, 18, { N: P.navy, s: P.skin, e: P.outline, j: P.plate, w: P.white, r: P.navy, k: P.navy, x: P['white-d'], S: P.wood }, P.outline);
+    if (!goal) px(ctx, P.outline, sx + 21, 29, 2, 1);
+    else { px(ctx, P.outline, Math.min(W - 1, sx + 26), 26, 2, 1); if (n % 4 < 3) text(ctx, '!', sx + 8, 12, P.collar); }
+  },
+};
+
+const SCENES = { cfb, week, fitness, reading, music, kglw, sports };
 
 function mount(el) {
   if (!el.querySelector('canvas')) return () => {};

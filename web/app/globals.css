@@ -483,3 +483,45 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 
 /* Short notes and ledes: avoid a single word on the last line */
 .ons-note, .ons-tile p, .ons-pagehead p { text-wrap: pretty; }
+
+/* Play pages (Music, King Gizzard, Sports) have no area colour: neutral bars */
+.l-none { --l: var(--rule); --l-ink: var(--ink); --l-mark: var(--ink-2); }
+.ons-linkbtn { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+/* Third-party embeds sit flush in a card, with the card's corner radius */
+.ons-embed { display: block; width: 100%; border: 0; border-radius: 8px; margin: 14px 0 10px; background: var(--raised); }
+
+/* List + player split (King Gizzard). The player comes first in the DOM so it sits above the list on phones and
+   tablets; on desktop it moves to the right column and stays in view while the list scrolls. */
+.ons-split > .main, .ons-split > .side { grid-column: 1 / -1; }
+@media (min-width: 1101px) {
+  .ons-split > .main { grid-column: 1 / span 8; grid-row: 1; }
+  .ons-split > .side { grid-column: 9 / span 4; grid-row: 1; align-self: start; position: sticky; top: 16px; }
+}
+.ons-filters { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 12px; }
+.ons-filters .ons-input { flex: 1 1 220px; min-width: 0; height: 32px; padding: 0 10px; }
+.ons-filters .ons-select { height: 32px; }
+.ons-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.ons-check input { accent-color: var(--hue); width: 16px; height: 16px; }
+/* A table row that selects something: the first cell holds a real button */
+.ons-rowbtn { all: unset; cursor: pointer; display: block; width: 100%; }
+.ons-rowbtn:focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; border-radius: 2px; }
+.ons-table tr.is-sel td { background: var(--hue-soft); }
+.ons-table tr.is-sel td:first-child, .ons-table tr.is-mine td:first-child { padding-left: 8px; }
+.ons-table tr.ons-yearrow td { font: 600 13px/18px "IBM Plex Sans", system-ui, sans-serif; color: var(--muted); padding: 16px 0 6px; border-bottom: 1px solid var(--border); }
+.ons-table tr.ons-yearrow:first-child td { padding-top: 4px; }
+.ons-video { position: relative; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: var(--raised); }
+.ons-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.ons-novideo { aspect-ratio: 16 / 9; display: grid; place-items: center; padding: 16px; text-align: center; border-radius: 6px; outline: 1px dashed var(--control); outline-offset: -1px; color: var(--muted); font-size: 14px; }
+
+/* Sports */
+.ons-team { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.ons-table tr.is-mine td { background: var(--we); }
+.ons-news { list-style: none; margin: 0; padding: 0; }
+.ons-news li { padding: 10px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 2px; }
+.ons-news li:first-child { padding-top: 0; }
+.ons-news li:last-child { border-bottom: 0; }
+.ons-news a { color: var(--ink); font-size: 14px; line-height: 20px; text-decoration: none; }
+.ons-news a:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--muted); }
+.ons-news span { font-size: 12px; color: var(--muted); }
+.ons-quietlink { color: inherit; text-decoration: none; }
+.ons-quietlink:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--muted); }

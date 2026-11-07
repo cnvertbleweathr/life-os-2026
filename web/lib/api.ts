@@ -428,7 +428,15 @@ export const musicApi = {
   topArtists: (limit = 20) => get<TopArtist[]>(`/music/top-artists?limit=${limit}`),
   topTracks: (limit = 20) => get<TopTrack[]>(`/music/top-tracks?limit=${limit}`),
   artistOfTheDay: (reroll = 0) => get<ArtistOfTheDay>(`/music/artist-of-the-day?reroll=${reroll}`),
+  /** Minutes per month this year and the newest play in the (manual) Spotify export. */
+  byMonth: () => get<MusicByMonth>("/music/by-month"),
 };
+
+export interface MusicByMonth {
+  months: { month: number; minutes: number }[];
+  days?: number;
+  last_played: string | null;
+}
 
 // ── Shows ────────────────────────────────────────────────────────────────────
 
@@ -464,9 +472,9 @@ export const showsApi = {
       venue_count: s.venues,
     };
   },
-  list: async (myArtistsOnly = false): Promise<Show[]> => {
+  list: async (myArtistsOnly = false, limit = 100): Promise<Show[]> => {
     const shows = await get<Show[]>(
-      `/shows${myArtistsOnly ? "?my_artists_only=true" : ""}`
+      `/shows?limit=${limit}${myArtistsOnly ? "&my_artists_only=true" : ""}`
     );
     return shows.map((s) => ({ ...s, venue: s.venue_name }));
   },
@@ -1098,8 +1106,8 @@ export const kglwApi = {
     get<KglwVenue[]>(
       `/kglw/venues${search ? `?search=${encodeURIComponent(search)}` : ""}`
     ),
-  jamchart: (recommendedOnly = false) =>
+  jamchart: (recommendedOnly = false, limit = 1000) =>
     get<KglwJamchartEntry[]>(
-      `/kglw/jamchart${recommendedOnly ? "?recommended=true" : ""}`
+      `/kglw/jamchart?limit=${limit}${recommendedOnly ? "&recommended=true" : ""}`
     ),
 };

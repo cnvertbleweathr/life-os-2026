@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,16 @@ def _load_my_artists() -> set[str]:
         return {a.lower() for a in artists if isinstance(a, str) and len(a) >= 4}
     except Exception:
         return set()
+
+
+def _matcher(artists: set[str]):
+    """Whole-word match of any artist name in a show title. A plain substring test matched "stone" in
+    "Tombstone" and "bros" in "Sabrosos", so a third of the "your artists" flags were noise."""
+    if not artists:
+        return lambda title: False
+    names = sorted(artists, key=len, reverse=True)
+    rx = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(a) for a in names) + r")(?!\w)")
+    return lambda title: bool(rx.search(str(title).lower()))
 
 
 def _load_shows() -> pd.DataFrame:
@@ -80,7 +91,7 @@ def _load_shows() -> pd.DataFrame:
 @router.get("")
 async def shows(
     my_artists_only: bool = Query(False, description="Filter to matched artists only"),
-    limit: int = Query(100, le=500),
+    limit: int = Query(100, le=2000),
 ):
     """Upcoming Denver concerts — optionally filtered to your artists."""
     df         = _load_shows()
@@ -89,9 +100,7 @@ async def shows(
     if df.empty:
         return []
 
-    def is_match(title: str) -> bool:
-        t = str(title).lower()
-        return any(a in t for a in my_artists)
+    is_match = _matcher(my_artists)
 
     df["is_my_artist"] = df["title"].apply(is_match)
 
@@ -144,9 +153,7 @@ async def shows_summary():
 
     my_artists = _load_my_artists()
 
-    def is_match(title: str) -> bool:
-        t = str(title).lower()
-        return any(a in t for a in my_artists)
+    is_match = _matcher(my_artists)
 
     df["is_my_artist"] = df["title"].apply(is_match)
     next_row = df.iloc[0] if not df.empty else None
