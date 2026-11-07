@@ -346,3 +346,46 @@ def tag_my_teams(games: list[dict], ids: dict[MyTeam, dict]) -> None:
     for g in games:
         names = [by_id[k] for side in ("away", "home") if (k := (g["league"], g[side]["id"])) in by_id]
         g["my_team"] = " / ".join(names) or None
+
+
+async def my_games(client: httpx.AsyncClient, now: datetime, today: date) -> dict[str, Any]:
+    """My teams' games, grouped the way the ticker and the LED panel both show them:
+      live   — in progress now
+      today  — later today
+      final  — finished today, plus finals from the last ~30h
+      next   — each other team's next game within a week
+    Also returns `ids` (resolved team ids) and `errors`."""
+    ids, id_errors = await resolve_team_ids(client)
+    (games, sb_errors), (prev, prev_errors), (upcoming, sched_errors) = await asyncio.gather(
+        scoreboards(client, today),
+        scoreboards(client, today - timedelta(days=1), ttl=1800),
+        next_games(client, ids, now),
+    )
+    tag_my_teams(games, ids)
+    tag_my_teams(prev, ids)
+
+    today_mine = [g for g in games if g["my_team"]]
+    recent_finals = [
+        g for g in prev
+        if g["my_team"] and g["state"] == "post" and g["start_utc"]
+        and _parse(g["start_utc"]) > now - timedelta(hours=30)
+    ]
+    order = {"in": 0, "pre": 1, "post": 2}
+    today_mine.sort(key=lambda g: (order.get(g["state"], 3), g["start_utc"] or ""))
+    seen = {g["id"] for g in today_mine} | {g["id"] for g in recent_finals}
+    # Teams already playing today don't also need a "next game" item.
+    covered = {t for g in today_mine for t in (g["my_team"] or "").split(" / ")}
+    next_up = [
+        g for g in upcoming
+        if g["id"] not in seen and g["start_utc"]
+        and _parse(g["start_utc"]) < now + timedelta(days=7)
+        and not set(g["my_team"].split(" / ")) <= covered
+    ]
+    return {
+        "live": [g for g in today_mine if g["state"] == "in"],
+        "today": [g for g in today_mine if g["state"] == "pre"],
+        "final": [g for g in today_mine if g["state"] == "post"] + recent_finals,
+        "next": next_up,
+        "ids": ids,
+        "errors": id_errors + sb_errors + prev_errors + sched_errors,
+    }
