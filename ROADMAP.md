@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-10-27
+Last updated: 2026-11-07
 
 ---
 
@@ -114,8 +114,8 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
-| 🟢 | Python tests | `tests/` — 26 tests (write path, freshness, Spotify compat), all in CI |
-| 🟢 | GitHub Actions CI | `ci.yml`: syntax, Python tests (26), ShellCheck, hardcode audit, dbt parse, TypeScript; Thursday picks report (`picks-validation.yml`) |
+| 🟢 | Python tests | `tests/` — 133 tests (write path, freshness, Spotify compat, calendar auth, CFB review, ESPN, film, LED panel), all in CI |
+| 🟡 | GitHub Actions CI | `ci.yml`: syntax, Python tests, ShellCheck, hardcode audit, dbt parse, TypeScript; Thursday picks report (`picks-validation.yml`). Red as of 2026-11-07: Python tests can't import Pillow (fix in #31), and the hardcoded-year audit flags `scripts/reconcile_notre_dame_score.py:160` (`season == 2025`, since before Nov 6; owner decision) |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
 | 🟡 | Data freshness checks | `scripts/freshness_check.py` as a daily-sync step: steps failing 2+ runs or overdue (interval learned per step), sync not running, backups > 36h, CFB scores stale in season, Daily 10 and show listings. Built to catch the two Oct 2026 silent failures (CFB scores stuck at Week 4 for three weeks; `sync_playlist_artists` failing six days). Written 2026-10-23, deploys with the Mac mini runbook |
@@ -146,8 +146,9 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | FastAPI layer — 12 routers | 10 read routers plus `checkin` and `inbox` (write path) |
-| 🟢 | All 11 Next.js pages | Home, Habits, Fitness, Reading, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in, Capture; `/shows` redirects to `/music` |
+| 🟢 | FastAPI layer — 14 routers | Read routers plus `checkin`, `inbox` and the film review queue (write path), and `display` (LED panel, owner only) |
+| 🟢 | All 12 Next.js pages | Home, Habits, Fitness, Reading, Film, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in, Capture; `/shows` redirects to `/music` |
+| 🟢 | Film page | `/film`: watches, scene review queue (owner only), Screening Room; magenta area colour; cinema title scene (2026-11-07). See [Film](#film--watches-pixel-gifs-and-the-led-panel) |
 | 🟢 | Web write path | Habit toggles, Check-in and Capture persist via append-only JSONL (`api/store.py`), loaded by the daily sync. FastAPI never writes to DuckDB (2026-10-21) |
 | 🟢 | Write key for personal endpoints | `ONS_WRITE_TOKEN`; required through Cloudflare, not locally or over Tailscale; fails closed if unset (2026-10-21) |
 | 🟢 | Home morning brief over the tunnel | Brief was fetched from hardcoded `localhost:8000`, so it only loaded on the Mac mini; now uses `NEXT_PUBLIC_API_BASE` (2026-10-21) |
@@ -233,10 +234,32 @@ Underdogs (official): 33-9 (78.6% cover, +50.0% ROI)
 | AEG/Ticketmaster | 🟢 | Denver shows |
 | streamed.pk | 🔴 | Dead as of 2026-10. Watch links removed; revisit only if a real free stream source turns up |
 | ESPN (site API) | 🟢 | Replaced streamed.pk 2026-10-27. Live scoreboards (NFL, FBS, NBA, MLB, NHL, MLS), next game per team, team news. Unofficial, keyless, no published rate limit — `api/espn.py` caches every call (scores 60s, schedules 1h, news 15m, team ids 24h). No odds or predictive metrics pulled for CFB: CFBD stays the source there |
-| Letterboxd | 🟡 | Dry-run confirmed, not yet in daily_sync |
+| Letterboxd | 🟢 | In daily_sync since 2026-11-07: RSS diary with TMDB id, rating, liked; full history via the one-off `import_letterboxd_csv.py` backfill (deduped against RSS) |
+| Plex | 🟢 | In daily_sync since 2026-11-07: movie watch history with TMDB ids (incremental; `--full` reloads all). Polling only, no webhooks or Plex Pass |
+| TMDB | 🔵 | Posters, runtime, genres and director for `/film`, and richer scene suggestions. Needs `TMDB_API_KEY` |
 | Setlist.fm | 🔵 | Full concert history (planned) |
 | Apple Health | 🔵 | Sleep, HRV, steps, weight |
 | Whoop/Garmin | 🔵 | Recovery, strain, sleep |
+
+---
+
+## Film — Watches, Pixel GIFs and the LED Panel
+
+Plan: [`docs/film/ONS_FILM_SECTION_PLAN.md`](./docs/film/ONS_FILM_SECTION_PLAN.md). Built 2026-11-07, one PR per phase.
+
+| Status | Phase | Notes |
+|--------|-------|-------|
+| 🟢 | 1 · Watches | Letterboxd + Plex → `mart_film_watches` (#24); `plex --full`, dbt test args, Letterboxd CSV backfill (#25) |
+| 🟢 | 2 · Catalog | `film.scene_catalog` (JSONL snapshots, latest per film); Claude Haiku 5.5 suggests scenes within the shared $5/month budget; render mode by rule; approve/edit/reject via API and CLI (#26) |
+| 🟢 | 3 · Renderer | `film_gif_render.py`: `sprite` (Nosferatu), `plex_clip` (streams 5 s from Plex, Bayer-dithered to the palette), `motif` (rain, projector, VHS); exact 5-second loops (#27) |
+| 🟢 | 4 · Page | `/film`, magenta area colour (owner choice), cinema title scene, Screening Room wall (owner-approved motion exception in DESIGN.md) (#28 → #29) |
+| 🟢 | 5 · Display | `/api/display/playlist` (live games pre-empt films; quiet hours), 64×32 score frames, Pi player + systemd unit (#30) |
+| 🔵 | LED panel hardware | 64×32 HUB75 panel, Pi + RGB matrix HAT, 5 V 4 A supply; install per `ops/pi/display/README.md`. The player has only run emulated |
+| 🔵 | First suggestions and renders | The 2026-11-08 sync suggests scenes for ~33 films; approve them on `/film`; the next sync renders |
+| 🔵 | Public-domain starter set | Sprites for Metropolis, Caligari, A Trip to the Moon, Night of the Living Dead (only Nosferatu exists) |
+| ⚪ | Clip tuning | Suggested timestamps are rough (set clips on approval); bright clips stay bright on the dark matrix palette |
+| ⚪ | Rewatch semantics | A film played on Plex on two days counts as a rewatch; the plan's "rewatch gets its own GIF?" question is answered "no" for now (one GIF per film) |
+| ⚪ | Shared animation ticker | Each Screening Room loop runs its own rAF; worth one shared ticker if the library grows large |
 
 ---
 
