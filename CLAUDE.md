@@ -68,3 +68,7 @@ Don't remove them for being decorative, and don't add any other looping motion.
 2. Make the change.
 3. Playwright: screenshot the affected route(s) at desktop and phone sizes, in light and dark; fix what one look shows, then look again.
 4. `/impeccable audit <route>` before calling a page finished.
+
+## Betting models (NBA / NHL)
+
+Use the `nba-nhl-ats` skill for any NBA or NHL pipeline, dbt model, backtest, picks or slate work. The phased build plan with ready-to-run prompts is `docs/NBA_NHL_PROMPTS.md`. No betting rule ships until the `ats-edge-validator` agent has reviewed its validation.

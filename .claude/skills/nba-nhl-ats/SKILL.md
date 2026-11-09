@@ -1,0 +1,68 @@
+---
+name: nba-nhl-ats
+description: Data contracts, conventions, gotchas and validation rules for the ONS NBA and NHL betting models (ESPN lines, nba_api box scores, MoneyPuck xG, NHL goalies). Use for any work on NBA/NHL pipelines, dbt models, features, backtests, edge validation, picks or the NBA/NHL parts of Degenerates Corner.
+---
+
+# NBA / NHL ATS models
+
+The goal mirrors CFB: find edges that hold across seasons, then turn them into
+hard BET / NEVER-BET rules and a pregame lookup. NBA bets are spreads and totals.
+NHL bets are the puck line (±1.5) and the moneyline.
+
+Read `docs/NBA_NHL_ATS_DATA.md` for the run order and baseline numbers. The phased
+build plan and its prompts are in `docs/NBA_NHL_PROMPTS.md`.
+
+## Standing rules (same as the rest of ONS)
+
+- Branch + PR only (see CLAUDE.md). One branch per phase: `feat/nba-nhl-<phase>`.
+- Stop the API (uvicorn on :8000) before any DLT run or `dbt run`. DuckDB allows one writer.
+- Ground truth first: query DuckDB or read the file before assuming a column or table exists.
+- Show real command output after every step; don't summarize output you didn't run.
+- Write code to files; no long heredoc pastes into the Mac mini terminal.
+
+## Conventions (never re-derive)
+
+- **season = year the season ends** (2025-26 → 2026) in every table and model.
+  MoneyPuck's raw `season` is the *start* year; use its `season_end` column.
+- **`home_spread` is negative when home is favored.** `home_ats_margin = home_margin + home_spread`; > 0 means home covered, 0 is a push.
+- Pushes are dropped from win% and ROI, and counted separately.
+- ROI uses the **actual price** when one exists (ESPN odds, NHL puck line and ML). Flat -110 only for `nba.historical_lines`, which has no spread prices. Break-even at -110 is 52.38%.
+- dbt layers: `staging` (views, `stg_<source>__<thing>`) → `intermediate` (`int_…`) → `marts` (tables, `mart_nba_…` / `mart_nhl_…`). Sources are declared in a `_sources.yml` per league.
+
+## Raw tables
+
+| Table | Grain / key | Notes |
+|---|---|---|
+| `nba.games`, `nhl.games` | `game_id` (ESPN) | season, season_type (2 reg, 3 post), teams (id/name/abbr), scores, `went_ot`, NHL `shootout` |
+| `nba.odds`, `nhl.odds` | `game_id, provider_id` | item-level `home_spread`, prices, MLs, `total`; `open_*` / `close_*` / `current_*` snapshots; `raw_json` |
+| `nba.historical_lines` | `game_date, home_team, away_team` | 2007-08 → Jan 2026, one closing line, **full team names**, rest days, flat -110 |
+| `nba.team_game_logs` | `game_id, team_id` (NBA stats ids) | box score per team-game, `is_home`, `opp_abbr`, `season_type` |
+| `nhl.moneypuck_team_games` | `gameid, playerteam, situation` | situations all / 5on5 / 5on4 / 4on5; xGoals, Corsi, Fenwick, high-danger |
+| `nhl.goalie_games` | `game_id, player_id` (NHL ids) | `starter`, TOI, shots against, saves, decision |
+
+Raw ESPN responses are cached in `data/raw/espn/{league}/`, NHL boxscores in
+`data/raw/nhl/boxscore/`. Fix a parser and reload from the cache rather than re-fetching.
+
+## Gotchas found so far
+
+- `nba.historical_lines`: the source stores the spread **unsigned before 2022-23**. The loader rebuilds the sign from the moneyline favorite. If home ATS ever comes out far from ~49.5%, suspect the sign.
+- ESPN odds: through 2023, several providers with mostly junk open/close snapshots; from 2024, one partner book with real open/close. Pick one line per game with a documented rule (prefer the close snapshot, then the item-level number; one provider priority order), and record which one was used.
+- ESPN's odds history depth is unconfirmed until `--probe` runs on old dates. Record what you find in `docs/NBA_NHL_ATS_DATA.md`.
+- Team keys differ across every source: ESPN abbreviations (`LA`, `NJ`, `SJ`, `TB`, `UTAH`, `GS`, `NO`, `NY`, `SA`, `WSH`), NHL/MoneyPuck (`LAK`, `NJD`, `SJS`, `TBL`, `UTA`), nba_api (`GSW`, `NOP`, `NYK`, `SAS`, `WAS`), and full names in `historical_lines`. Relocations and renames too: Seattle→OKC (2008-09), New Jersey→Brooklyn (2012-13), Charlotte Bobcats→Hornets (2014-15), New Orleans Hornets→Pelicans (2013-14), Atlanta Thrashers→Winnipeg (2011-12), Phoenix Coyotes→Arizona→Utah (2024-25), Seattle Kraken (2021-22), Vegas (2017-18). Build **dbt seeds** `nba_team_crosswalk.csv` / `nhl_team_crosswalk.csv` keyed by a canonical team code with valid-from/to seasons. Never string-match team names inside a model.
+- Matching games across sources: join on game date and the canonical home/away team. ESPN dates are UTC, so late West Coast games fall on the next UTC day. Convert to US/Eastern before taking the date.
+- NHL: a game won in OT or a shootout is a one-goal game, so the favorite's -1.5 always loses it. Keep `went_ot` / `shootout` on every NHL row.
+- NHL starting goalies: `goalie_games.starter` is the actual starter, known before puck drop on most days but not always when the line is set. Treat it as available pregame, and also report every goalie-based edge without it so the dependence is visible.
+- NBA injuries, rest days and load management are **not** in the data. Big line moves often reflect them, so edges that bet against the move need extra scrutiny.
+
+## Validation rules (an edge isn't real until it passes these)
+
+1. **No lookahead.** Every feature for a game uses only games strictly before that game's date. Rolling windows use `rows between N preceding and 1 preceding`. Season-to-date features are null or prior-season-based for each team's first games.
+2. **Pick thresholds on training seasons only.** Walk forward: fit or choose thresholds on seasons < S, evaluate on S, for every S. Report only the out-of-sample results as the edge's numbers.
+3. Report for every rule: n, win%, ROI at actual price, profitable seasons / total seasons, and pushes. NBA needs n ≥ 200 out of sample; NHL n ≥ 150.
+4. **Count the tries.** Keep a log of every split tested (`data/betting/{league}_trials.jsonl`). With dozens of tries, a +5% ROI on 300 bets is noise. Report a bootstrap 95% interval for ROI, or a binomial p-value, next to every headline number.
+5. **Closing line value** (2024+ ESPN open/close): a real edge should beat the close more often than not. Report CLV alongside ROI.
+6. A second agent reviews before any rule ships. Run the `ats-edge-validator` agent on the validation script and its output.
+
+## Rule format (match CFB)
+
+Final rules go in `docs/NBA_NHL_ATS_DATA.md` and the live picks code, grouped like the CFB system: BET WHEN (all conditions), AUTO BET, NEVER BET, and totals leans. Each rule carries its out-of-sample n, win%, ROI and seasons+.

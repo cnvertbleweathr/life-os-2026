@@ -26,6 +26,8 @@ Season convention everywhere: **season = year the season ends** (2025-26 → 202
 
 ## First run (Mac mini — stop FastAPI first)
 
+With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
+
 ```bash
 uv sync                                                    # picks up nba_api
 python pipelines/espn_odds_pipeline.py --probe nba --date 2024-01-15   # paste output
