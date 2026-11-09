@@ -11,11 +11,13 @@ Sources
   site.api.espn.com   .../scoreboard?dates=YYYYMMDD     schedule, scores, status
   sports.core.api...  .../events/{id}/competitions/{id}/odds   lines per provider
 
-Odds coverage notes (verify with --probe; ESPN changes without notice):
-  * 2024+  one partner book (ESPN BET / DraftKings) with real open / close /
-           current snapshots for spread (puck line), moneyline and total.
-  * <=2023 several providers; item-level spread / total / moneylines are the
-           final (closing-ish) numbers, open/close snapshots are often junk.
+Odds coverage (probed 2026-11-09; details in docs/NBA_NHL_ATS_DATA.md):
+  * Lines start NBA 2013-14 (season 2014), NHL 2019-20 (season 2020).
+  * NBA 2014-~2018: offshore books, `current` only; the open is item-level
+           initialSpread / initialOverUnder (home-signed).
+  * 2019-2023: US books, `current` only (2022-23 ESPN BET `close` is often the
+           price misfiled as the line -- nulled by _line/_total).
+  * 2023-24: real open / close / current on most books. 2025+: one partner book.
   * NHL "spread" is the puck line (almost always +/-1.5) and is priced at
            varying juice -- ROI must use the actual price, never flat -110.
 
@@ -46,6 +48,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -56,6 +59,7 @@ CACHE = ROOT / "data" / "raw" / "espn"
 SITE = "https://site.api.espn.com/apis/site/v2/sports"
 CORE = "https://sports.core.api.espn.com/v2/sports"
 UA = {"User-Agent": "ons/1.0 (personal analytics)"}
+EASTERN = ZoneInfo("America/New_York")  # ESPN's scoreboard ?dates= is the Eastern day
 
 LEAGUES = {
     # key: (sport, league, regulation periods)
@@ -126,6 +130,40 @@ def _num(v: Any) -> float | None:
     return float(m.group()) if m else None
 
 
+def _price(v: Any) -> float | None:
+    """American odds, or None. |odds| < 100 is impossible: ESPN posts a missing moneyline
+    as 0, and projection sites (numberfire) put win probabilities in spreadOdds."""
+    n = _num(v)
+    return n if n is not None and abs(n) >= 100 else None
+
+
+# Plausible ranges. 2022-23 ESPN snapshots sometimes put the price ("-115") in pointSpread
+# and total; anything outside these is a misfiled number, not a line.
+LINE_MAX = {"nba": 40.0, "nhl": 4.0}          # |spread| / |puck line|
+TOTAL_RANGE = {"nba": (150.0, 300.0), "nhl": (3.0, 12.0)}
+
+
+def _line(v: Any, league: str) -> float | None:
+    n = _num(v)
+    return n if n is not None and abs(n) <= LINE_MAX[league] else None
+
+
+def _total(v: Any, league: str) -> float | None:
+    n = _num(v)
+    lo, hi = TOTAL_RANGE[league]
+    return n if n is not None and lo <= n <= hi else None
+
+
+def _eastern_date(iso_utc: str | None) -> str | None:
+    """'2019-01-16T00:00Z' -> '2019-01-15': a 7pm ET tip belongs to the Eastern day."""
+    if not iso_utc:
+        return None
+    dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(EASTERN).date().isoformat()
+
+
 def _first(d: dict | None, *paths: str) -> Any:
     """First non-null value among dotted paths, e.g. 'spread.american'."""
     if not isinstance(d, dict):
@@ -141,24 +179,25 @@ def _first(d: dict | None, *paths: str) -> Any:
     return None
 
 
-def _snapshot(team_odds: dict | None, snap: str) -> dict:
+def _snapshot(team_odds: dict | None, snap: str, league: str) -> dict:
     """Spread line, spread price, moneyline from teamOdds.{open|close|current}."""
     s = (team_odds or {}).get(snap) or {}
     return {
-        "line": _num(_first(s, "pointSpread.american", "pointSpread.alternateDisplayValue",
-                            "pointSpread.value")),
-        "price": _num(_first(s, "spread.american", "spread.alternateDisplayValue", "spread.value")),
-        "ml": _num(_first(s, "moneyLine.american", "moneyLine.alternateDisplayValue",
-                          "moneyLine.value")),
+        "line": _line(_first(s, "pointSpread.american", "pointSpread.alternateDisplayValue",
+                             "pointSpread.value"), league),
+        # .value is a decimal price (1.91), never American, so it is not a fallback here
+        "price": _price(_first(s, "spread.american", "spread.alternateDisplayValue")),
+        "ml": _price(_first(s, "moneyLine.american", "moneyLine.alternateDisplayValue")),
     }
 
 
-def _total_snapshot(item: dict, snap: str) -> dict:
+def _total_snapshot(item: dict, snap: str, league: str) -> dict:
     s = item.get(snap) or {}
     return {
-        "total": _num(_first(s, "total.alternateDisplayValue", "total.american", "total.value")),
-        "over": _num(_first(s, "over.american", "over.alternateDisplayValue", "over.value")),
-        "under": _num(_first(s, "under.american", "under.alternateDisplayValue", "under.value")),
+        "total": _total(_first(s, "total.alternateDisplayValue", "total.american", "total.value"),
+                        league),
+        "over": _price(_first(s, "over.american", "over.alternateDisplayValue")),
+        "under": _price(_first(s, "under.american", "under.alternateDisplayValue")),
     }
 
 
@@ -190,7 +229,7 @@ def parse_game(event: dict, league: str) -> dict | None:
         "season": season.get("year"),
         "season_type": season.get("type"),
         "start_time": event.get("date"),
-        "game_date": (event.get("date") or "")[:10],
+        "game_date": _eastern_date(event.get("date")),  # start_time stays UTC
         "home_id": team(home, "id"), "home_name": team(home, "displayName"),
         "home_abbr": team(home, "abbreviation"),
         "away_id": team(away, "id"), "away_name": team(away, "displayName"),
@@ -224,7 +263,8 @@ def parse_odds_item(item: dict, game: dict) -> dict:
         elif abbr == (game.get("away_abbr") or "").upper():
             home_fav = False
 
-    spread_abs = _num(item.get("spread"))
+    lg = game["league"]
+    spread_abs = _line(item.get("spread"), lg)
     row = {
         "game_id": game["game_id"],
         "provider_id": str(prov.get("id")),
@@ -235,19 +275,19 @@ def parse_odds_item(item: dict, game: dict) -> dict:
         "details": details,
         "home_favorite": home_fav,
         "home_spread": _signed_home(abs(spread_abs) if spread_abs is not None else None, home_fav),
-        "home_spread_price": _num(h.get("spreadOdds")),
-        "away_spread_price": _num(a.get("spreadOdds")),
-        "home_ml": _num(h.get("moneyLine")),
-        "away_ml": _num(a.get("moneyLine")),
-        "total": _num(item.get("overUnder")),
-        "over_price": _num(item.get("overOdds")),
-        "under_price": _num(item.get("underOdds")),
+        "home_spread_price": _price(h.get("spreadOdds")),
+        "away_spread_price": _price(a.get("spreadOdds")),
+        "home_ml": _price(h.get("moneyLine")),
+        "away_ml": _price(a.get("moneyLine")),
+        "total": _total(item.get("overUnder"), lg),
+        "over_price": _price(item.get("overOdds")),
+        "under_price": _price(item.get("underOdds")),
         "spread_winner_home": h.get("spreadWinner"),
         "ml_winner_home": h.get("moneylineWinner"),
     }
     for snap in ("open", "close", "current"):
-        hs, as_ = _snapshot(h, snap), _snapshot(a, snap)
-        ts = _total_snapshot(item, snap)
+        hs, as_ = _snapshot(h, snap, lg), _snapshot(a, snap, lg)
+        ts = _total_snapshot(item, snap, lg)
         line = hs["line"] if hs["line"] is not None else (
             -as_["line"] if as_["line"] is not None else None)
         row.update({
@@ -260,6 +300,12 @@ def parse_odds_item(item: dict, game: dict) -> dict:
             f"{snap}_over_price": ts["over"],
             f"{snap}_under_price": ts["under"],
         })
+    # 2013-14 .. ~2017-18 items carry no team snapshots, only item-level initialSpread /
+    # initialOverUnder: the "Opening" book's line, home-signed, repeated on every provider.
+    if row["open_home_spread"] is None:
+        row["open_home_spread"] = _line(item.get("initialSpread"), lg)
+    if row["open_total"] is None:
+        row["open_total"] = _total(item.get("initialOverUnder"), lg)
     row["raw_json"] = json.dumps(item, separators=(",", ":"))
     row["loaded_at"] = datetime.now(timezone.utc).isoformat()
     return row

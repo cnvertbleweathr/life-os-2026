@@ -1,0 +1,110 @@
+{
+ "provider": {
+  "id": "58",
+  "name": "ESPN BET",
+  "priority": 0
+ },
+ "details": "BOS -7.5",
+ "overUnder": 232.5,
+ "spread": 7.5,
+ "overOdds": -115.0,
+ "underOdds": -115.0,
+ "awayTeamOdds": {
+  "favorite": true,
+  "underdog": false,
+  "moneyLine": -330,
+  "spreadOdds": -115.0,
+  "close": {
+   "pointSpread": {
+    "alternateDisplayValue": "+115",
+    "american": "+115"
+   },
+   "spread": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "moneyLine": {
+    "alternateDisplayValue": "-330",
+    "american": "-330"
+   }
+  },
+  "current": {
+   "pointSpread": {
+    "alternateDisplayValue": "-7.5",
+    "american": "-7.5"
+   },
+   "spread": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "moneyLine": {
+    "alternateDisplayValue": "-330",
+    "american": "-330"
+   }
+  }
+ },
+ "homeTeamOdds": {
+  "favorite": false,
+  "underdog": true,
+  "moneyLine": 240,
+  "spreadOdds": -115.0,
+  "close": {
+   "pointSpread": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "spread": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "moneyLine": {
+    "alternateDisplayValue": "+240",
+    "american": "+240"
+   }
+  },
+  "current": {
+   "pointSpread": {
+    "alternateDisplayValue": "+7.5",
+    "american": "+7.5"
+   },
+   "spread": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "moneyLine": {
+    "alternateDisplayValue": "+240",
+    "american": "+240"
+   }
+  }
+ },
+ "moneylineWinner": false,
+ "spreadWinner": false,
+ "close": {
+  "over": {
+   "alternateDisplayValue": "-115",
+   "american": "-115"
+  },
+  "under": {
+   "alternateDisplayValue": "-115",
+   "american": "-115"
+  },
+  "total": {
+   "alternateDisplayValue": "-115",
+   "american": "-115"
+  }
+ },
+ "current": {
+  "over": {
+   "alternateDisplayValue": "-115",
+   "american": "-115"
+  },
+  "under": {
+   "alternateDisplayValue": "-115",
+   "american": "-115"
+  },
+  "total": {
+   "alternateDisplayValue": "232.5",
+   "american": "232.5"
+  }
+ }
+}

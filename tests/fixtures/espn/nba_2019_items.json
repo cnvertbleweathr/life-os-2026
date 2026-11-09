@@ -1,0 +1,62 @@
+{
+ "Wynn": {
+  "provider": {
+   "id": "32",
+   "name": "Wynn",
+   "priority": 0
+  },
+  "details": "IND -10.5",
+  "overUnder": 219.0,
+  "spread": -10.5,
+  "overOdds": -110.0,
+  "underOdds": -110.0,
+  "awayTeamOdds": {
+   "favorite": false,
+   "underdog": true,
+   "moneyLine": 0,
+   "spreadOdds": -110.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "+10.5",
+     "american": "+10.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "-110",
+     "american": "-110"
+    }
+   }
+  },
+  "homeTeamOdds": {
+   "favorite": true,
+   "underdog": false,
+   "moneyLine": 0,
+   "spreadOdds": -110.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "-10.5",
+     "american": "-10.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "-110",
+     "american": "-110"
+    }
+   }
+  },
+  "moneylineWinner": false,
+  "spreadWinner": false,
+  "current": {
+   "over": {
+    "alternateDisplayValue": "-110",
+    "american": "-110"
+   },
+   "under": {
+    "alternateDisplayValue": "-110",
+    "american": "-110"
+   },
+   "total": {
+    "alternateDisplayValue": "219",
+    "american": "219"
+   }
+  }
+ }
+}
