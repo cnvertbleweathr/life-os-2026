@@ -88,6 +88,12 @@
 {%- endmacro %}
 
 
+{# A pair of American prices forms a 2-way market: implied probabilities sum to 1.00-1.12 #}
+{% macro valid_price_pair(a, b) -%}
+    ({{ implied_prob(a) }} + {{ implied_prob(b) }} between 1.0 and 1.12)
+{%- endmacro %}
+
+
 {# American odds -> implied probability (with vig) #}
 {% macro implied_prob(ml) -%}
     case when {{ ml }} < 0 then -({{ ml }}) / (-({{ ml }}) + 100.0)

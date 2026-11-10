@@ -39,8 +39,10 @@
      often quote no total. total_book records it.
 
   line_source = 'espn:<book>:<close|final>' for the spread.
-  open_* come from the spread's book (initialSpread fills the open for 2013-14 to
-  ~2017-18; real open snapshots from 2023-24).
+  open_* come from the same book as the market they open: spread and moneyline from
+  the spread's book, open_total / open_over_price / open_under_price from the total's
+  book. initialSpread fills an unpriced open for 2013-14 to 2016-17; real open
+  snapshots with prices from 2023-24.
 #}
 {% macro espn_odds(league) %}
 {%- set spread_tol = 3.0 if league == 'nba' else 1.0 -%}
@@ -68,29 +70,36 @@ with books as (
         o.open_away_spread_price,
         o.open_home_ml,
         o.open_away_ml,
-        o.open_total
+        o.open_total,
+        o.open_over_price,
+        o.open_under_price
     from {{ source(league, 'odds') }} o
     join {{ ref('nba_nhl_odds_providers') }} p
       on p.league = '{{ league }}' and p.provider_id = o.provider_id and p.is_book
 ),
 
--- A moneyline is kept only when its two sides form a 2-way market: implied
--- probabilities summing to 1.00-1.12. Most NHL books before 2024-25 put the 3-way
--- (regulation-time) price in ESPN's moneyLine field, home and away legs without the
--- draw (MIN +120 / away +175), which sums to ~0.85 and would settle wrongly as a
--- 2-way bet. Same check for the opening pair.
+-- Every price pair must form a 2-way market: implied probabilities summing to
+-- 1.00-1.12; otherwise both prices are nulled (the line itself is kept).
+-- Moneyline: most NHL books before 2024-25 put the 3-way (regulation-time) price in
+-- ESPN's moneyLine field, home and away legs without the draw (MIN +120 / away
+-- +175), which sums to ~0.85 and would settle wrongly as a 2-way bet. Spread and
+-- total pairs are checked the same way (a handful fail: one NHL puck line at
+-- +240 / +220, a few 2020 totals above 1.12). The raw moneyline is kept as
+-- raw_home_ml / raw_away_ml: a 3-way price still identifies the favourite, which
+-- the spread-sign check uses.
 priced as (
     select
         * replace (
-            case when {{ implied_prob('home_ml') }} + {{ implied_prob('away_ml') }} between 1.0 and 1.12
-                 then home_ml end                             as home_ml,
-            case when {{ implied_prob('home_ml') }} + {{ implied_prob('away_ml') }} between 1.0 and 1.12
-                 then away_ml end                             as away_ml,
-            case when {{ implied_prob('open_home_ml') }} + {{ implied_prob('open_away_ml') }} between 1.0 and 1.12
-                 then open_home_ml end                        as open_home_ml,
-            case when {{ implied_prob('open_home_ml') }} + {{ implied_prob('open_away_ml') }} between 1.0 and 1.12
-                 then open_away_ml end                        as open_away_ml
-        )
+            {% for a, b in [('home_ml', 'away_ml'), ('open_home_ml', 'open_away_ml'),
+                            ('home_spread_price', 'away_spread_price'),
+                            ('open_home_spread_price', 'open_away_spread_price'),
+                            ('over_price', 'under_price'), ('open_over_price', 'open_under_price')] -%}
+            case when {{ valid_price_pair(a, b) }} then {{ a }} end as {{ a }},
+            case when {{ valid_price_pair(a, b) }} then {{ b }} end as {{ b }}{{ "," if not loop.last }}
+            {% endfor %}
+        ),
+        home_ml                                               as raw_home_ml,
+        away_ml                                               as raw_away_ml
     from books
 ),
 
@@ -108,8 +117,8 @@ flagged as (
     select
         *,
         -- spread sign agrees with this book's moneyline favourite (unknown counts as agreeing)
-        coalesce(home_spread = 0 or home_ml = away_ml
-                 or (home_spread < 0) = (home_ml < away_ml), true)        as line_consistent,
+        coalesce(home_spread = 0 or raw_home_ml = raw_away_ml
+                 or (home_spread < 0) = (raw_home_ml < raw_away_ml), true) as line_consistent,
         n_books < 3 or abs(home_spread - median_spread) <= {{ spread_tol }} as spread_agrees,
         n_totals < 3 or abs(total - median_total) <= {{ total_tol }}       as total_agrees
     from market
@@ -123,13 +132,15 @@ spread_pick as (
         partition by game_id
         order by line_consistent desc,
                  spread_agrees desc,
+                 home_spread_price is not null desc,
                  {% if league == 'nhl' %}abs(home_spread) = 1.5 desc,{% endif %}
                  priority, provider_id
     ) = 1
 ),
 
 ml_pick as (
-    select f.game_id, f.book as ml_book, f.ml_is_close, f.home_ml, f.away_ml
+    select f.game_id, f.book as ml_book, f.ml_is_close, f.home_ml, f.away_ml,
+           f.open_home_ml, f.open_away_ml
     from flagged f
     join spread_pick s using (game_id)
     where f.home_ml is not null and f.away_ml is not null
@@ -140,13 +151,14 @@ ml_pick as (
 ),
 
 total_pick as (
-    select f.game_id, f.book as total_book, f.total_is_close, f.total, f.over_price, f.under_price
+    select f.game_id, f.book as total_book, f.total_is_close, f.total, f.over_price, f.under_price,
+           f.open_total, f.open_over_price, f.open_under_price
     from flagged f
     join spread_pick s using (game_id)
     where f.total is not null
     qualify row_number() over (
         partition by f.game_id
-        order by f.total_agrees desc, f.provider_id = s.provider_id desc, f.priority, f.provider_id
+        order by f.total_agrees desc, f.over_price is not null desc, f.provider_id = s.provider_id desc, f.priority, f.provider_id
     ) = 1
 )
 
@@ -170,9 +182,11 @@ select
     s.open_home_spread,
     s.open_home_spread_price,
     s.open_away_spread_price,
-    s.open_home_ml,
-    s.open_away_ml,
-    s.open_total,
+    m.open_home_ml,
+    m.open_away_ml,
+    t.open_total,
+    t.open_over_price,
+    t.open_under_price,
     s.line_consistent,
     s.spread_agrees                                           as spread_agrees_with_market,
     s.median_spread                                           as market_median_spread,

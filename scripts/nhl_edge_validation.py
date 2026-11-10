@@ -45,7 +45,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from nba_nhl_edges import DB_PATH, Candidate, baselines, load, new_run_id, report, walk_forward
+from nba_nhl_edges import DB_PATH, Candidate, baselines, load, log_once, new_run_id, novig, report, walk_forward
 
 MIN_TRAIN_BETS = 60
 MIN_TRAIN_SEASONS = 2
@@ -71,8 +71,10 @@ def in_band(price: pd.Series, band) -> pd.Series:
 def prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     # puck-line bets only on standard, sign-consistent lines
-    bad_pl = ~(df.is_standard_puck_line.fillna(False) & df.line_consistent.fillna(True))
-    df.loc[bad_pl, "home_ats_margin"] = np.nan
+    df["spread_valid"] = df.is_standard_puck_line.fillna(False) & df.line_consistent.fillna(True)
+    df.loc[~df.spread_valid, "home_ats_margin"] = np.nan
+    # model edge vs the OPENING moneyline (no vig)
+    df["home_prob_edge_open"] = df.model_home_win_prob - novig(df.open_home_ml, df.open_away_ml)
     df["home_is_pl_dog"] = df.home_spread == 1.5
     df["away_is_pl_dog"] = df.home_spread == -1.5
     df["fin_sum_l10"] = df.home_finishing_per_game_l10 + df.away_finishing_per_game_l10
@@ -130,6 +132,17 @@ def candidates() -> list[Candidate]:
     C.append(Candidate("total_special_teams_over", "totals", "total", [28, 29, 30, 31],
                        lambda d, t: side_where(d, d.st_sum >= t, pd.Series(False, index=d.index), "over", "under"),
                        "combined PP xGF/60 + opposing PK xGA/60 (season to date) >= t: over"))
+    # placed at the OPEN (opening moneylines with prices: 2023-24 on, so one test season)
+    C.append(Candidate("b2b_vs_rested_ml_open", "back_to_back", "ml", [0, 500],
+                       lambda d, t: side_where(
+                           d, d.away_is_b2b & ~d.home_is_b2b & (d.away_travel_miles.fillna(0) >= t),
+                           d.home_is_b2b & ~d.away_is_b2b & (d.home_travel_miles.fillna(0) >= t)),
+                       "as b2b_vs_rested_ml, bet at the opening moneyline", placement="open"))
+    eo = "home_prob_edge_open"
+    C.append(Candidate("xg_ml_follow_open", "xg_vs_market", "ml", xg_grid,
+                       lambda d, t: side_where(d, d[eo] >= t, d[eo] <= -t),
+                       "xG win probability vs the OPENING no-vig moneyline >= t: bet the model's side at the open",
+                       placement="open"))
     return C
 
 
@@ -142,6 +155,10 @@ def main() -> None:
     lined = df[df.home_ml.notna()]
     print(f"NHL: {len(df):,} games, {len(lined):,} with a moneyline (seasons {lined.season.min()}-{lined.season.max()}); "
           f"home ML win rate {100 * (lined.home_margin > 0).mean():.1f}%")
+    log_once("nhl", "invalid_20261109T211031", [{
+        "type": "invalid_run", "run_id": "20261109T211031", "league": "nhl",
+        "reason": "moneylines included 3-way regulation prices (fixed in dbt/macros/espn_odds.sql); "
+                  "exclude this run from trial counts"}])
     baselines(df, ["ml", "spread", "total"])
     res, oos = walk_forward(df, candidates(), "nhl", MIN_TRAIN_BETS, MIN_TRAIN_SEASONS, MIN_OOS_BETS, run_id)
     report(res, oos, "nhl", MIN_OOS_BETS, len(df), run_id)

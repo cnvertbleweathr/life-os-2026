@@ -88,9 +88,17 @@ games as (
         e.home_score,
         e.away_score,
         e.went_ot,
-        e.neutral_site
+        -- neutral when ESPN says so, or when the venue is > 50 miles from the home
+        -- team's city (the 2020 bubbles, relocated games); ESPN flags neither
+        coalesce(e.neutral_site, false)
+          or coalesce({{ haversine_miles('v.lat', 'v.lng', 'c.lat', 'c.lng') }} > 50, false) as neutral_site,
+        coalesce(e.neutral_site, false)                       as espn_neutral_site
     from espn_games e
     left join espn_match m using (game_id)
+    left join {{ ref('nba_nhl_venues') }} v on v.venue = e.venue
+    left join {{ ref('nba_nhl_team_cities') }} c
+      on c.league = 'nba' and c.team_code = e.home_team
+     and e.season between coalesce(c.valid_from_season, 0) and coalesce(c.valid_to_season, 9999)
     left join team_ids th on th.nba_game_id = m.nba_game_id and th.team_code = e.home_team
     left join team_ids ta on ta.nba_game_id = m.nba_game_id and ta.team_code = e.away_team
 
@@ -112,6 +120,7 @@ games as (
         l.home_pts,
         l.away_pts,
         l.team_minutes > 240,
+        null,
         null
     from logs l
     where l.season < (select season from espn_start)
@@ -156,7 +165,11 @@ select
     case when l.has_espn_line then l.over_price end                      as over_price,
     case when l.has_espn_line then l.under_price end                     as under_price,
     l.open_home_spread,
+    l.open_home_spread_price,
+    l.open_away_spread_price,
     l.open_total,
+    l.open_over_price,
+    l.open_under_price,
     l.open_home_ml,
     l.open_away_ml,
     l.spread_agrees_with_market,

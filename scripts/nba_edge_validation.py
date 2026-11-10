@@ -28,8 +28,18 @@ Candidates (direction fixed in advance; the grid is what walk-forward chooses):
                                 (bias removed using earlier seasons only)
   total_b2b_under               either team on a back-to-back -> under
 
-Prices: ESPN rows carry the actual spread / total price; nba.historical_lines rows
+  total_model_open             as total_model, but against the OPENING total, bet at the open
+  model_spread_follow_open     as model_spread_follow, but against the OPENING spread
+
+Placement: the close-placed candidates bet the line and price the spine chose;
+*_open candidates are tested on 2023-24+ (opens with prices) and trained on earlier
+seasons with an open line (2013-14..2016-17 initialSpread at -110, then priced
+opens). Prices: ESPN rows carry the actual price; nba.historical_lines rows
 (2007-08 to 2012-13 and gaps) have none and settle at -110.
+
+rest_away_2plus, home_b2b_vs_rested_away and big_dog came from the Phase 0
+full-sample scan (scripts/nba_ats_scan.py); its 8 splits are logged as trials and
+counted in the Bonferroni m, and those rows are flagged discovered_in_sample.
 
 Usage
   uv run python scripts/nba_edge_validation.py
@@ -45,7 +55,7 @@ import argparse
 import numpy as np
 import pandas as pd
 
-from nba_nhl_edges import DB_PATH, Candidate, baselines, load, new_run_id, report, walk_forward
+from nba_nhl_edges import DB_PATH, Candidate, baselines, load, log_once, new_run_id, report, walk_forward
 
 MIN_TRAIN_BETS = 100
 MIN_TRAIN_SEASONS = 3
@@ -80,6 +90,9 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     prior_bias = (resid["sum"].cumsum().shift(1) / resid["count"].cumsum().shift(1)).rename("total_bias")
     df = df.merge(prior_bias, left_on="season", right_index=True, how="left")
     df["total_edge"] = df.pred_total_raw - df.total_bias - df.total
+    df["total_edge_open"] = df.pred_total_raw - df.total_bias - df.open_total
+    # ratings vs the OPENING spread (> 0: ratings like home more than the open)
+    df["home_spread_edge_open"] = df.open_home_spread - df.implied_home_spread
     df["rest_diff"] = df.home_days_rest - df.away_days_rest            # > 0 home more rested
     df["ats_form_gap"] = ((df.home_ats_covers_l10 - df.home_ats_losses_l10)
                           - (df.away_ats_covers_l10 - df.away_ats_losses_l10))
@@ -97,7 +110,7 @@ def candidates() -> list[Candidate]:
                        "ratings-implied spread differs from the market by >= t: bet against the ratings"))
     C.append(Candidate("rest_away_2plus", "rest", "spread", [None],
                        lambda d, _: side_where(d, pd.Series(False, index=d.index), d.rest_diff <= -2),
-                       "away team has 2+ more days of rest: bet away"))
+                       "away team has 2+ more days of rest: bet away", discovered_in_sample=True))
     C.append(Candidate("rest_diff_more_rested", "rest", "spread", [1, 2, 3],
                        lambda d, t: side_where(d, d.rest_diff >= t, d.rest_diff <= -t),
                        "rest difference >= t days: bet the more rested team"))
@@ -109,11 +122,11 @@ def candidates() -> list[Candidate]:
     C.append(Candidate("home_b2b_vs_rested_away", "back_to_back", "spread", [None],
                        lambda d, _: side_where(d, pd.Series(False, index=d.index),
                                                d.home_is_b2b & ~d.away_is_b2b & (d.away_days_rest >= 1)),
-                       "home on a back-to-back, away rested 1+ days: bet away"))
+                       "home on a back-to-back, away rested 1+ days: bet away", discovered_in_sample=True))
     C.append(Candidate("three_in_four_fade", "back_to_back", "spread", [None],
                        lambda d, _: side_where(d, d.away_is_3in4 & ~d.home_is_3in4, d.home_is_3in4 & ~d.away_is_3in4),
                        "team on its 3rd game in 4 nights, opponent not: bet the opponent"))
-    C.append(Candidate("away_long_travel", "travel", "spread", [500, 1000, 1500, 2000],
+    C.append(Candidate("away_long_travel", "travel", "spread", [500, 1000, 1500, 2000, 2500],
                        lambda d, t: side_where(d, d.away_travel_miles >= t, pd.Series(False, index=d.index)),
                        "away team travelled >= t miles since its last game: bet home"))
     C.append(Candidate("away_long_road_trip", "travel", "spread", [3, 4, 5, 6],
@@ -122,17 +135,35 @@ def candidates() -> list[Candidate]:
     C.append(Candidate("ats_form_fade", "ats_form", "spread", [4, 6, 8],
                        lambda d, t: side_where(d, d.ats_form_gap <= -t, d.ats_form_gap >= t),
                        "last-10 ATS (covers - losses) gap >= t: bet against the hot team"))
-    C.append(Candidate("big_dog", "line_size", "spread", [7, 9, 11, 13],
+    C.append(Candidate("big_dog", "line_size", "spread", [7, 9, 11, 13, 15],
                        lambda d, t: side_where(d, d.home_spread >= t, d.home_spread <= -t),
-                       "underdog of >= t points: bet the underdog"))
-    C.append(Candidate("total_model", "totals", "total", [2, 4, 6, 8, 10],
+                       "underdog of >= t points: bet the underdog", discovered_in_sample=True))
+    C.append(Candidate("total_model", "totals", "total", [2, 4, 6, 8, 10, 12, 14],
                        lambda d, t: side_where(d, d.total_edge >= t, d.total_edge <= -t, "over", "under"),
                        "ratings/pace predicted total (bias from earlier seasons removed) vs market >= t: over / under"))
     C.append(Candidate("total_b2b_under", "totals", "total", [None],
                        lambda d, _: side_where(d, pd.Series(False, index=d.index), d.home_is_b2b | d.away_is_b2b,
                                                "over", "under"),
                        "either team on a back-to-back: under"))
+    # placed at the OPEN: signal from the opening number, settled at the opening price
+    C.append(Candidate("total_model_open", "totals", "total", [4, 6, 8, 10, 12, 14],
+                       lambda d, t: side_where(d, d.total_edge_open >= t, d.total_edge_open <= -t, "over", "under"),
+                       "predicted total vs the OPENING total >= t: over / under, bet at the open",
+                       placement="open", min_test_season=2024))
+    eo = "home_spread_edge_open"
+    C.append(Candidate("model_spread_follow_open", "ratings_vs_market", "spread", [1, 2, 3, 4, 5, 6, 8],
+                       lambda d, t: side_where(d, d[eo] >= t, d[eo] <= -t),
+                       "ratings-implied spread vs the OPENING spread >= t: bet the ratings' side at the open",
+                       placement="open", min_test_season=2024))
     return C
+
+
+# The Phase 0 scan (scripts/nba_ats_scan.py) tried these splits on every season of
+# nba.historical_lines before this walk-forward existed. Three candidates above came
+# from it; the splits count toward the Bonferroni m.
+SCAN_SPLITS = ["home ATS (all)", "home favorite", "home dog", "home dog +10.5 or more",
+               "road fav, home on B2B", "away 2+ more days rest -> bet away",
+               "home 2+ more days rest -> bet home", "home B2B vs rested away -> bet away"]
 
 
 def main() -> None:
@@ -144,8 +175,13 @@ def main() -> None:
     lined = df[df.home_spread.notna()]
     print(f"NBA: {len(df):,} games, {len(lined):,} with a spread, seasons {df.season.min()}-{df.season.max()}; "
           f"baseline home ATS {100 * (lined.home_ats_margin > 0).sum() / (lined.home_ats_margin != 0).sum():.1f}%")
+    log_once("nba", "nba_ats_scan_phase0", [
+        {"type": "scan", "run_id": "nba_ats_scan_phase0", "league": "nba", "candidate": f"scan: {x}",
+         "param": None, "train_seasons": "2008-2026 (in sample)", "source": "scripts/nba_ats_scan.py"}
+        for x in SCAN_SPLITS])
     baselines(df, ["spread", "total"])
-    res, oos = walk_forward(df, candidates(), "nba", MIN_TRAIN_BETS, MIN_TRAIN_SEASONS, MIN_OOS_BETS, run_id)
+    res, oos = walk_forward(df, candidates(), "nba", MIN_TRAIN_BETS, MIN_TRAIN_SEASONS, MIN_OOS_BETS, run_id,
+                            scan_splits=len(SCAN_SPLITS))
     report(res, oos, "nba", MIN_OOS_BETS, len(df), run_id)
 
 
