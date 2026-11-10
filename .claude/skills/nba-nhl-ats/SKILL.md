@@ -67,6 +67,11 @@ Raw ESPN responses are cached in `data/raw/espn/{league}/`, NHL boxscores in
   vig out of sample, so treat them as descriptive (Phase 5).
 - Pregame lookups: `scripts/{nba,nhl}_pregame_lookup.py`. A past game is cross-checked against the
   feature mart; a mismatch means the lookup and the dbt features have drifted, so fix one of them.
+- Daily picks: `scripts/nba_nhl_generate_picks.py` → `data/bets/{league}/history/<date>.json`
+  (append-only, line captured at pick time) → `scripts/nba_nhl_grade_picks.py` (final, close,
+  CLV) → `pipelines/nba_nhl_live_picks_pipeline.py` → `mart_{nba,nhl}_live_picks`. When a rule
+  ships, put it in `build()` (generator) and add bet grading in `grade_game()`, which currently
+  raises if it sees a bet.
 - For backtests: NBA rows with `line_source = 'historical_lines'` have no prices (use -110).
   NHL: drop `is_standard_puck_line = false` (±2.5 alternates, 19 games) and consider dropping
   `line_consistent = false` (31 games).

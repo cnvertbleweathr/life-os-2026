@@ -467,6 +467,35 @@ def build_steps(year: int) -> List[Step]:
             tags=["betting", "nhl"],
             run_on_days=[0, 3],  # Monday + Thursday
         ),
+        # NBA / NHL picks, same flow as CFB: grade earlier days against the finals
+        # and closing lines just loaded, write today's picks with the line captured
+        # now (no validated rule yet: NO_BET plus the NBA paper totals test), load
+        # into nba/nhl.live_picks, and push today's picks if there are any.
+        # mart_nba_live_picks / mart_nhl_live_picks rebuild in the dbt step below.
+        Step(
+            name="nba_nhl_grade_picks",
+            cmd=["python3", "scripts/nba_nhl_grade_picks.py"],
+            run_if_exists=ROOT / "scripts/nba_nhl_grade_picks.py",
+            tags=["betting", "nba", "nhl"],
+        ),
+        Step(
+            name="nba_nhl_generate_picks",
+            cmd=["python3", "scripts/nba_nhl_generate_picks.py"],
+            run_if_exists=ROOT / "scripts/nba_nhl_generate_picks.py",
+            tags=["betting", "nba", "nhl"],
+        ),
+        Step(
+            name="nba_nhl_live_picks_pipeline",
+            cmd=["python3", "pipelines/nba_nhl_live_picks_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/nba_nhl_live_picks_pipeline.py",
+            tags=["betting", "nba", "nhl"],
+        ),
+        Step(
+            name="notify_nba_nhl",
+            cmd=["python3", "scripts/notify.py", "nba-nhl"],
+            run_if_exists=ROOT / "scripts/notify.py",
+            tags=["betting", "nba", "nhl", "notify"],
+        ),
         # ------------------------------------------------------------------
         # CFB — grade picks (daily during season Thu-Mon when games played)
         # ------------------------------------------------------------------

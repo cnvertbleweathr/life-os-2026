@@ -430,6 +430,30 @@ on `scripts/pregame_lookup.py`.
   10 NHL values each). An upcoming game has no mart row and uses each team's most recent starter,
   marked PROBABLE.
 
+## Daily picks and grading (Phase 6, 2026-11-09)
+
+**2026-27 loaded:** NBA 154 and NHL 284 completed games through 2026-11-09, all with lines;
+stats match 154/154 and 282/284. The daily sync's NBA/NHL steps were added to the main
+checkout on 2026-11-09, after that day's 09:00 run, so the loads ran by hand once:
+`espn_odds_pipeline.py --league {nba,nhl} --season 2027`, `nba_stats_pipeline.py --season 2027`,
+`nhl_stats_pipeline.py --season 2027 --goalies`. Crosswalks were unchanged.
+
+**Flow** (same as CFB: picks JSON → graded in place → DLT → DuckDB → mart):
+
+| Step (daily_sync) | What it does |
+|---|---|
+| `espn_odds_nba_nhl`, `nba_stats_pipeline`, `nhl_stats_pipeline` | finals and closing lines for the last 3 days, current lines for the next 2, team stats |
+| `nba_nhl_grade_picks` | `scripts/nba_nhl_grade_picks.py`: fills in the final score, status and closing line for every logged game; for a bet or paper entry, outcome, P&L at the captured price, and CLV (close vs captured line, points toward the bet). Idempotent; canceled / postponed games are marked, never graded |
+| `nba_nhl_generate_picks` | `scripts/nba_nhl_generate_picks.py`: writes `data/bets/{nba,nhl}/history/<date>.json` with the line, price, book and capture time of every game. Verdict NO_BET (no validated rule); NBA games also carry the paper totals test. Append-only: a game keeps its first capture. Games already started are flagged `captured_after_start` and never paper-eligible |
+| `nba_nhl_live_picks_pipeline` | `pipelines/nba_nhl_live_picks_pipeline.py` → `nba.live_picks`, `nhl.live_picks` (merge on game_id) |
+| `notify_nba_nhl` | `scripts/notify.py nba-nhl`: ntfy push listing the day's bets and paper entries; quiet when there are none |
+| `dbt` | `mart_nba_live_picks`, `mart_nhl_live_picks`: per season, games logged and graded, bets, paper entries, record, ROI and CLV |
+
+The paper test (`nba_totals_open_v1`) uses the line our own run captures at about 09:00 ET,
+after the previous night's games are final, as the validator required. It fires on a 12-point
+gap with both prices within −135..+115, regular season only.
+On 2026-11-10 the gaps were +1.6 to +8.5, so there were no entries.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
