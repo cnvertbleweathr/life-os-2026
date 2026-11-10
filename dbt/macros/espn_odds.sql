@@ -27,8 +27,11 @@
           The books that disagree with the market most often (Caesars Sportsbook
           id 31, Unibet, SugarHouse: ~4% of NBA games off by > 3 points) sit last.
 
-  4. Moneyline: from the spread's book when it quotes both sides, else the
-     highest-priority book that does. ml_book records it.
+  4. Moneyline: from the spread's book when it quotes a valid 2-way pair, else the
+     highest-priority book that does. ml_book records it. A pair is valid when its
+     implied probabilities sum to 1.00-1.12: most NHL books before 2024-25 carry
+     3-way regulation prices in the moneyline field (both legs often plus money),
+     which are dropped.
 
   5. Total: the highest-priority book whose total is within tolerance of the
      median total (NBA 6 points, NHL 1 goal), preferring the spread's book.
@@ -71,6 +74,26 @@ with books as (
       on p.league = '{{ league }}' and p.provider_id = o.provider_id and p.is_book
 ),
 
+-- A moneyline is kept only when its two sides form a 2-way market: implied
+-- probabilities summing to 1.00-1.12. Most NHL books before 2024-25 put the 3-way
+-- (regulation-time) price in ESPN's moneyLine field, home and away legs without the
+-- draw (MIN +120 / away +175), which sums to ~0.85 and would settle wrongly as a
+-- 2-way bet. Same check for the opening pair.
+priced as (
+    select
+        * replace (
+            case when {{ implied_prob('home_ml') }} + {{ implied_prob('away_ml') }} between 1.0 and 1.12
+                 then home_ml end                             as home_ml,
+            case when {{ implied_prob('home_ml') }} + {{ implied_prob('away_ml') }} between 1.0 and 1.12
+                 then away_ml end                             as away_ml,
+            case when {{ implied_prob('open_home_ml') }} + {{ implied_prob('open_away_ml') }} between 1.0 and 1.12
+                 then open_home_ml end                        as open_home_ml,
+            case when {{ implied_prob('open_home_ml') }} + {{ implied_prob('open_away_ml') }} between 1.0 and 1.12
+                 then open_away_ml end                        as open_away_ml
+        )
+    from books
+),
+
 market as (
     select
         *,
@@ -78,7 +101,7 @@ market as (
         median(home_spread) over (partition by game_id)       as median_spread,
         count(total) over (partition by game_id)              as n_totals,
         median(total) over (partition by game_id)             as median_total
-    from books
+    from priced
 ),
 
 flagged as (
