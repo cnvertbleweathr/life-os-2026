@@ -4,6 +4,7 @@ import { useState } from "react";
 import mlbLogos from "@/lib/mlb_team_logos.json";
 import nbaLogos from "@/lib/nba_team_logos.json";
 import nflLogos from "@/lib/nfl_team_logos.json";
+import nhlLogos from "@/lib/nhl_team_logos.json";
 
 /**
  * ProTeamLogo — renders an MLB/NBA/NFL team's logo from the locally
@@ -15,15 +16,16 @@ import nflLogos from "@/lib/nfl_team_logos.json";
  * already point current team names at the old filenames, so callers never
  * need to know about this.
  *
- * Only MLB/NBA/NFL are covered. MLS and NHL have no logo source from this
- * download — those leagues always render the initial-letter fallback until
- * a separate source is added.
+ * MLB/NBA/NFL come from that download; NHL from web/public/logos/nhl (keyed by
+ * full team name in lib/nhl_team_logos.json). MLS has no logo source and always
+ * renders the initial-letter fallback.
  */
 
 const MAPS: Record<string, Record<string, string>> = {
   mlb: mlbLogos,
   nba: nbaLogos,
   nfl: nflLogos,
+  nhl: nhlLogos,
 };
 
 const SIZE_CLASSES = {
@@ -39,8 +41,8 @@ export function ProTeamLogo({
   px,
   className,
 }: {
-  /** Lowercase league key: "mlb" | "nba" | "nfl". Other leagues (mls, nhl)
-   *  fall back to the initial-letter badge — no logo source exists yet. */
+  /** Lowercase league key: "mlb" | "nba" | "nfl" | "nhl". MLS falls back to
+   *  the initial-letter badge — no logo source exists yet. */
   league: string;
   team: string;
   size?: keyof typeof SIZE_CLASSES;

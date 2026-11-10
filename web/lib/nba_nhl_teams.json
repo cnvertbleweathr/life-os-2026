@@ -1,0 +1,254 @@
+{
+ "nba": {
+  "ATL": {
+   "name": "Atlanta Hawks",
+   "logo": "Hawks"
+  },
+  "BKN": {
+   "name": "Brooklyn Nets",
+   "logo": "Nets"
+  },
+  "BOS": {
+   "name": "Boston Celtics",
+   "logo": "Celtics"
+  },
+  "CHA": {
+   "name": "Charlotte Hornets",
+   "logo": "Hornets"
+  },
+  "CHI": {
+   "name": "Chicago Bulls",
+   "logo": "Bulls"
+  },
+  "CLE": {
+   "name": "Cleveland Cavaliers",
+   "logo": "Cavaliers"
+  },
+  "DAL": {
+   "name": "Dallas Mavericks",
+   "logo": "Mavericks"
+  },
+  "DEN": {
+   "name": "Denver Nuggets",
+   "logo": "Nuggets"
+  },
+  "DET": {
+   "name": "Detroit Pistons",
+   "logo": "Pistons"
+  },
+  "GSW": {
+   "name": "Golden State Warriors",
+   "logo": "Warriors"
+  },
+  "HOU": {
+   "name": "Houston Rockets",
+   "logo": "Rockets"
+  },
+  "IND": {
+   "name": "Indiana Pacers",
+   "logo": "Pacers"
+  },
+  "LAC": {
+   "name": "LA Clippers",
+   "logo": "Clippers"
+  },
+  "LAL": {
+   "name": "Los Angeles Lakers",
+   "logo": "Lakers"
+  },
+  "MEM": {
+   "name": "Memphis Grizzlies",
+   "logo": "Grizzlies"
+  },
+  "MIA": {
+   "name": "Miami Heat",
+   "logo": "Heat"
+  },
+  "MIL": {
+   "name": "Milwaukee Bucks",
+   "logo": "Bucks"
+  },
+  "MIN": {
+   "name": "Minnesota Timberwolves",
+   "logo": "Timberwolves"
+  },
+  "NOP": {
+   "name": "New Orleans Pelicans",
+   "logo": "Pelicans"
+  },
+  "NYK": {
+   "name": "New York Knicks",
+   "logo": "Knicks"
+  },
+  "OKC": {
+   "name": "Oklahoma City Thunder",
+   "logo": "Thunder"
+  },
+  "ORL": {
+   "name": "Orlando Magic",
+   "logo": "Magic"
+  },
+  "PHI": {
+   "name": "Philadelphia 76ers",
+   "logo": "76ers"
+  },
+  "PHX": {
+   "name": "Phoenix Suns",
+   "logo": "Suns"
+  },
+  "POR": {
+   "name": "Portland Trail Blazers",
+   "logo": "Trail Blazers"
+  },
+  "SAC": {
+   "name": "Sacramento Kings",
+   "logo": "Kings"
+  },
+  "SAS": {
+   "name": "San Antonio Spurs",
+   "logo": "Spurs"
+  },
+  "TOR": {
+   "name": "Toronto Raptors",
+   "logo": "Raptors"
+  },
+  "UTA": {
+   "name": "Utah Jazz",
+   "logo": "Jazz"
+  },
+  "WAS": {
+   "name": "Washington Wizards",
+   "logo": "Wizards"
+  }
+ },
+ "nhl": {
+  "ANA": {
+   "name": "Anaheim Ducks",
+   "logo": "Anaheim Ducks"
+  },
+  "BOS": {
+   "name": "Boston Bruins",
+   "logo": "Boston Bruins"
+  },
+  "BUF": {
+   "name": "Buffalo Sabres",
+   "logo": "Buffalo Sabres"
+  },
+  "CAR": {
+   "name": "Carolina Hurricanes",
+   "logo": "Carolina Hurricanes"
+  },
+  "CBJ": {
+   "name": "Columbus Blue Jackets",
+   "logo": "Columbus Blue Jackets"
+  },
+  "CGY": {
+   "name": "Calgary Flames",
+   "logo": "Calgary Flames"
+  },
+  "CHI": {
+   "name": "Chicago Blackhawks",
+   "logo": "Chicago Blackhawks"
+  },
+  "COL": {
+   "name": "Colorado Avalanche",
+   "logo": "Colorado Avalanche"
+  },
+  "DAL": {
+   "name": "Dallas Stars",
+   "logo": "Dallas Stars"
+  },
+  "DET": {
+   "name": "Detroit Red Wings",
+   "logo": "Detroit Red Wings"
+  },
+  "EDM": {
+   "name": "Edmonton Oilers",
+   "logo": "Edmonton Oilers"
+  },
+  "FLA": {
+   "name": "Florida Panthers",
+   "logo": "Florida Panthers"
+  },
+  "LAK": {
+   "name": "Los Angeles Kings",
+   "logo": "Los Angeles Kings"
+  },
+  "MIN": {
+   "name": "Minnesota Wild",
+   "logo": "Minnesota Wild"
+  },
+  "MTL": {
+   "name": "Montreal Canadiens",
+   "logo": "Montreal Canadiens"
+  },
+  "NJD": {
+   "name": "New Jersey Devils",
+   "logo": "New Jersey Devils"
+  },
+  "NSH": {
+   "name": "Nashville Predators",
+   "logo": "Nashville Predators"
+  },
+  "NYI": {
+   "name": "New York Islanders",
+   "logo": "New York Islanders"
+  },
+  "NYR": {
+   "name": "New York Rangers",
+   "logo": "New York Rangers"
+  },
+  "OTT": {
+   "name": "Ottawa Senators",
+   "logo": "Ottawa Senators"
+  },
+  "PHI": {
+   "name": "Philadelphia Flyers",
+   "logo": "Philadelphia Flyers"
+  },
+  "PIT": {
+   "name": "Pittsburgh Penguins",
+   "logo": "Pittsburgh Penguins"
+  },
+  "SEA": {
+   "name": "Seattle Kraken",
+   "logo": "Seattle Kraken"
+  },
+  "SJS": {
+   "name": "San Jose Sharks",
+   "logo": "San Jose Sharks"
+  },
+  "STL": {
+   "name": "St. Louis Blues",
+   "logo": "St. Louis Blues"
+  },
+  "TBL": {
+   "name": "Tampa Bay Lightning",
+   "logo": "Tampa Bay Lightning"
+  },
+  "TOR": {
+   "name": "Toronto Maple Leafs",
+   "logo": "Toronto Maple Leafs"
+  },
+  "UTA": {
+   "name": "Utah Mammoth",
+   "logo": "Utah Mammoth"
+  },
+  "VAN": {
+   "name": "Vancouver Canucks",
+   "logo": "Vancouver Canucks"
+  },
+  "VGK": {
+   "name": "Vegas Golden Knights",
+   "logo": "Vegas Golden Knights"
+  },
+  "WPG": {
+   "name": "Winnipeg Jets",
+   "logo": "Winnipeg Jets"
+  },
+  "WSH": {
+   "name": "Washington Capitals",
+   "logo": "Washington Capitals"
+  }
+ }
+}

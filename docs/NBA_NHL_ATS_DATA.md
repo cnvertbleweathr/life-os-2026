@@ -454,6 +454,23 @@ after the previous night's games are final, as the validator required. It fires 
 gap with both prices within −135..+115, regular season only.
 On 2026-11-10 the gaps were +1.6 to +8.5, so there were no entries.
 
+## Degenerates Corner slate (Phase 7, 2026-11-10)
+
+`/nba` and `/nhl` in the web app (sidebar → Degenerates Corner) render one shared component,
+`web/components/ProSlate.tsx`, from two API routes in `api/routers/nba_nhl.py`:
+
+| Route | Returns |
+|---|---|
+| `GET /api/nba-nhl/{league}/slate?date=YYYY-MM-DD` | one day's logged games (default: today, Eastern): line, prices and book as captured, verdict and `rules_fired`, the NBA paper entry, and once graded the final and closing line; plus `previous_date` / `next_date` |
+| `GET /api/nba-nhl/{league}/record?season=` | season to date (default: latest logged): games logged and graded, bets, paper record, ROI, CLV, beat-close %, and one row per day |
+| `GET /api/nba-nhl/{league}/dates` | every logged date |
+
+The routes read `data/bets/{league}/history/*.json` directly, not the DuckDB tables, so the page is
+current right after the morning generate and grade steps (the API keeps a read-only connection
+opened at startup). The record uses the same definitions as `mart_{league}_live_picks`.
+`ONS_BETS_DIR` points them at another folder (tests; dev servers on scratch picks). The page takes
+`?date=` for a past slate. Times are Mountain, as on the CFB slate.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.

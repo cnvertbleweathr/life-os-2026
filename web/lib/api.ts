@@ -1035,6 +1035,56 @@ export interface KglwMusicVideo {
 }
 
 // Local (Denver) calendar date as YYYY-MM-DD — used to flag upcoming shows.
+// ── NBA / NHL slate (api/routers/nba_nhl.py) ────────────────────────────────
+
+export type ProLeague = "nba" | "nhl";
+
+export interface ProPaper {
+  test: string; fires: boolean; side: "OVER" | "UNDER" | null; pred_total: number | null;
+  captured_total: number | null; gap: number | null; price: number | null; prices_in_band: boolean | null;
+  outcome?: "win" | "loss" | "push" | null; pnl?: number | null; clv?: number | null;
+}
+
+export interface ProGame {
+  game_id: string; season: number; season_type: number; game_date: string; start_time: string | null;
+  matchup: string; home_team: string; away_team: string; neutral_site: boolean | null;
+  captured_at: string | null; captured_after_start: boolean | null; book: string | null;
+  home_spread: number | null; home_spread_price: number | null; away_spread_price: number | null;
+  ml_book: string | null; home_ml: number | null; away_ml: number | null;
+  total_book: string | null; total: number | null; over_price: number | null; under_price: number | null;
+  verdict: string; bet: string | null; rules_fired: string[]; rules_version: string | null;
+  final_status: string | null; home_score: number | null; away_score: number | null;
+  went_ot: boolean | null; shootout: boolean | null;
+  closing_home_spread: number | null; closing_total: number | null;
+  closing_home_ml: number | null; closing_away_ml: number | null; graded_at: string | null;
+  paper: ProPaper | null;
+}
+
+export interface ProSlate {
+  league: ProLeague; date: string; today: string; logged: boolean; captured_at: string | null;
+  previous_date: string | null; next_date: string | null; games: ProGame[];
+}
+
+export interface ProRecordDay {
+  date: string; games: number; graded: number; paper_entries: number;
+  paper_wins: number; paper_losses: number; paper_pushes: number; paper_pnl: number | null;
+}
+
+export interface ProRecord {
+  league: ProLeague; season: number | null; seasons: number[]; first_date: string | null; last_date: string | null;
+  games_logged: number; games_graded: number; captured_after_start: number; bets: number;
+  paper_entries: number; paper_graded: number; paper_wins: number; paper_losses: number; paper_pushes: number;
+  paper_pnl: number | null; paper_win_pct: number | null; paper_roi: number | null;
+  paper_clv_avg: number | null; paper_beat_close_pct: number | null; days: ProRecordDay[];
+}
+
+export const proApi = {
+  slate: (league: ProLeague, date?: string) =>
+    get<ProSlate>(`/nba-nhl/${league}/slate${date ? `?date=${date}` : ""}`),
+  record: (league: ProLeague, season?: number) =>
+    get<ProRecord>(`/nba-nhl/${league}/record${season ? `?season=${season}` : ""}`),
+};
+
 function todayLocalIso(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Denver" });
 }
