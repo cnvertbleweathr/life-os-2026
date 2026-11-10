@@ -19,6 +19,7 @@ Setup:
 
 Usage:
   python scripts/notify.py picks          # send picks report
+  python scripts/notify.py nba-nhl        # today's NBA/NHL bets + paper entries (quiet if none)
   python scripts/notify.py sync-ok        # send sync health summary
   python scripts/notify.py sync-fail      # send sync failure alert
   python scripts/notify.py test           # send a test notification
@@ -222,8 +223,42 @@ def notify_test() -> bool:
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+def notify_nba_nhl(day: date | None = None) -> bool:
+    """Today's NBA / NHL picks and paper entries (data/bets/{league}/history/<date>.json).
+
+    Quiet when there is nothing to act on: with no validated rule, most days have no
+    bet and no paper entry, and a daily "nothing today" push is noise.
+    """
+    day = day or date.today()
+    lines, n_bets, n_paper = [], 0, 0
+    for league in ("nba", "nhl"):
+        path = ROOT / "data" / "bets" / league / "history" / f"{day.isoformat()}.json"
+        if not path.exists():
+            continue
+        games = json.loads(path.read_text()).get("games", [])
+        for g in games:
+            if g.get("bet"):
+                n_bets += 1
+                lines.append(f"{league.upper()} BET {g['bet']} ({g['matchup']})")
+            pe = g.get("paper") or {}
+            if pe.get("fires"):
+                n_paper += 1
+                lines.append(f"{league.upper()} paper: {g['matchup']} {pe['side']} {pe['captured_total']:g}"
+                             f" @ {pe['price']:+g} (model {pe['pred_total']:.1f}; not a bet)")
+    if not lines:
+        print(f"NBA/NHL {day}: no bets and no paper entries; nothing sent")
+        return True
+    return send(
+        title=f"🏀🏒 NBA/NHL {day:%a %b %d}: {n_bets} bets, {n_paper} paper",
+        message="\n".join(lines),
+        priority="default" if n_bets else "low",
+        tags=["basketball", "ice_hockey"],
+    )
+
+
 COMMANDS = {
     "picks":       notify_picks,
+    "nba-nhl":     notify_nba_nhl,
     "sync-ok":     notify_sync_ok,
     "sync-fail":   notify_sync_fail,
     "backup-fail": notify_backup_fail,
