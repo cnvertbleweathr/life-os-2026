@@ -17,7 +17,7 @@ export function PixelScene({
   temp,
   data,
 }: {
-  scene: "cfb" | "week" | "fitness" | "reading" | "music" | "kglw" | "sports" | "film" | "loop";
+  scene: "cfb" | "week" | "fitness" | "reading" | "music" | "kglw" | "sports" | "film" | "loop" | "progeny";
   /** What the scene shows, for screen readers. */
   label: string;
   /** CFB: the season record for the scoreboard, e.g. "17-11". */

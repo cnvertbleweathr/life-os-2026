@@ -39,14 +39,14 @@ function askForToken(): string | null {
 }
 
 /** Fetch a personal endpoint with the write key, asking for it once on 401. */
-async function ownerFetch(path: string, init: RequestInit = {}): Promise<Response> {
+async function ownerFetch(path: string, init: RequestInit = {}, prompt = true): Promise<Response> {
   const send = (token: string | null) => {
     const headers = new Headers(init.headers);
     if (token) headers.set("X-ONS-Write-Token", token);
     return fetch(`${API_BASE}${path}`, { ...init, headers, cache: "no-store" });
   };
   const res = await send(storedToken());
-  if (res.status !== 401) return res;
+  if (res.status !== 401 || !prompt) return res;
   const fresh = askForToken();
   return fresh ? send(fresh) : res;
 }
@@ -75,9 +75,13 @@ async function errorDetail(res: Response, path: string): Promise<string> {
   return `API ${path} returned ${res.status}`;
 }
 
-/** GET a personal endpoint (check-in, inbox). */
-async function ownerGet<T>(path: string): Promise<T> {
-  const res = await ownerFetch(path);
+/** Thrown by an owner-only read made without prompting, when this device has no (valid) write key. */
+export class LockedError extends Error {}
+
+/** GET a personal endpoint (check-in, inbox). With prompt=false a missing key throws LockedError instead of asking. */
+async function ownerGet<T>(path: string, prompt = true): Promise<T> {
+  const res = await ownerFetch(path, {}, prompt);
+  if (!prompt && (res.status === 401 || res.status === 403)) throw new LockedError(await errorDetail(res, path));
   if (!res.ok) throw new Error(await errorDetail(res, path));
   return res.json();
 }
@@ -1238,4 +1242,172 @@ export const filmApi = {
     }
     return hit;
   },
+};
+
+// ── Progeny (owner-only, reads included) ─────────────────────────────────────
+// Kids' data never goes over the public tunnel without the write key (api/routers/progeny.py).
+
+export interface ProgenyKidConfig {
+  kid_id: string;
+  display_name: string;
+  birthdate: string | null;
+  due_date: string | null;
+  kindergarten_start: string | null;
+}
+
+export interface ProgenyKid {
+  kid_id: string;
+  display_name: string;
+  birthdate: string | null;
+  due_date: string | null;
+  is_born: boolean;
+  age_days: number | null;
+  age_months: number | null;
+  age_years: number | null;
+  age_label: string | null;
+  next_birthday: string | null;
+  days_to_birthday: number | null;
+  turning_age: number | null;
+  days_to_due: number | null;
+  kindergarten_target: string | null;
+}
+
+export interface ProgenyPath {
+  kid_id: string;
+  display_name: string;
+  path_key: string;
+  path_name: string;
+  path_order: number;
+  total_levels: number;
+  reached_level: number | null;
+  reached_level_name: string | null;
+  pct_complete: number;
+  is_complete: boolean;
+  focus_level: number;
+  focus_level_key: string;
+  focus_level_name: string;
+  focus_description: string | null;
+  activities: string[];
+  evidence_count: number;
+  latest_evidence_date: string | null;
+  latest_evidence_level: string | null;
+  latest_evidence_notes: string | null;
+}
+
+export interface ProgenyOverview {
+  configured: boolean;
+  config_error: string | null;
+  config_kids: ProgenyKidConfig[];
+  kids: ProgenyKid[];
+  focus: ProgenyPath[];
+  today: string;
+}
+
+export type ProgenyEventType = "quote" | "first" | "milestone" | "path";
+
+export interface ProgenyEvent {
+  event_id: string;
+  kid_id: string;
+  display_name: string;
+  event_date: string;
+  event_type: ProgenyEventType;
+  title: string;
+  detail: string | null;
+  age_months_at_event: number | null;
+  age_at_event: string | null;
+  logged_at: string | null;
+}
+
+export interface ProgenyMilestone {
+  kid_id: string;
+  display_name: string;
+  age_months: number;
+  band_role: "current" | "next";
+  band_months: number;
+  band_label: string;
+  domain: string;
+  domain_label: string;
+  sort_order: number;
+  milestone_id: string;
+  milestone: string;
+  is_observed: boolean;
+  observed_date: string | null;
+  notes: string | null;
+  source_url: string | null;
+}
+
+export interface ProgenyReading {
+  kid_id: string;
+  display_name: string;
+  goal_reads: number;
+  total_reads: number;
+  unique_titles: number;
+  repeat_reads: number;
+  pct_to_goal: number;
+  reads_remaining: number;
+  reads_last_30d: number;
+  pace_per_day_30d: number;
+  kindergarten_target: string | null;
+  days_to_kindergarten: number | null;
+  needed_per_day: number | null;
+  first_read_date: string | null;
+  last_read_date: string | null;
+  most_read_title: string | null;
+  most_read_count: number | null;
+}
+
+export interface ProgenyTitle {
+  kid_id: string;
+  title_key: string;
+  title: string;
+  author: string | null;
+  times_read: number;
+  first_read: string | null;
+  last_read: string | null;
+  rank_by_reads: number;
+}
+
+export interface ProgenyTask {
+  task_id: string;
+  task: string;
+  category: string | null;
+  due_date: string | null;
+  done_date: string | null;
+  created_date: string | null;
+  status: "open" | "overdue" | "done";
+  days_until_due: number | null;
+}
+
+export interface ProgenyBurnDay {
+  day: string;
+  baby_due_date: string | null;
+  is_future: boolean;
+  total_tasks: number;
+  done_tasks: number;
+  open_tasks: number;
+  ideal_open: number | null;
+}
+
+export interface ProgenyOptions {
+  kids: ProgenyKidConfig[];
+  config_error: string | null;
+  milestones: { milestone_id: string; band_months: number; band_label: string; domain: string; domain_label: string; milestone: string }[];
+  levels: { path_key: string; path_name: string; level_num: number; level_key: string; level_name: string; min_age_months: number }[];
+  prep_categories: string[];
+  known_titles: string[];
+}
+
+export type ProgenyKind = "quotes" | "firsts" | "books" | "milestones" | "path_evidence" | "prep_tasks";
+
+export const progenyApi = {
+  /** First read of the page: never prompts; throws LockedError when the key is needed. */
+  overview: (prompt = false) => ownerGet<ProgenyOverview>("/progeny/overview", prompt),
+  timeline: () => ownerGet<ProgenyEvent[]>("/progeny/timeline", false),
+  paths: () => ownerGet<ProgenyPath[]>("/progeny/paths", false),
+  milestones: () => ownerGet<ProgenyMilestone[]>("/progeny/milestones", false),
+  reading: () => ownerGet<{ kids: ProgenyReading[]; titles: ProgenyTitle[] }>("/progeny/reading", false),
+  prep: () => ownerGet<{ tasks: ProgenyTask[]; burndown: ProgenyBurnDay[] }>("/progeny/prep", false),
+  options: () => ownerGet<ProgenyOptions>("/progeny/options", false),
+  log: (kind: ProgenyKind, fields: Record<string, unknown>, entry_id?: string) =>
+    post<Record<string, unknown>>(`/progeny/${kind}`, { fields, entry_id }),
 };

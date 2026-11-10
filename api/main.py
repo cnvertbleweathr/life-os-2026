@@ -31,6 +31,7 @@ from api.routers import (
     home,
     inbox,
     kglw,
+    progeny,
     music,
     reading,
     shows,
@@ -99,6 +100,8 @@ app.include_router(checkin.router, prefix="/api/checkin", tags=["checkin"], depe
 app.include_router(inbox.router,   prefix="/api/inbox",   tags=["inbox"],   dependencies=owner_only)
 app.include_router(film.router,    prefix="/api/film",    tags=["film"],    dependencies=owner_only)
 app.include_router(display.router, prefix="/api/display", tags=["display"], dependencies=owner_only)
+# Progeny is owner-only for reads too: kids' names, quotes and milestones stay off the public tunnel.
+app.include_router(progeny.router, prefix="/api/progeny", tags=["progeny"], dependencies=owner_only)
 
 @app.get("/api/health")
 async def health():

@@ -215,7 +215,7 @@ On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6
 ### Named Rules
 **The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. Violet means only "things you write" (check-in and capture); favourite picks on the slate use plain ink, so no hue has two meanings. Film is the ninth area: the owner chose magenta (322°, Option A in `play-hue-options.html`) in November 2026. Adding a tenth reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
 
-**The Play Pages Are Neutral Rule.** Music, King Gizzard and Sports have no area colour of their own: ink, rules, neutral pills and the forest system colour only. An existing area colour appears there only when that area does (college football rows on Sports keep CFB tangerine and link to Degenerates Corner). Giving Play a hue is an owner decision.
+**The Play Pages Are Neutral Rule.** Music, King Gizzard and Sports have no area colour of their own, and neither does Progeny (the kids) until the owner gives it one: ink, rules, neutral pills and the forest system colour only. An existing area colour appears there only when that area does (college football rows on Sports keep CFB tangerine and link to Degenerates Corner). Giving Play a hue is an owner decision.
 
 **The Forest Is The System Rule.** Forest marks what the system knows about you right now: today, selected, focused. Area colours never do those jobs.
 
@@ -247,7 +247,7 @@ On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6
 
 **The L-frame.** A 228px sidebar and a 48px top bar share the Frame ground. The work sits on a white Sheet inset 8px from the right and bottom, with 16px corners and a 1px border. The top bar holds the breadcrumb, a centred "Ask the system ⌘K" field, the sync status and the theme switch.
 
-**Sidebar groups:** Today (This week, Habits, Check-in, Capture), Track (Goals, Fitness, Reading, Film), Degenerates Corner (College Football; NBA and NHL join later), Play (Music, King Gizzard, Sports). Area pages show their area's mark on the nav icon.
+**Sidebar groups:** Today (This week, Habits, Check-in, Capture), Track (Goals, Fitness, Reading, Film, Progeny), Degenerates Corner (College Football; NBA and NHL join later), Play (Music, King Gizzard, Sports). Area pages show their area's mark on the nav icon.
 
 **Page anatomy:**
 1. **Intro:** a title, span line and lede on the left; on the right, the page actions above the pixel scene (up to 460px wide). Home adds a row of up to four **next steps** in area colours. A 1px rule closes the intro unless summary tiles follow.
@@ -334,6 +334,7 @@ One small looping pixel-art scene sits beside each page title. Scenes are built 
   - on Music, the date of your artists' next Denver show on the gig poster and the year's listening hours on the amp;
   - on King Gizzard, the number of shows the band has played on the marquee (the lizard in the wizard hat is an original character);
   - on Sports, the score of your most relevant game today on the rink scoreboard;
+  - on Progeny, a backyard where a kid kicks a ball with the puggle at their heels; the book pile under the tree gains one book per 100 read-alouds (ten is 1,000 Books Before Kindergarten), and while a baby is on the way a pram waits by a sign counting the days to the due date;
   - on Film, a small cinema whose screen plays the latest watch's 5-second loop: its rendered GIF (the light-palette one in light mode, the LED-panel dark-palette one in dark mode), or a motif until one is rendered; velvet curtains (`plate`) fill the rest of the width and the gray cat sleeps on a seat back;
   - the owner's own pets (a black dog, a chihuahua-beagle, a puggle, a brown tabby, a gray striped cat).
 - **Motion rules:**

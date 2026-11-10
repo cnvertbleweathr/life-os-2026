@@ -306,7 +306,7 @@ The Mac mini is the single host for the warehouse, API, UI and tunnel, so it has
 | **King Gizzard** | **Shows:** live shows and music videos in one list (All · Upcoming · Music Videos · Watchable), with embedded YouTube recordings and official videos · **Songs:** song catalog |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log with readiness score; saved, and re-saving updates today's entry |
 | **Capture** | Quick inbox for ideas, tasks, links and notes (⌘/Ctrl+Enter), tagged by kind and area; newest first |
-| **Progeny** (Streamlit) | Kids: birthday / due-date countdowns, this week's learning focus, timeline, learning paths, CDC milestones, read-aloud count, baby-prep burndown. See [Progeny](#progeny-kids-development) |
+| **Progeny** | Kids: birthday / due-date countdowns, this week's learning focus, timeline, learning paths, CDC milestones, read-aloud count, baby-prep burndown, and a log form. Owner-only, reads included. See [Progeny](#progeny-kids-development) |
 | **Film** | Watches this year (Letterboxd + Plex, with the source of each), average rating, by month and by decade; the scene review queue (owner only); the Screening Room wall of every rendered loop. The title scene is a cinema playing your latest watch's loop |
 
 ---
@@ -321,18 +321,19 @@ The API holds a read-only DuckDB connection (single-writer rule), so it never wr
 | Daily check-in | `POST /api/checkin/log` | `data/checkin/checkin_log.jsonl` | `checkin.daily_checkin` |
 | Capture | `POST /api/inbox` | `data/inbox/capture_inbox.jsonl` | `raw.capture_inbox` |
 | Film scene review | `POST /api/film/queue/{film}/approve` · `/reject`, `PATCH /api/film/queue/{film}` | `data/film/scene_catalog.jsonl` | `film.scene_catalog` |
+| Progeny (quotes, firsts, books, learning, milestones, prep tasks) | `POST /api/progeny/{kind}` | `data/progeny/{kind}.jsonl` | `progeny.*` |
 
 The Habits page reads today and the 21-day strip straight from the log, so a toggle shows up immediately; streaks and YTD figures update after the sync. Habits can be backfilled up to 7 days.
 
-**Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin`, `/api/inbox`, `/api/film/queue` and `/api/display` require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+**Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin`, `/api/inbox`, `/api/film/queue`, `/api/display` and `/api/progeny` (reads too) require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
 ---
 
 ## Progeny (kids' development)
 
-A Streamlit page (`app/pages/8_Progeny.py`) for the kids: quotes, firsts, CDC milestones, learning paths, books read aloud (toward 1,000 Books Before Kindergarten) and a baby-prep burndown.
+A page on narcisystem.com (`/progeny`: `web/app/progeny/page.tsx` over `api/routers/progeny.py`) for the kids: quotes, firsts, CDC milestones, learning paths, books read aloud (toward 1,000 Books Before Kindergarten) and a baby-prep burndown.
 
-**Privacy.** Everything about the kids lives in `data/progeny/`, which is gitignored (the rule sits at the end of `.gitignore` so nothing re-includes it). Only code, the generic reference YAML and the config template are committed. `tests/test_progeny.py` fails if `data/progeny/` ever stops being ignored. OpenClaw can't read the `progeny` schema (it isn't on the allowlist in `openclaw/rbac/policy.py`).
+**Privacy.** Everything about the kids lives in `data/progeny/`, which is gitignored (the rule sits at the end of `.gitignore` so nothing re-includes it). Only code, the generic reference YAML and the config template are committed. `tests/test_progeny.py` fails if `data/progeny/` ever stops being ignored. OpenClaw can't read the `progeny` schema (it isn't on the allowlist in `openclaw/rbac/policy.py`). Every `/api/progeny` endpoint is owner-only, **reads included**: through Cloudflare the page shows nothing until the device has the write key, and it never prompts on load. On the Mac mini and over Tailscale it opens without one. `tests/test_progeny_api.py` checks this.
 
 | File | Committed? | What it is |
 |---|---|---|
@@ -344,7 +345,7 @@ A Streamlit page (`app/pages/8_Progeny.py`) for the kids: quotes, firsts, CDC mi
 
 **Setup.** `mkdir -p data/progeny && cp progeny/config/kids.example.yaml data/progeny/kids.yaml`, then edit it. Every log row points at `kid_id`, never a name, so a kid can be renamed at any time. When the baby arrives, set `display_name` and `birthdate`: the header switches from the due-date countdown to the baby's age, and milestones start. Ages are never stored. The `mart_progeny_*` models are views that compute them from the birthdate on every read.
 
-**Logging.** Use **Quick log** on the page (quote, first, book, learning evidence, milestone, prep task), the **Seen it** buttons on the Milestones tab, or **Done** on Baby Prep. Each one appends a line with a uuid `id` to the matching JSONL file (`progeny/store.py`) and never touches DuckDB. Entries appear after the next daily sync, or run `python scripts/daily_sync.py --only progeny dbt`. To fix an entry, append a full copy with the same `id`. To delete one, append `{"id": "…", "deleted": true}`. The latest line per id wins.
+**Logging.** Use the **Log** card on the page (quote, first, book, learning, milestone, prep task), the **Seen it** buttons on the Milestones tab, or **Done** on Baby prep. Each one calls `POST /api/progeny/{kind}`, which appends a line with a uuid `id` to the matching JSONL file (`progeny/store.py`) and never touches DuckDB. Books are marked as re-reads automatically, checking the warehouse and the not-yet-synced log. Entries appear after the next daily sync, or run `python scripts/daily_sync.py --only progeny dbt`. To fix an entry, append a full copy with the same `id`. To delete one, append `{"id": "…", "deleted": true}`. The latest line per id wins.
 
 **Data flow.** `pipelines/progeny_pipeline.py` (`progeny` step in the daily sync) loads the YAML and the logs into the `progeny` schema, merging on `id`. Then dbt builds `stg_progeny__*` and these marts:
 
