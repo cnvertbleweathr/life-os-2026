@@ -1,0 +1,46 @@
+{
+ "id": "401071327",
+ "date": "2019-01-16T00:00Z",
+ "season": {
+  "year": 2019,
+  "type": 2,
+  "slug": "regular-season"
+ },
+ "competitions": [
+  {
+   "neutralSite": false,
+   "venue": {
+    "fullName": "Gainbridge Fieldhouse"
+   },
+   "attendance": 15698,
+   "status": {
+    "period": 4,
+    "type": {
+     "completed": true,
+     "name": "STATUS_FINAL",
+     "shortDetail": "Final"
+    }
+   },
+   "competitors": [
+    {
+     "homeAway": "home",
+     "score": "131",
+     "team": {
+      "id": "11",
+      "displayName": "Indiana Pacers",
+      "abbreviation": "IND"
+     }
+    },
+    {
+     "homeAway": "away",
+     "score": "97",
+     "team": {
+      "id": "21",
+      "displayName": "Phoenix Suns",
+      "abbreviation": "PHX"
+     }
+    }
+   ]
+  }
+ ]
+}

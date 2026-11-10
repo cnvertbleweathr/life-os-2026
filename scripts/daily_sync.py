@@ -442,6 +442,32 @@ def build_steps(year: int) -> List[Step]:
             tags=["betting", "cfb"],
             run_on_days=[0, 3, 4, 5, 6],
         ),
+        # ------------------------------------------------------------------
+        # NBA / NHL — games + lines (ESPN) and team stats for the ATS models.
+        # espn_odds --daily: last 3 days (finals + closing lines) and next
+        # 2 days (current lines). Off-season runs are cheap no-ops.
+        # MoneyPuck all_teams.csv is a big download, so NHL stats run Mon/Thu.
+        # ------------------------------------------------------------------
+        Step(
+            name="espn_odds_nba_nhl",
+            cmd=["python3", "pipelines/espn_odds_pipeline.py", "--daily"],
+            run_if_exists=ROOT / "pipelines/espn_odds_pipeline.py",
+            tags=["betting", "nba", "nhl"],
+        ),
+        Step(
+            name="nba_stats_pipeline",
+            cmd=["python3", "pipelines/nba_stats_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/nba_stats_pipeline.py",
+            tags=["betting", "nba"],
+        ),
+        Step(
+            name="nhl_stats_pipeline",
+            cmd=["python3", "pipelines/nhl_stats_pipeline.py", "--goalies"],
+            run_if_exists=ROOT / "pipelines/nhl_stats_pipeline.py",
+            tags=["betting", "nhl"],
+            run_on_days=[0, 3],  # Monday + Thursday
+        ),
+        # ------------------------------------------------------------------
         # CFB — grade picks (daily during season Thu-Mon when games played)
         # ------------------------------------------------------------------
         Step(

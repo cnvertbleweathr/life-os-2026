@@ -1,0 +1,46 @@
+{
+ "id": "400578876",
+ "date": "2015-01-16T01:00Z",
+ "season": {
+  "year": 2015,
+  "type": 2,
+  "slug": "regular-season"
+ },
+ "competitions": [
+  {
+   "neutralSite": false,
+   "venue": {
+    "fullName": "Toyota Center (Houston)"
+   },
+   "attendance": 18315,
+   "status": {
+    "period": 4,
+    "type": {
+     "completed": true,
+     "name": "STATUS_FINAL",
+     "shortDetail": "Final"
+    }
+   },
+   "competitors": [
+    {
+     "homeAway": "home",
+     "score": "112",
+     "team": {
+      "id": "10",
+      "displayName": "Houston Rockets",
+      "abbreviation": "HOU"
+     }
+    },
+    {
+     "homeAway": "away",
+     "score": "101",
+     "team": {
+      "id": "25",
+      "displayName": "Oklahoma City Thunder",
+      "abbreviation": "OKC"
+     }
+    }
+   ]
+  }
+ ]
+}
