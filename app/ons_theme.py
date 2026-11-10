@@ -66,6 +66,14 @@ html, body, .stApp, p, div, span, label, a, li, td, th,
   -moz-osx-font-smoothing: grayscale !important;
 }
 
+/* Streamlit's icons are ligatures in the Material Symbols font. The rule
+   above would turn them into literal text ("keyboard_arrow_right" on every
+   expander), so give them their font back. Same specificity, later wins. */
+[data-testid="stIconMaterial"],
+section[data-testid="stSidebar"] [data-testid="stIconMaterial"] {
+  font-family: 'Material Symbols Rounded' !important;
+}
+
 /* ── App canvas ───────────────────────────────────────────────── */
 .stApp {
   background-color: var(--bg-main) !important;

@@ -6,6 +6,7 @@ Usage:
   python run_pipelines.py                    # run all
   python run_pipelines.py --only habits      # run one
   python run_pipelines.py --only checkin inbox  # web write-path logs
+  python run_pipelines.py --only progeny        # kids' logs (data/progeny/)
   python run_pipelines.py --only strava hardcover
   python run_pipelines.py --year 2026
 """
@@ -16,7 +17,7 @@ import argparse
 import sys
 from datetime import datetime
 
-PIPELINES = ["habits", "checkin", "inbox", "strava", "hardcover"]
+PIPELINES = ["habits", "checkin", "inbox", "progeny", "strava", "hardcover"]
 
 
 def run_pipeline(name: str, year: int) -> bool:
@@ -30,6 +31,8 @@ def run_pipeline(name: str, year: int) -> bool:
             from pipelines.checkin_pipeline import run
         elif name == "inbox":
             from pipelines.inbox_pipeline import run
+        elif name == "progeny":
+            from pipelines.progeny_pipeline import run
         elif name == "strava":
             from pipelines.strava_pipeline import run
         elif name == "hardcover":

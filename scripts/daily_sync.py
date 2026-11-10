@@ -307,6 +307,12 @@ def build_steps(year: int) -> List[Step]:
             run_if_exists=ROOT / "pipelines/inbox_pipeline.py",
             tags=["pipelines"],
         ),
+        Step(
+            name="progeny",
+            cmd=["python3", "run_pipelines.py", "--only", "progeny", "--year", str(year)],
+            run_if_exists=ROOT / "pipelines/progeny_pipeline.py",
+            tags=["pipelines"],
+        ),
 
         # ------------------------------------------------------------------
         # Calendar

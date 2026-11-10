@@ -1,0 +1,29 @@
+# Template for data/progeny/kids.yaml (gitignored; the real file never gets committed).
+#
+#   cp progeny/config/kids.example.yaml data/progeny/kids.yaml
+#
+# kid_id is the stable key every log row points at. Never change it once you
+# have entries. Rename display_name freely (e.g. when a baby gets a name).
+#
+# Fields:
+#   kid_id              stable slug: kid1, kid2, ...
+#   display_name        shown on the dashboard
+#   birthdate           YYYY-MM-DD, or null before birth
+#   due_date            YYYY-MM-DD for an expected baby; keep it after birth for the record
+#   kindergarten_start  optional YYYY-MM-DD; target date for 1,000 Books Before
+#                       Kindergarten. Default: the first August 15 on or after the 5th birthday.
+#
+# Ages are never stored: the dashboard computes them from birthdate every time it reads.
+
+kids:
+  - kid_id: kid1
+    display_name: Older Kid
+    birthdate: 2022-06-01
+    due_date: null
+    kindergarten_start: null
+
+  - kid_id: kid2
+    display_name: Baby
+    birthdate: null          # set this when the baby arrives
+    due_date: 2027-06-01
+    kindergarten_start: null

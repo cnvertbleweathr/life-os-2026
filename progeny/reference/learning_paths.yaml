@@ -1,0 +1,321 @@
+# Learning paths: skill trees for roughly ages 3–6, pitched at a 4-year-old.
+#
+# Each path is an ordered list of levels. You log evidence against a level
+# (data/progeny/path_evidence.jsonl, or the Learning Paths form). The highest
+# level with evidence counts as "reached", and the next level up becomes that
+# path's focus, which the "This week's focus" card shows with its activities.
+#
+# Path and level keys are stable: evidence rows point at them, so rename the
+# `name` freely but never change a `key` or reorder levels. Add new levels at
+# the end. These are a home-play guide, not a curriculum or an assessment.
+#
+# min_age_months: a path is hidden for a kid younger than this.
+
+paths:
+  - key: literacy
+    name: Literacy
+    min_age_months: 30
+    levels:
+      - key: print_awareness
+        name: Print awareness
+        description: Knows books go front to back and top to bottom, and that print carries the words.
+        activities:
+          - Let them turn the pages and point to where the story starts.
+          - Run your finger under the title as you read it.
+          - Spot words on signs and packaging on a walk.
+      - key: name_letters
+        name: Letters in my name
+        description: Recognizes and names the letters in their own first name.
+        activities:
+          - Build their name with magnetic letters, then mix and rebuild.
+          - Letter hunt for "their" letters in a picture book.
+          - Trace their name in a salt or sand tray.
+      - key: letter_names
+        name: Letter names
+        description: Names most uppercase letters, then lowercase.
+        activities:
+          - Alphabet puzzle or matching game, upper to lower.
+          - "I spy something shaped like a letter."
+          - Read one ABC book a day, letting them name the letters.
+      - key: phonological
+        name: Rhymes and syllables
+        description: Hears rhymes and claps syllables in words.
+        activities:
+          - Silly rhyme game ("cat, hat, ... zat?").
+          - Clap the beats in family names and favorite foods.
+          - Read rhyming books and pause before the rhyming word.
+      - key: letter_sounds
+        name: Letter sounds
+        description: Knows the most common sound for most letters and the first sound in words.
+        activities:
+          - "I spy something that starts with /b/."
+          - Sort toys by first sound into two bins.
+          - Play letter-sound hopscotch with chalk letters.
+      - key: blending
+        name: Blending CVC words
+        description: Blends three sounds into short words (c-a-t → cat).
+        activities:
+          - 'Robot talk: say "d-o-g" and they guess the word.'
+          - Build CVC words with letter tiles and swap one letter.
+          - Read a decodable book together, one page each.
+
+  - key: numeracy
+    name: Numeracy
+    min_age_months: 30
+    levels:
+      - key: rote_counting
+        name: Counting aloud
+        description: Counts aloud from 1 to 10, then to 20.
+        activities:
+          - Count stairs going up and down.
+          - Counting songs in the car.
+          - Count down for rocket launches.
+      - key: one_to_one
+        name: One-to-one counting
+        description: Touches each object once while counting, and knows the last number is "how many".
+        activities:
+          - Count snacks onto a plate, then ask "how many?".
+          - Set the table and count forks for each person.
+          - Count toy cars as they go into the garage.
+      - key: numerals
+        name: Numerals 0–10
+        description: Recognizes and names numerals 0–10 and matches them to quantities.
+        activities:
+          - Number hunt on a walk (houses, signs, cars).
+          - Match number cards to piles of objects.
+          - Play a simple board game with a dot die.
+      - key: compare
+        name: More, less, same
+        description: Compares two small groups and says which has more, fewer or the same.
+        activities:
+          - Split grapes into two bowls and compare.
+          - Build two block towers and compare heights.
+          - Play the card game War with cards up to 10.
+      - key: shapes_patterns
+        name: Shapes and patterns
+        description: Names basic shapes and copies and extends simple patterns (AB, AAB).
+        activities:
+          - Make bead or Lego patterns and ask what comes next.
+          - Shape hunt around the house.
+          - Use pattern blocks to build pictures.
+      - key: add_subtract
+        name: Adding and taking away
+        description: Solves small add and take-away stories with objects up to 5, then 10.
+        activities:
+          - 'Act out "three ducks, one swims away; how many now?" with toys.'
+          - Count on fingers while cooking ("two eggs plus one more").
+          - Play a dice game moving a token along a number line.
+
+  - key: fine_motor
+    name: Fine motor
+    min_age_months: 24
+    levels:
+      - key: grasp
+        name: Pinch and grasp
+        description: Picks up small objects with a pincer grasp and uses chunky crayons.
+        activities:
+          - Pick pom-poms up with fingers and drop them in a bottle.
+          - Peel and stick stickers onto a page.
+          - Play-dough rolling and squishing.
+      - key: tripod
+        name: Tripod grip
+        description: Holds a crayon or pencil between fingers and thumb (not a fist).
+        activities:
+          - Draw with broken crayon pieces, which encourage a tripod grip.
+          - Pick things up with tweezers or tongs.
+          - Draw on a vertical surface, like an easel or a window.
+      - key: scissors
+        name: Scissors
+        description: Snips, then cuts along a straight line.
+        activities:
+          - Snip play-dough snakes.
+          - Cut straws or paper strips into confetti.
+          - Cut along a thick straight line drawn on card.
+      - key: shapes_drawing
+        name: Drawing shapes
+        description: Copies a circle, a cross, then a square.
+        activities:
+          - Draw shapes in shaving cream or sand.
+          - Trace big shapes with a finger, then a crayon.
+          - Turn shapes into pictures (a circle becomes a sun).
+      - key: letters_writing
+        name: Writing letters
+        description: Writes some letters, starting with the ones in their name.
+        activities:
+          - Write their name with a highlighter for them to trace.
+          - Form letters from play-dough snakes.
+          - Write a "shopping list" together.
+      - key: self_care
+        name: Buttons and zips
+        description: Manages buttons, zips and snaps on their own clothes.
+        activities:
+          - Practice on a dressing board or an old shirt.
+          - Button a jacket on a teddy.
+          - Zip their own coat each time you head out.
+
+  - key: gross_motor
+    name: Gross motor
+    min_age_months: 24
+    levels:
+      - key: jump
+        name: Two-foot jump
+        description: Jumps forward with both feet together.
+        activities:
+          - Jump over a chalk line or a rope on the ground.
+          - Frog jumps across the room.
+          - Jump between hula hoops.
+      - key: balance
+        name: Balance
+        description: Stands on one foot for a few seconds and walks a line.
+        activities:
+          - Flamingo stand contest.
+          - Walk a curb or a tape line on the floor.
+          - Freeze dance, holding one-foot poses.
+      - key: throw_catch
+        name: Throw and catch
+        description: Throws overhand and catches a large ball most of the time.
+        activities:
+          - Play catch with a beach ball, then a smaller ball.
+          - Beanbag toss into a laundry basket.
+          - Roll and stop a ball while sitting facing each other.
+      - key: hop
+        name: Hopping
+        description: Hops on one foot several times.
+        activities:
+          - Hopscotch.
+          - Hop like a bunny, then on one foot like a pirate.
+          - Hop to music, switching feet when it stops.
+      - key: pedal
+        name: Balance bike to pedals
+        description: Rides a balance bike or pedals a tricycle and steers around obstacles.
+        activities:
+          - Ride a balance bike on a flat path.
+          - Steer around cones in a driveway.
+          - Ride on a gentle downhill, gliding with feet up.
+      - key: skip
+        name: Galloping and skipping
+        description: Gallops, then skips.
+        activities:
+          - Horse-gallop races in the yard.
+          - Follow-the-leader with galloping, then skipping.
+          - Skip to a song with a strong beat.
+
+  - key: social_emotional
+    name: Social-emotional
+    min_age_months: 30
+    levels:
+      - key: name_feelings
+        name: Naming feelings
+        description: Names basic feelings (happy, sad, mad, scared) in themself and others.
+        activities:
+          - Feelings faces game in the mirror.
+          - Ask "how do you think they feel?" while reading.
+          - Name your own feelings out loud during the day.
+      - key: calm_down
+        name: Calming down
+        description: Uses a strategy to calm down with help (breaths, a hug, a quiet spot).
+        activities:
+          - Practice "smell the flower, blow out the candle" breathing when calm.
+          - Set up a calm-down corner together.
+          - Read a book about big feelings.
+      - key: take_turns
+        name: Taking turns
+        description: Waits for a turn and shares in a short game.
+        activities:
+          - Simple turn-taking board games.
+          - Use a sand timer for turns with a favorite toy.
+          - Build a tower together, one block each.
+      - key: empathy
+        name: Helping others
+        description: Notices when someone is upset and offers help or comfort.
+        activities:
+          - Role-play with stuffed animals that need help.
+          - Point out kind acts and talk about them.
+          - Make a card for someone who is sick or sad.
+      - key: problem_solving
+        name: Solving problems with words
+        description: Uses words to solve small conflicts (asks for a turn, suggests a trade).
+        activities:
+          - Practice asking "Can I have a turn when you're done?"
+          - Act out conflicts with puppets and brainstorm fixes.
+          - Ask "what could we do?" before stepping in.
+
+  - key: music
+    name: Music
+    min_age_months: 24
+    levels:
+      - key: steady_beat
+        name: Steady beat
+        description: Claps, marches or taps a steady beat along with music.
+        activities:
+          - March around the room to a song.
+          - Tap a drum or pot along with music.
+          - Bounce a stuffed animal to the beat.
+      - key: loud_soft_fast_slow
+        name: Loud, soft, fast, slow
+        description: Hears and copies loud/soft and fast/slow in music.
+        activities:
+          - Play a shaker loudly, then softly.
+          - Freeze dance with fast and slow songs.
+          - Animal walks to music (slow elephant, fast mouse).
+      - key: sing_songs
+        name: Singing songs
+        description: Sings whole simple songs and nursery rhymes from memory.
+        activities:
+          - Sing a song at bath time each night this week.
+          - Leave out the last word and let them fill it in.
+          - Make up new verses to a familiar tune.
+      - key: rhythm_echo
+        name: Rhythm echoes
+        description: Copies a short clapped rhythm.
+        activities:
+          - 'Play an "echo me" clapping game with 3–4 claps.'
+          - Clap the rhythm of their name.
+          - Play rhythms on a drum and switch leader.
+      - key: instrument
+        name: First instrument
+        description: Plays simple patterns on a xylophone, piano or ukulele.
+        activities:
+          - Play a 3-note song on a xylophone using colors.
+          - Find high and low notes on a keyboard.
+          - Strum an open ukulele along with a song.
+
+  - key: practical_life
+    name: Practical life
+    min_age_months: 24
+    levels:
+      - key: tidy
+        name: Tidy up
+        description: Puts toys back where they belong with a reminder.
+        activities:
+          - Use labeled bins with pictures.
+          - Sing a clean-up song with a timer.
+          - 'Play the "five things" game: put away five things.'
+      - key: dress
+        name: Dressing
+        description: Puts on shoes, a coat and loose clothes on their own.
+        activities:
+          - The coat flip trick.
+          - Lay clothes out in order the night before.
+          - Practice with velcro shoes.
+      - key: pour_serve
+        name: Pouring and serving
+        description: Pours from a small pitcher and serves themself food.
+        activities:
+          - Pour water between cups at the sink.
+          - Let them serve themself at dinner.
+          - Make a snack with scooping and spreading.
+      - key: kitchen_helper
+        name: Kitchen helper
+        description: Helps with simple kitchen tasks (washing veg, stirring, spreading, child-safe cutting).
+        activities:
+          - Wash fruit and veg for dinner.
+          - Cut a banana with a child-safe knife.
+          - Measure and stir for pancakes.
+      - key: chores
+        name: Real chores
+        description: Does a simple daily chore (feeds a pet, sets the table, matches socks).
+        activities:
+          - Make a picture chore chart with two daily jobs.
+          - Match socks from the laundry.
+          - Clear their own plate after meals.

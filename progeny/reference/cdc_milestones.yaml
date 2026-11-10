@@ -1,0 +1,297 @@
+# CDC "Learn the Signs. Act Early." developmental milestones.
+#
+# Source: https://www.cdc.gov/act-early/milestones/index.html (pages last
+# reviewed by CDC 2026-05-16; fetched 2026-11-09). Text is verbatim from the
+# "What most babies/children do by this age" lists, including CDC's
+# alternating he/she wording.
+#
+# These are things MOST children (75%+) do by each age. They are a
+# conversation starter for well-child visits, not a score. ONS shows
+# "observed / not yet" only; it never marks a child "behind".
+#
+# Ids are stable (cdc_<months>m_<domain>_<nn>): observations in
+# data/progeny/milestones.jsonl point at them, so never renumber. Add new
+# items at the end of a domain list with the next free number.
+#
+# Domains: social_emotional | language | cognitive | movement
+#
+# TODO(owner): three items were too long for the fetch and end in "[…]".
+# Paste the full wording from the linked page:
+#   cdc_15m_language_03, cdc_60m_language_01, cdc_60m_cognitive_04
+
+source_url: https://www.cdc.gov/act-early/milestones/index.html
+reviewed: 2026-05-16
+
+domains:
+  social_emotional: Social / Emotional
+  language: Language / Communication
+  cognitive: Cognitive (Learning, Thinking, Problem-Solving)
+  movement: Movement / Physical Development
+
+bands:
+  - months: 2
+    label: 2 months
+    url: https://www.cdc.gov/act-early/milestones/2-months.html
+    milestones:
+      social_emotional:
+        - Calms down when spoken to or picked up
+        - Looks at your face
+        - Seems happy to see you when you walk up to her
+        - Smiles when you talk to or smile at her
+      language:
+        - Makes sounds other than crying
+        - Reacts to loud sounds
+      cognitive:
+        - Watches you as you move
+        - Looks at a toy for several seconds
+      movement:
+        - Holds head up when on tummy
+        - Moves both arms and both legs
+        - Opens hands briefly
+
+  - months: 4
+    label: 4 months
+    url: https://www.cdc.gov/act-early/milestones/4-months.html
+    milestones:
+      social_emotional:
+        - Smiles on his own to get your attention
+        - Chuckles (not yet a full laugh) when you try to make him laugh
+        - Looks at you, moves, or makes sounds to get or keep your attention
+      language:
+        - Makes sounds like "oooo", "aahh" (cooing)
+        - Makes sounds back when you talk to him
+        - Turns head towards the sound of your voice
+      cognitive:
+        - If hungry, opens mouth when he sees breast or bottle
+        - Looks at her hands with interest
+      movement:
+        - Holds head steady without support when you are holding him
+        - Holds a toy when you put it in his hand
+        - Uses his arm to swing at toys
+        - Brings hands to mouth
+        - Pushes up onto elbows/forearms when on tummy
+
+  - months: 6
+    label: 6 months
+    url: https://www.cdc.gov/act-early/milestones/6-months.html
+    milestones:
+      social_emotional:
+        - Knows familiar people
+        - Likes to look at self in a mirror
+        - Laughs
+      language:
+        - Takes turns making sounds with you
+        - Blows "raspberries" (sticks tongue out and blows)
+        - Makes squealing noises
+      cognitive:
+        - Puts things in her mouth to explore them
+        - Reaches to grab a toy she wants
+        - Closes lips to show she doesn't want more food
+      movement:
+        - Rolls from tummy to back
+        - Pushes up with straight arms when on tummy
+        - Leans on hands to support herself when sitting
+
+  - months: 9
+    label: 9 months
+    url: https://www.cdc.gov/act-early/milestones/9-months.html
+    milestones:
+      social_emotional:
+        - Is shy, clingy, or fearful around strangers
+        - Shows several facial expressions, like happy, sad, angry, and surprised
+        - Looks when you call her name
+        - Reacts when you leave (looks, reaches for you, or cries)
+        - Smiles or laughs when you play peek-a-boo
+      language:
+        - Makes a lot of different sounds like "mamamama" and "bababababa"
+        - Lifts arms up to be picked up
+      cognitive:
+        - Looks for objects when dropped out of sight (like his spoon or toy)
+        - Bangs two things together
+      movement:
+        - Gets to a sitting position by herself
+        - Moves things from one hand to her other hand
+        - Uses fingers to "rake" food towards himself
+        - Sits without support
+
+  - months: 12
+    label: 1 year
+    url: https://www.cdc.gov/act-early/milestones/1-year.html
+    milestones:
+      social_emotional:
+        - Plays games with you, like pat-a-cake
+      language:
+        - Waves "bye-bye"
+        - Calls a parent "mama" or "dada" or another special name
+        - Understands "no" (pauses briefly or stops when you say it)
+      cognitive:
+        - Puts something in a container, like a block in a cup
+        - Looks for things he sees you hide, like a toy under a blanket
+      movement:
+        - Pulls up to stand
+        - Walks, holding on to furniture
+        - Drinks from a cup without a lid, as you hold it
+        - Picks things up between thumb and pointer finger, like small bits of food
+
+  - months: 15
+    label: 15 months
+    url: https://www.cdc.gov/act-early/milestones/15-months.html
+    milestones:
+      social_emotional:
+        - Copies other children while playing, like taking toys out of a container when another child does
+        - Shows you an object she likes
+        - Claps when excited
+        - Hugs stuffed doll or other toy
+        - Shows you affection (hugs, cuddles, or kisses you)
+      language:
+        - Tries to say one or two words besides "mama" or "dada," like "ba" for ball or "da" for dog
+        - Looks at a familiar object when you name it
+        - "Follows directions given with both a gesture and words. For example, he gives you a toy when you hold out your hand […]"  # TODO(owner): full text
+        - Points to ask for something or to get help
+      cognitive:
+        - Tries to use things the right way, like a phone, cup, or book
+        - Stacks at least two small objects, like blocks
+      movement:
+        - Takes a few steps on his own
+        - Uses fingers to feed herself some food
+
+  - months: 18
+    label: 18 months
+    url: https://www.cdc.gov/act-early/milestones/18-months.html
+    milestones:
+      social_emotional:
+        - Moves away from you, but looks to make sure you are close by
+        - Points to show you something interesting
+        - Puts hands out for you to wash them
+        - Looks at a few pages in a book with you
+        - Helps you dress him by pushing arm through sleeve or lifting up foot
+      language:
+        - Tries to say three or more words besides "mama" or "dada"
+        - Follows one-step directions without any gestures, like giving you the toy when you say, "Give it to me."
+      cognitive:
+        - Copies you doing chores, like sweeping with a broom
+        - Plays with toys in a simple way, like pushing a toy car
+      movement:
+        - Walks without holding on to anyone or anything
+        - Scribbles
+        - Drinks from a cup without a lid and may spill sometimes
+        - Feeds himself with his fingers
+        - Tries to use a spoon
+        - Climbs on and off a couch or chair without help
+
+  - months: 24
+    label: 2 years
+    url: https://www.cdc.gov/act-early/milestones/2-years.html
+    milestones:
+      social_emotional:
+        - Notices when others are hurt or upset, like pausing or looking sad when someone is crying
+        - Looks at your face to see how to react in a new situation
+      language:
+        - Points to things in a book when you ask, like "Where is the bear?"
+        - Says at least two words together, like "More milk."
+        - Points to at least two body parts when you ask him to show you
+        - Uses more gestures than just waving and pointing, like blowing a kiss or nodding yes
+      cognitive:
+        - Holds something in one hand while using the other hand; for example, holding a container and taking the lid off
+        - Tries to use switches, knobs, or buttons on a toy
+        - Plays with more than one toy at the same time, like putting toy food on a toy plate
+      movement:
+        - Kicks a ball
+        - Runs
+        - Walks (not climbs) up a few stairs with or without help
+        - Eats with a spoon
+
+  - months: 30
+    label: 30 months
+    url: https://www.cdc.gov/act-early/milestones/30-months.html
+    milestones:
+      social_emotional:
+        - Plays next to other children and sometimes plays with them
+        - Shows you what she can do by saying, "Look at me!"
+        - Follows simple routines when told, like helping to pick up toys when you say, "It's clean-up time."
+      language:
+        - Says about 50 words
+        - Says two or more words together, with one action word, like "Doggie run"
+        - Names things in a book when you point and ask, "What is this?"
+        - Says words like "I," "me," or "we"
+      cognitive:
+        - Uses things to pretend, like feeding a block to a doll as if it were food
+        - Shows simple problem-solving skills, like standing on a small stool to reach something
+        - Follows two-step instructions like "Put the toy down and close the door."
+        - Shows he knows at least one color, like pointing to a red crayon when you ask, "Which one is red?"
+      movement:
+        - Uses hands to twist things, like turning doorknobs or unscrewing lids
+        - Takes some clothes off by himself, like loose pants or an open jacket
+        - Jumps off the ground with both feet
+        - Turns book pages, one at a time, when you read to her
+
+  - months: 36
+    label: 3 years
+    url: https://www.cdc.gov/act-early/milestones/3-years.html
+    milestones:
+      social_emotional:
+        - Calms down within 10 minutes after you leave her, like at a childcare drop off
+        - Notices other children and joins them to play
+      language:
+        - Talks with you in conversation using at least two back-and-forth exchanges
+        - Asks "who," "what," "where," or "why" questions, like "Where is mommy/daddy?"
+        - Says what action is happening in a picture or book when asked, like "running," "eating," or "playing"
+        - Says first name, when asked
+        - Talks well enough for others to understand, most of the time
+      cognitive:
+        - Draws a circle, when you show him how
+        - Avoids touching hot objects, like a stove, when you warn her
+      movement:
+        - Strings items together, like large beads or macaroni
+        - Puts on some clothes by himself, like loose pants or a jacket
+        - Uses a fork
+
+  - months: 48
+    label: 4 years
+    url: https://www.cdc.gov/act-early/milestones/4-years.html
+    milestones:
+      social_emotional:
+        - Pretends to be something else during play (teacher, superhero, dog)
+        - Asks to go play with children if none are around, like "Can I play with Alex?"
+        - Comforts others who are hurt or sad, like hugging a crying friend
+        - Avoids danger, like not jumping from tall heights at the playground
+        - Likes to be a "helper"
+        - Changes behavior based on where she is (place of worship, library, playground)
+      language:
+        - Says sentences with four or more words
+        - Says some words from a song, story, or nursery rhyme
+        - Talks about at least one thing that happened during her day, like "I played soccer."
+        - Answers simple questions like "What is a coat for?" or "What is a crayon for?"
+      cognitive:
+        - Names a few colors of items
+        - Tells what comes next in a well-known story
+        - Draws a person with three or more body parts
+      movement:
+        - Catches a large ball most of the time
+        - Serves herself food or pours water, with adult supervision
+        - Unbuttons some buttons
+        - Holds crayon or pencil between fingers and thumb (not a fist)
+
+  - months: 60
+    label: 5 years
+    url: https://www.cdc.gov/act-early/milestones/5-years.html
+    milestones:
+      social_emotional:
+        - Follows rules or takes turns when playing games with other children
+        - Sings, dances, or acts for you
+        - Does simple chores at home, like matching socks or clearing the table after eating
+      language:
+        - "Tells a story she heard or made up with at least two events. For example, a cat was stuck in a tree […]"  # TODO(owner): full text
+        - Answers simple questions about a book or story after you read or tell it to him
+        - Keeps a conversation going with more than three back-and-forth exchanges
+        - Uses or recognizes simple rhymes (bat-cat, ball-tall)
+      cognitive:
+        - Counts to 10
+        - Names some numbers between 1 and 5 when you point to them
+        - Uses words about time, like "yesterday," "tomorrow," "morning," or "night"
+        - "Pays attention for 5 to 10 minutes during activities. For example, during story time or making arts and crafts […]"  # TODO(owner): full text
+        - Writes some letters in her name
+        - Names some letters when you point to them
+      movement:
+        - Buttons some buttons
+        - Hops on one foot
