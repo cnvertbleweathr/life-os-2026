@@ -16,3 +16,29 @@ models:
         data_tests: [unique, not_null]
       - name: home_team
         data_tests: [not_null]
+
+  - name: mart_nba_team_profiles
+    description: Walk-forward NBA team ATS profiles per (team, season they apply to), from the four prior seasons only. Descriptive, not a rule.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "team_code || season"
+    columns:
+      - name: tier
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ELITE', 'STRONG', 'NEUTRAL', 'FADE', 'STRONG_FADE']
+
+  - name: mart_nhl_team_profiles
+    description: Walk-forward NHL team puck-line profiles per (team, season they apply to), from the four prior seasons only. Descriptive, not a rule.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "team_code || season"
+    columns:
+      - name: tier
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ELITE', 'STRONG', 'NEUTRAL', 'FADE', 'STRONG_FADE']

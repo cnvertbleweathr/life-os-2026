@@ -62,6 +62,11 @@ Raw ESPN responses are cached in `data/raw/espn/{league}/`, NHL boxscores in
   `implied_home_spread` / `home_spread_edge` (NBA), `model_home_win_prob` /
   `market_home_win_prob` / `home_prob_edge` (NHL); their home constants use earlier seasons only.
   After changing a feature model, run `scripts/feature_lookahead_check.py` (must PASS).
+- Team profiles: `main_marts.mart_{nba,nhl}_team_profiles`, one row per (team, season it applies
+  to) from the four prior seasons only; join on `season` = the game's season. Tiers lose about the
+  vig out of sample, so treat them as descriptive (Phase 5).
+- Pregame lookups: `scripts/{nba,nhl}_pregame_lookup.py`. A past game is cross-checked against the
+  feature mart; a mismatch means the lookup and the dbt features have drifted, so fix one of them.
 - For backtests: NBA rows with `line_source = 'historical_lines'` have no prices (use -110).
   NHL: drop `is_standard_puck_line = false` (±2.5 alternates, 19 games) and consider dropping
   `line_consistent = false` (31 games).
