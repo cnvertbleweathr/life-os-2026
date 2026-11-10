@@ -86,9 +86,12 @@ def prepare(df: pd.DataFrame) -> pd.DataFrame:
     home_pp100 = (blend(df, "home", "ortg") + blend(df, "away", "drtg")) / 2
     away_pp100 = (blend(df, "away", "ortg") + blend(df, "home", "drtg")) / 2
     df["pred_total_raw"] = pace / 100 * (home_pp100 + away_pp100)
-    resid = (df.pred_total_raw - df.total).groupby(df.season).agg(["sum", "count"]).sort_index()
-    prior_bias = (resid["sum"].cumsum().shift(1) / resid["count"].cumsum().shift(1)).rename("total_bias")
-    df = df.merge(prior_bias, left_on="season", right_index=True, how="left")
+    # separately for regular season and playoffs: playoff scoring is lower, and a
+    # single constant left the model ~14 points high on playoff totals
+    resid = (df.pred_total_raw - df.total).groupby([df.season_type, df.season]).agg(["sum", "count"]).sort_index()
+    cum = resid.groupby(level=0).cumsum().groupby(level=0).shift(1)
+    prior_bias = (cum["sum"] / cum["count"]).rename("total_bias").reset_index()
+    df = df.merge(prior_bias, on=["season_type", "season"], how="left")
     df["total_edge"] = df.pred_total_raw - df.total_bias - df.total
     df["total_edge_open"] = df.pred_total_raw - df.total_bias - df.open_total
     # ratings vs the OPENING spread (> 0: ratings like home more than the open)
@@ -149,18 +152,29 @@ def candidates() -> list[Candidate]:
     C.append(Candidate("total_model_open", "totals", "total", [4, 6, 8, 10, 12, 14],
                        lambda d, t: side_where(d, d.total_edge_open >= t, d.total_edge_open <= -t, "over", "under"),
                        "predicted total vs the OPENING total >= t: over / under, bet at the open",
-                       placement="open", min_test_season=2024))
+                       placement="open", min_test_season=2024,
+                       # designed after a reviewer's exploratory 2024-26 open-line scores;
+                       # 2026-27 is the first clean test season
+                       discovered_in_sample=True))
     eo = "home_spread_edge_open"
     C.append(Candidate("model_spread_follow_open", "ratings_vs_market", "spread", [1, 2, 3, 4, 5, 6, 8],
                        lambda d, t: side_where(d, d[eo] >= t, d[eo] <= -t),
                        "ratings-implied spread vs the OPENING spread >= t: bet the ratings' side at the open",
-                       placement="open", min_test_season=2024))
+                       placement="open", min_test_season=2024, discovered_in_sample=True))
     return C
 
 
 # The Phase 0 scan (scripts/nba_ats_scan.py) tried these splits on every season of
 # nba.historical_lines before this walk-forward existed. Three candidates above came
 # from it; the splits count toward the Bonferroni m.
+# Exploratory open-line re-scores a reviewer ran on 2014-17 and 2024-26 before the
+# *_open candidates existed (about 22 tries); logged and counted like the scan.
+OPEN_EXPLORATION = (
+    [f"open total model t={t} ({era})" for t in (6, 8, 10, 12, 14) for era in ("2014-17", "2024-26")]
+    + [f"open spread model t={t} ({era})" for t in (2, 4, 6) for era in ("2014-17", "2024-26")]
+    + [f"{c} at the open" for c in ("rest_away_2plus", "big_dog", "b2b_vs_rested")]
+)
+
 SCAN_SPLITS = ["home ATS (all)", "home favorite", "home dog", "home dog +10.5 or more",
                "road fav, home on B2B", "away 2+ more days rest -> bet away",
                "home 2+ more days rest -> bet home", "home B2B vs rested away -> bet away"]
@@ -175,13 +189,18 @@ def main() -> None:
     lined = df[df.home_spread.notna()]
     print(f"NBA: {len(df):,} games, {len(lined):,} with a spread, seasons {df.season.min()}-{df.season.max()}; "
           f"baseline home ATS {100 * (lined.home_ats_margin > 0).sum() / (lined.home_ats_margin != 0).sum():.1f}%")
+    log_once("nba", "nba_validator_round1_open_exploration", [
+        {"type": "scan", "run_id": "validator_round1", "league": "nba", "candidate": f"scan: {x}",
+         "param": None, "train_seasons": "2014-17 and 2024-26 (in sample)",
+         "source": "ats-edge-validator round-1 exploratory re-scoring at the open"}
+        for x in OPEN_EXPLORATION])
     log_once("nba", "nba_ats_scan_phase0", [
         {"type": "scan", "run_id": "nba_ats_scan_phase0", "league": "nba", "candidate": f"scan: {x}",
          "param": None, "train_seasons": "2008-2026 (in sample)", "source": "scripts/nba_ats_scan.py"}
         for x in SCAN_SPLITS])
     baselines(df, ["spread", "total"])
     res, oos = walk_forward(df, candidates(), "nba", MIN_TRAIN_BETS, MIN_TRAIN_SEASONS, MIN_OOS_BETS, run_id,
-                            scan_splits=len(SCAN_SPLITS))
+                            scan_splits=len(SCAN_SPLITS) + len(OPEN_EXPLORATION))
     report(res, oos, "nba", MIN_OOS_BETS, len(df), run_id)
 
 

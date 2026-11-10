@@ -88,9 +88,12 @@ games as (
         e.home_score,
         e.away_score,
         e.went_ot,
-        -- neutral when ESPN says so, or when the venue is > 50 miles from the home
-        -- team's city (the 2020 bubbles, relocated games); ESPN flags neither
+        -- neutral when ESPN says so, when the game is in the 2020 restart bubbles
+        -- (every game from July 2020: Orlando, Edmonton, Toronto, no crowds, including
+        -- the Magic's and Oilers' own "home" games), or when the venue is > 50 miles
+        -- from the home team's city (relocated games); ESPN flags none of these
         coalesce(e.neutral_site, false)
+          or (e.season = 2020 and e.game_date >= date '2020-07-01')
           or coalesce({{ haversine_miles('v.lat', 'v.lng', 'c.lat', 'c.lng') }} > 50, false) as neutral_site,
         coalesce(e.neutral_site, false)                       as espn_neutral_site
     from espn_games e

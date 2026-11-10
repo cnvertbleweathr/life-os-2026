@@ -39,9 +39,9 @@
      often quote no total. total_book records it.
 
   line_source = 'espn:<book>:<close|final>' for the spread.
-  open_* come from the same book as the market they open: spread and moneyline from
-  the spread's book, open_total / open_over_price / open_under_price from the total's
-  book. initialSpread fills an unpriced open for 2013-14 to 2016-17; real open
+  open_* come from the same book as the market they open: the open spread from the
+  spread's book, open_home_ml / open_away_ml from the moneyline's book, open_total /
+  open_over_price / open_under_price from the total's book. initialSpread fills an unpriced open for 2013-14 to 2016-17; real open
   snapshots with prices from 2023-24.
 #}
 {% macro espn_odds(league) %}
@@ -87,6 +87,10 @@ with books as (
 -- +240 / +220, a few 2020 totals above 1.12). The raw moneyline is kept as
 -- raw_home_ml / raw_away_ml: a 3-way price still identifies the favourite, which
 -- the spread-sign check uses.
+-- Opening spread / total pairs must also be priced like the main market (both legs
+-- inside a band: NBA -135..+115, NHL totals -160..+140). ESPN BET posted 133 NBA
+-- opening totals in Oct-Nov 2024 at -425 / +290 (an alternate line 7 points off the
+-- close) that pass the 2-way check; 90 opening spreads in 2024+ are the same.
 priced as (
     select
         * replace (
@@ -94,8 +98,12 @@ priced as (
                             ('home_spread_price', 'away_spread_price'),
                             ('open_home_spread_price', 'open_away_spread_price'),
                             ('over_price', 'under_price'), ('open_over_price', 'open_under_price')] -%}
-            case when {{ valid_price_pair(a, b) }} then {{ a }} end as {{ a }},
-            case when {{ valid_price_pair(a, b) }} then {{ b }} end as {{ b }}{{ "," if not loop.last }}
+            {%- set band = main_band(league, a) -%}
+            {%- set ok = valid_price_pair(a, b) ~ (
+                    ' and ' ~ a ~ ' between ' ~ band[0] ~ ' and ' ~ band[1]
+                  ~ ' and ' ~ b ~ ' between ' ~ band[0] ~ ' and ' ~ band[1]) if band else valid_price_pair(a, b) -%}
+            case when {{ ok }} then {{ a }} end as {{ a }},
+            case when {{ ok }} then {{ b }} end as {{ b }}{{ "," if not loop.last }}
             {% endfor %}
         ),
         home_ml                                               as raw_home_ml,
@@ -132,8 +140,8 @@ spread_pick as (
         partition by game_id
         order by line_consistent desc,
                  spread_agrees desc,
-                 home_spread_price is not null desc,
                  {% if league == 'nhl' %}abs(home_spread) = 1.5 desc,{% endif %}
+                 home_spread_price is not null desc,
                  priority, provider_id
     ) = 1
 ),

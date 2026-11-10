@@ -86,12 +86,14 @@ class Candidate:
 def payout(price) -> np.ndarray:
     """Profit on a winning 1-unit bet at American odds."""
     price = np.asarray(price, dtype=float)
-    return np.where(price < 0, 100.0 / -price, price / 100.0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(price < 0, 100.0 / -price, price / 100.0)
 
 
 def implied(m) -> np.ndarray:
     m = np.asarray(m, dtype=float)
-    return np.where(m < 0, -m / (-m + 100.0), 100.0 / (m + 100.0))
+    with np.errstate(divide="ignore", invalid="ignore"):   # np.where evaluates both branches
+        return np.where(m < 0, -m / (-m + 100.0), 100.0 / (m + 100.0))
 
 
 def novig(a, b) -> np.ndarray:
@@ -122,11 +124,16 @@ def view(df: pd.DataFrame, placement: str) -> pd.DataFrame:
             "home_ml": df.get("open_home_ml", nan), "away_ml": df.get("open_away_ml", nan),
             "ats": df.home_margin + df.open_home_spread, "tot_margin": df[points_col(df)] - df.open_total,
         }, index=df.index)
-        # 2013-14..2016-17 NBA opens (initialSpread) carry no price; training only
-        flat = (df.season < MOVE_FROM_SEASON) & df.open_home_spread.notna()
+        # 2013-14..2016-17 NBA opens (initialSpread) carry no price; training only.
+        # Keyed per market on that market's own opening line.
+        nba_old = (df.season < MOVE_FROM_SEASON) & ("total_points" in df)
+        flat = nba_old & df.open_home_spread.notna()
+        v["flat_total"] = (nba_old & df.open_total.notna()).values
         if "spread_valid" in df:   # NHL: puck-line filter applies to the open too
             v.loc[~df.spread_valid, "ats"] = np.nan
     v["flat"] = flat.values
+    if "flat_total" not in v:
+        v["flat_total"] = v["flat"]
     v["home_margin"] = df.home_margin
     return v
 
@@ -150,13 +157,14 @@ def settle(df: pd.DataFrame, side: pd.Series, market: str, placement: str = "clo
         raise ValueError(market)
     price = pd.Series(price, index=d.index, dtype=float)
     if market != "ml":
-        price = price.where(price.notna() | ~v.flat, -110.0)
+        flat = v.flat_total if market == "total" else v.flat
+        price = price.where(price.notna() | ~flat, -110.0)
     margin = pd.Series(margin, index=d.index, dtype=float)
     outcome = np.sign(margin)
     profit = np.where(outcome > 0, payout(price), np.where(outcome < 0, -1.0, 0.0))
     move = movement(d, s, market)
     bets = pd.DataFrame({
-        "season": d.season, "game_key": d.game_key, "side": s, "price": price,
+        "season": d.season, "season_type": d.season_type, "game_key": d.game_key, "side": s, "price": price,
         "outcome": outcome, "profit": profit,
         "clv": move if placement == "open" else np.nan,
         "line_move": move if placement == "close" else np.nan,
@@ -282,7 +290,7 @@ def walk_forward(df: pd.DataFrame, cands: list[Candidate], league: str, min_trai
                                       "test_season": int(S), "param": best[0], "bets": so["decided"],
                                       "win_pct": so["win_pct"], "roi": so["roi"]}, default=float) + "\n")
 
-            cols = ["season", "game_key", "outcome", "profit", "clv", "line_move", "espn_line", "param"]
+            cols = ["season", "season_type", "game_key", "outcome", "profit", "clv", "line_move", "espn_line", "param"]
             oos_df = pd.concat(oos) if oos else pd.DataFrame(columns=cols)
             oos_by_cand[c.name] = oos_df
             st = summarize(oos_df)
@@ -381,7 +389,11 @@ def report(res: pd.DataFrame, oos: dict[str, pd.DataFrame], league: str, min_oos
                                         roi=("profit", lambda x: 100 * x.mean()), param=("param", "first"))
         extra = f"  (ESPN-priced lines only: {r.roi_espn_lines:+.2f}% on {r.n_espn_lines})" \
             if r.n_espn_lines != (r.wins + r.losses) else ""
-        print(f"\n  {r.candidate} [{r.placement}]: {r.rule}{extra}\n" + per.round(1).to_string())
+        by_type = dec.groupby(dec.season_type.map({2: "regular", 3: "playoffs"})).agg(
+            n=("profit", "size"), win=("outcome", lambda x: 100 * (x > 0).mean()),
+            roi=("profit", lambda x: 100 * x.mean()))
+        print(f"\n  {r.candidate} [{r.placement}]: {r.rule}{extra}\n" + per.round(1).to_string()
+              + "\n  by season type:\n" + by_type.round(1).to_string())
     path = OUT_DIR / f"{league}_edges.csv"
     res.to_csv(path, index=False)
     print(f"\nwrote {path.relative_to(ROOT)} ({len(res)} rows); trials appended to "

@@ -94,6 +94,15 @@
 {%- endmacro %}
 
 
+{# Price band a main-market OPENING spread / total leg must sit in; none for other pairs #}
+{% macro main_band(league, col) -%}
+    {%- if col == 'open_home_spread_price' and league == 'nba' -%}{{ return([-135, 115]) }}
+    {%- elif col == 'open_over_price' and league == 'nba' -%}{{ return([-135, 115]) }}
+    {%- elif col == 'open_over_price' and league == 'nhl' -%}{{ return([-160, 140]) }}
+    {%- else -%}{{ return(none) }}{%- endif -%}
+{%- endmacro %}
+
+
 {# American odds -> implied probability (with vig) #}
 {% macro implied_prob(ml) -%}
     case when {{ ml }} < 0 then -({{ ml }}) / (-({{ ml }}) + 100.0)

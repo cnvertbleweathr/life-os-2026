@@ -137,7 +137,10 @@ def candidates() -> list[Candidate]:
                        lambda d, t: side_where(
                            d, d.away_is_b2b & ~d.home_is_b2b & (d.away_travel_miles.fillna(0) >= t),
                            d.home_is_b2b & ~d.away_is_b2b & (d.home_travel_miles.fillna(0) >= t)),
-                       "as b2b_vs_rested_ml, bet at the opening moneyline", placement="open"))
+                       "as b2b_vs_rested_ml, bet at the opening moneyline", placement="open",
+                       # proposed after the close version's 2025-26 line movement was seen:
+                       # its 2026 bets are not a clean holdout; 2026-27 is the first real test
+                       discovered_in_sample=True))
     eo = "home_prob_edge_open"
     C.append(Candidate("xg_ml_follow_open", "xg_vs_market", "ml", xg_grid,
                        lambda d, t: side_where(d, d[eo] >= t, d[eo] <= -t),
