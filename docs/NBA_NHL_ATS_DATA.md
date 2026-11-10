@@ -303,6 +303,82 @@ the whole previous season; the home-court / home-ice constants pool earlier seas
   correlates 0.405 with the result vs 0.466 for the closing spread; NHL Brier 0.238–0.246 vs the
   no-vig moneyline's 0.225–0.244 (2020–2026). Phase 4 tests where the gaps disagree with the market.
 
+## Edge validation (Phase 4, 2026-11-09): nothing ships
+
+`scripts/nba_edge_validation.py` and `scripts/nhl_edge_validation.py` (engine:
+`scripts/nba_nhl_edges.py`) read only the feature marts. For each candidate and season S they
+choose the threshold on seasons < S, bet S, and report only those out-of-sample bets. Each
+candidate is placed at the close (the spine's line and price) or at the open (opening line and
+price, 2023-24 on). The scripts write `data/betting/{league}_edges.csv` and append every
+evaluation to `data/betting/{league}_trials.jsonl`.
+
+**The bar:**
+- n ≥ 200 (NBA) / 150 (NHL);
+- bootstrap 95% ROI interval above 0;
+- Bonferroni p_adj < 0.05, counting every candidate and every logged scan split;
+- at least 5 seasons with ≥ 20 bets, positive in ≥ 60% of the seasons tested.
+
+**Verdicts.** The `ats-edge-validator` agent reviewed both scripts in three rounds for the NBA and
+two for the NHL. Its final verdict is REJECT for every candidate.
+
+| League | Candidate | Out of sample | Verdict |
+|---|---|---|---|
+| NBA | total_model_open (predicted total vs the opening total, bet at the open) | 175 bets, +16.8%, CI [+2.6, +30.0], p_adj 0.40, 139 of the bets in 2024 | REJECT. Designed after seeing 2024-26, and playoff picks ride a model bias. Paper forward test only (below) |
+| NBA | total_model (vs the close) | 675, +6.3%, CI [−0.8, +13.4] | REJECT. The line moves 2.25 pts against its picks, toward them only 21% of the time |
+| NBA | rest_away_2plus (the Phase 0 lead) | 726, +1.6%, 7/16 seasons | REJECT. Found in the full-sample scan; the ESPN-era part is about +1% |
+| NBA | big_dog, home_b2b_vs_rested_away, away_long_travel, three_in_four_fade, b2b_vs_rested, model_spread_follow / _fade / _follow_open | −2% to −17% | REJECT |
+| NBA | rest_diff_more_rested, away_long_road_trip, ats_form_fade, total_b2b_under | no bets: training ROI never above 0 | REJECT |
+| NHL | b2b_vs_rested_ml (rested team's ML vs an opponent on a back-to-back) | 933, +4.1%, CI [−1.8, +10.0], 4/5 seasons | REJECT. Closest NHL call. The open-priced variant (50 bets) was found in-sample |
+| NHL | puck_dog_band, ml_dog_band | −4.7%, −19.5% | REJECT |
+| NHL | xG model vs moneyline (follow / fade / puck line / open), goalie GSAx and save%, xG + goalie, puck_fav_band, both totals signals | no bets: training ROI never above 0 | REJECT |
+
+Baselines (bet every side) lose 3–6% in every market, as they should. The simple models don't
+beat the closing market. The ratings and xG features are inputs for later work, not bets.
+
+**Problems the review found and fixed** (all in this PR):
+- **NHL moneyline prices.** Most books before 2024-25 put 3-way regulation prices in ESPN's
+  moneyline field. The two legs sum to about 0.85 implied (e.g. MIN +120 / away +175). The first
+  run therefore showed every NHL moneyline strategy at +10–20% ROI. `dbt/macros/espn_odds.sql`
+  now keeps only valid 2-way price pairs (implied sum 1.00–1.12) for moneylines, spreads and totals.
+- **Fake opening lines.** ESPN BET posted alternate opening totals and spreads at −425 / +290 in
+  2024-25. Opening pairs must now sit in a main-market band: NBA −135..+115, NHL totals −160..+140.
+- **Open prices.** Opening prices now reach the marts. The opening moneyline comes from the
+  moneyline's own book, and the opening total from the total's book.
+- **Neutral sites.** Every game from July 2020 (the bubbles) is neutral, as is any game more than
+  50 miles from the home team's city (e.g. the Raptors in Tampa in 2021). This feeds the
+  home-court and home-ice fits.
+- **Bias fit.** The totals-model bias is now fitted separately for regular season and playoffs.
+- **CLV.** Bets placed at the close have no CLV, so close-placed candidates report open→close
+  movement instead.
+- **Trial counting.** The Phase 0 scan splits and a reviewer's exploratory open-line tries are
+  logged and counted in Bonferroni m: NBA m = 42, NHL m = 14. The NHL run on broken prices is
+  marked invalid in the trials log.
+- **Bootstrap.** Deterministic, with 10,000 resamples.
+
+**Paper forward test: NBA totals at the open (not a lead).** Recorded under the validator's
+conditions:
+- **Rule:** regular season only. Bet the over or under when the predicted total (bias code frozen
+  at commit d56fbcd) differs from the opening total by ≥ 12 points.
+- **Price:** both legs within −135..+115, from the spine's book priority as of d56fbcd.
+- **Capture:** a timestamped price captured by our own pipeline after both teams' earlier games are
+  final. Not ESPN's after-the-fact open field, whose timing is unverified.
+- **Log:** picks written to an append-only log before tip-off, with the book.
+- **Start:** counts from the day the capture is built. 2026-27 games already played don't count.
+- **Pass:** ≥ 200 forward bets (2–3 seasons), bootstrap ROI interval above 0 at the actual price,
+  median CLV above 0.
+
+The evidence so far is one season. Regular-season results at t = 12:
+
+| Season | Bets | ROI |
+|---|---|---|
+| 2024 | 99 | +17.6% |
+| 2025 | 13 | +0.3% |
+| 2026 | 27 | −15.4% |
+
+Playoff totals stay out: since 2024 the model's playoff gap to the market has shifted by 6–12
+points, so any correction designed now would itself be tuned on these seasons. The test can't
+start until the pipelines load 2026-27: `nba.games` currently ends 2026-06-13.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
@@ -339,4 +415,4 @@ One lead worth testing with efficiency features, **not validated**:
 
 1. ~~dbt staging + team crosswalk seeds; join ESPN ↔ NBA stats ↔ historical lines, ESPN ↔ MoneyPuck ↔ goalies.~~ Done in Phase 2 (above).
 2. ~~Rolling pregame features with no lookahead: NBA net rating / four factors (last 10, season-to-date), rest, travel; NHL xG% 5v5, PP/PK xG, starter GSAx, rest.~~ Done in Phase 3 (above).
-3. Efficiency-gap vs line edges (the PPA-gap analogue), validated cross-season like `cfb_edge_validation.py`.
+3. ~~Efficiency-gap vs line edges (the PPA-gap analogue), validated cross-season like `cfb_edge_validation.py`.~~ Done in Phase 4 (above): no edge survived.

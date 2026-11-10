@@ -56,7 +56,11 @@ joined as (
         s.over_price,
         s.under_price,
         s.open_home_spread,
+        s.open_home_spread_price,
+        s.open_away_spread_price,
         s.open_total,
+        s.open_over_price,
+        s.open_under_price,
 
         -- results (labels only)
         s.home_score,

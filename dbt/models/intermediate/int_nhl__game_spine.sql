@@ -78,9 +78,20 @@ games as (
         e.away_score,
         e.went_ot,
         e.shootout,
-        e.neutral_site
+        -- neutral when ESPN says so, when the game is in the 2020 restart bubbles
+        -- (every game from July 2020: Orlando, Edmonton, Toronto, no crowds, including
+        -- the Magic's and Oilers' own "home" games), or when the venue is > 50 miles
+        -- from the home team's city (relocated games); ESPN flags none of these
+        coalesce(e.neutral_site, false)
+          or (e.season = 2020 and e.game_date >= date '2020-07-01')
+          or coalesce({{ haversine_miles('v.lat', 'v.lng', 'c.lat', 'c.lng') }} > 50, false) as neutral_site,
+        coalesce(e.neutral_site, false)                       as espn_neutral_site
     from espn_games e
     left join espn_match m using (game_id)
+    left join {{ ref('nba_nhl_venues') }} v on v.venue = e.venue
+    left join {{ ref('nba_nhl_team_cities') }} c
+      on c.league = 'nhl' and c.team_code = e.home_team
+     and e.season between coalesce(c.valid_from_season, 0) and coalesce(c.valid_to_season, 9999)
 
     union all
 
@@ -99,6 +110,7 @@ games as (
         m.away_goals,
         m.icetime > 3600,
         m.season_type = 2 and m.home_goals = m.away_goals,
+        null,
         null
     from mp m
     where m.season < (select season from espn_start)
@@ -124,7 +136,11 @@ select
     o.over_price,
     o.under_price,
     o.open_home_spread,
+    o.open_home_spread_price,
+    o.open_away_spread_price,
     o.open_total,
+    o.open_over_price,
+    o.open_under_price,
     o.open_home_ml,
     o.open_away_ml,
     o.line_consistent,
