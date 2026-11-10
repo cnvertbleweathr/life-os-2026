@@ -76,6 +76,119 @@ Still in the data, for Phase 2 line selection to handle:
 - Provider names drift (`Caesar's` / `Caesars` / `Caesars Sportsbook`, `DraftKings` / `Draft Kings`).
   Key priority rules on `provider_id`.
 
+## Coverage (Phase 1 backfill, 2026-11-09)
+
+Loaded: `nba.team_game_logs` 2008–2026, `nhl.moneypuck_team_games` 2009–2026,
+`nhl.goalie_games` 2020–2026, ESPN `nba.games`/`nba.odds` 2014–2026 and
+`nhl.games`/`nhl.odds` 2020–2026. The in-progress 2026-27 season (2027) comes from daily sync.
+Re-run with `uv run python scripts/nba_nhl_data_profile.py [--providers]` (read-only, safe with the API up).
+
+```
+NBA  ESPN games and lines
+  reg/post = completed real games; exh = exhibitions (All-Star etc.); n/p = listed, never played (canceled / postponed).
+  Line columns: book providers only (projection sites, consensus and live feeds excluded), on completed real games; % of reg+post.
+  null% is per odds row. 'all-prov' = games with any provider row, exhibitions and unplayed included.
+season  reg  post exh  n/p | exp   flag              | any line   %  open   %  close   % | books  odds rows | null%: spread price  ML  total close | all-prov
+2014  1230   89   1    2 | 1230                    |  1314  100  1314  100     0    0 |     5      6552 |          0     0    7    0   100 | 1321
+2015  1230   81   1    2 | 1230                    |  1271   97  1271   97     0    0 |     5      6290 |          0     0    9    0   100 | 1313
+2016  1230   86   1    2 | 1230                    |  1316  100  1316  100     0    0 |    12      8279 |          0     0    7    0   100 | 1318
+2017  1230   79   1    3 | 1230                    |  1274   97  1274   97     0    0 |     9     11385 |          0     0    2    0   100 | 1312
+2018  1230   82   2    1 | 1230                    |  1312  100     0    0     0    0 |     7      8290 |          6     6   10    6   100 | 1313
+2019  1230   82   2    0 | 1230                    |  1312  100     0    0     0    0 |     7      8008 |          0     0    5    0   100 | 1312
+2020  1059   83   2   12 | 1059  COVID pause + bub |  1142  100     0    0     0    0 |    12      7687 |          0     0    0    1   100 | 1154
+2021  1080   85   1   32 | 1080  72 games          |  1165  100     0    0     0    0 |    11     11492 |          0     0    0    0   100 | 1197
+2022  1230   87   1   11 | 1230                    |  1317  100     0    0     0    0 |    13     15111 |          1     1    0    0   100 | 1329
+2023  1230   84   1    1 | 1230                    |  1314  100     0    0     1    0 |    14     16141 |          0     0    0    0   100 | 1316
+2024  1231   82   1    2 | 1230                    |  1313  100  1308  100  1313  100 |    12     12822 |          0     0    0    0     0 | 1315
+2025  1231   84   3    5 | 1230                    |  1315  100  1314  100  1314  100 |     1      1315 |          0     0    0    0     0 | 1321
+2026  1231   85   4    4 | 1230                    |  1316  100  1316  100  1315  100 |     2      1364 |          0     0    0    0     1 | 1320
+
+NBA  stats tables
+season | team_game_logs: rows  games reg  games post | historical_lines: rows  null% spread  total  ML
+2008   |                2632   1230     86       |              1294     0.0    0.0    0.0
+2009   |                2630   1230     85       |              1302     0.0    0.0    0.0
+2010   |                2624   1230     82       |              1309     0.0    0.0    0.0
+2011   |                2622   1230     81       |              1305     0.0    0.0    0.0
+2012   |                2148    990     84       |              1072     0.0    0.0    0.0  (lockout, 66 games)
+2013   |                2630   1230     85       |              1305     0.0    0.0    0.0
+2014   |                2638   1230     89       |              1308     0.0    0.0    0.0
+2015   |                2622   1230     81       |              1307     0.0    0.0    0.0
+2016   |                2632   1230     86       |              1302     0.0    0.0    0.0
+2017   |                2618   1230     79       |              1291     0.0    0.0    0.0
+2018   |                2624   1230     82       |              1300     0.0    0.0    0.0
+2019   |                2624   1230     82       |              1294     0.0    0.0    0.0
+2020   |                2284   1059     83       |              1122     0.0    0.0    0.0  (COVID pause + bubble)
+2021   |                2330   1080     85       |              1153     0.0    0.0    0.0  (72 games)
+2022   |                2634   1230     87       |              1302     0.0    0.0    0.0
+2023   |                2628   1230     84       |              1314     0.0    0.0    0.0
+2024   |                2624   1230     82       |              1193     0.0    0.0    0.0
+2025   |                2628   1230     84       |              1323     0.0    0.0    0.0
+2026   |                2630   1230     85       |               549     0.0    0.0    0.0
+
+NHL  ESPN games and lines
+  reg/post = completed real games; exh = exhibitions (All-Star etc.); n/p = listed, never played (canceled / postponed).
+  Line columns: book providers only (projection sites, consensus and live feeds excluded), on completed real games; % of reg+post.
+  null% is per odds row. 'all-prov' = games with any provider row, exhibitions and unplayed included.
+season  reg  post exh  n/p | exp   flag              | any line   %  open   %  close   % | books  odds rows | null%: spread price  ML  total close | all-prov
+2020  1082  130   3  193 | 1082  COVID pause       |  1211  100     0    0     0    0 |    13      8195 |          0     0    0    5   100 | 1230
+2021   868   84   0   56 |  868  56 games, divisio |   951  100     0    0     0    0 |    13     10894 |          0     0    0    3   100 | 972
+2022  1312   89   3   99 | 1312  32 teams (Seattle |  1401  100     0    0     0    0 |    15     17787 |          1     1    0    1   100 | 1425
+2023  1312   88   3    5 | 1312  32 teams (Seattle |  1400  100     0    0     1    0 |    16     17463 |          8     8    0    1   100 | 1404
+2024  1312   88   3    1 | 1312  32 teams (Seattle |  1398  100  1389   99  1398  100 |    14     15114 |          3     3    0    8     3 | 1401
+2025  1312   86   7    2 | 1312  32 teams (Seattle |  1398  100  1398  100  1398  100 |     1      1398 |          0     0    0    0     0 | 1406
+2026  1312   82   0    1 | 1312  32 teams (Seattle |  1394  100  1394  100  1394  100 |     2      1428 |          0     0    0    0     1 | 1395
+
+NHL  stats tables
+season | moneypuck: rows    reg  post   all  5on5  5on4  4on5 | null% xgoalsfor corsi | goalie_games: rows  games  starters/game
+2009   |   10512  1227    87  2628  2628  2628  2628 |    0.0    0.0  |                 -
+2010   |   10544  1229    89  2636  2636  2636  2636 |    0.0    0.0  |                 -
+2011   |   10544  1230    88  2636  2636  2636  2636 |    0.0    0.0  |                 -
+2012   |   10528  1230    86  2632  2632  2632  2632 |    0.0    0.0  |                 -
+2013   |    6448   720    86  1612  1612  1612  1612 |    0.0    0.0  |                 -  (lockout, 48 games)
+2014   |   10584  1230    93  2646  2646  2646  2646 |    0.0    0.0  |                 -
+2015   |   10552  1230    89  2638  2638  2638  2638 |    0.0    0.0  |                 -
+2016   |   10568  1230    91  2642  2642  2642  2642 |    0.0    0.0  |                 -
+2017   |   10536  1230    87  2634  2634  2634  2634 |    0.0    0.0  |                 -
+2018   |   10840  1271    84  2710  2710  2710  2710 |    0.0    0.0  |                 -  (31 teams (Vegas))
+2019   |   10864  1271    87  2716  2716  2716  2716 |    0.0    0.0  |                 -  (31 teams (Vegas))
+2020   |    9696  1082   130  2424  2424  2424  2424 |    0.0    0.0  |              4850   1212   2.00  (COVID pause)
+2021   |    7616   868    84  1904  1904  1904  1904 |    0.0    0.0  |              3808    952   2.00  (56 games, divisional)
+2022   |   11208  1312    89  2802  2802  2802  2802 |    0.0    0.0  |              5605   1401   2.00  (32 teams (Seattle))
+2023   |   11200  1312    88  2800  2800  2800  2800 |    0.0    0.0  |              5599   1400   2.00  (32 teams (Seattle))
+2024   |   11200  1312    88  2800  2800  2800  2800 |    0.0    0.0  |              5599   1400   2.00  (32 teams (Seattle))
+2025   |   11184  1312    86  2796  2796  2796  2796 |    0.0    0.0  |              5592   1398   2.00  (32 teams (Seattle))
+2026   |   11152  1312    82  2788  2788  2788  2788 |    0.0    0.0  |              5575   1394   2.00  (32 teams (Seattle))
+```
+
+What the profile shows:
+
+- **No season is off its schedule** once exhibitions and unplayed games are set aside. The short
+  seasons match exactly: NBA 2012 (990), 2020 (1,059), 2021 (1,080); NHL 2013 (720),
+  2020 (1,082), 2021 (868). NBA ESPN has 1,231 in 2024–26: the NBA Cup final, a real game with
+  lines that `nba_api` leaves out of `team_game_logs` because it doesn't count in the standings.
+  MoneyPuck is short 3 games in 2009 and 1 in 2010.
+- **ESPN lines cover every completed real game** in every season loaded, except NBA 2015 and
+  2017 (97%, about 40 games each with only projection sites). Open lines: NBA 2014–2017
+  (`initialSpread`) and 2024 on. Close snapshots: 2024 on only.
+- **`nba.historical_lines` has gaps**: 2024 has 1,193 games, about 119 short, and 2026 stops in
+  January (549). ESPN covers both, so the Phase 2 spine should prefer ESPN from 2014 and use
+  `historical_lines` for 2008–2013.
+- **Goalies**: exactly 2 starters per game in every NHL season.
+
+Data issues for Phase 2 (staging and the game spine):
+
+- **ESPN files exhibitions as regular season** (`season_type = 2`): NBA All-Star, Rising Stars
+  and World v USA (1–4 a season), NHL All-Star 3-on-3 (division or captain teams) and the
+  2025 4 Nations Face-Off (7 games, CAN/USA/SWE/FIN). Several have odds. Drop any game where
+  a side isn't a franchise; the crosswalk seed does this naturally.
+- **Unplayed games are listed**: NHL 2020 has 189 `STATUS_CANCELED` (the COVID pause), and
+  `STATUS_POSTPONED` rows exist in both leagues (NBA 77, NHL 168). The same matchup was played
+  later under a new `game_id` for 75/77 NBA and 168/168 NHL postponements. Keep `completed` only.
+- **Provider ids are league-specific**: Bet365 is 2000 in NBA and 1001 in NHL; 1005 is betegy
+  (NBA) but FanDuel (NHL). BOVADA appears as 20 and 24 in 2016. Key provider priority on
+  `(league, provider_id)`.
+- **Utah's ESPN abbreviation changed**: `UTAH` in 2025, `UTA` in 2026, same team id 129764.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
