@@ -1,0 +1,73 @@
+league,team_code,valid_from_season,valid_to_season,city,lat,lng
+nba,ATL,,,Atlanta,33.757,-84.396
+nba,BKN,,2012,Newark (New Jersey Nets),40.734,-74.171
+nba,BKN,2013,,Brooklyn,40.683,-73.976
+nba,BOS,,,Boston,42.366,-71.062
+nba,CHA,,,Charlotte,35.225,-80.839
+nba,CHI,,,Chicago,41.881,-87.674
+nba,CLE,,,Cleveland,41.496,-81.688
+nba,DAL,,,Dallas,32.790,-96.810
+nba,DEN,,,Denver,39.749,-105.008
+nba,DET,,2017,Auburn Hills MI,42.697,-83.245
+nba,DET,2018,,Detroit,42.341,-83.055
+nba,GSW,,2019,Oakland,37.750,-122.203
+nba,GSW,2020,,San Francisco,37.768,-122.388
+nba,HOU,,,Houston,29.751,-95.362
+nba,IND,,,Indianapolis,39.764,-86.155
+nba,LAC,,2024,Los Angeles,34.043,-118.267
+nba,LAC,2025,,Inglewood,33.945,-118.343
+nba,LAL,,,Los Angeles,34.043,-118.267
+nba,MEM,,,Memphis,35.138,-90.051
+nba,MIA,,,Miami,25.781,-80.188
+nba,MIL,,,Milwaukee,43.045,-87.917
+nba,MIN,,,Minneapolis,44.980,-93.276
+nba,NOP,,,New Orleans,29.949,-90.082
+nba,NYK,,,New York,40.751,-73.993
+nba,OKC,,2008,Seattle (SuperSonics),47.622,-122.354
+nba,OKC,2009,,Oklahoma City,35.463,-97.515
+nba,ORL,,,Orlando,28.539,-81.384
+nba,PHI,,,Philadelphia,39.901,-75.172
+nba,PHX,,,Phoenix,33.446,-112.071
+nba,POR,,,Portland,45.532,-122.667
+nba,SAC,,2016,Sacramento (Sleep Train Arena),38.649,-121.518
+nba,SAC,2017,,Sacramento,38.580,-121.500
+nba,SAS,,,San Antonio,29.427,-98.437
+nba,TOR,,,Toronto,43.643,-79.379
+nba,UTA,,,Salt Lake City,40.768,-111.901
+nba,WAS,,,Washington,38.898,-77.021
+nhl,ANA,,,Anaheim,33.808,-117.877
+nhl,BOS,,,Boston,42.366,-71.062
+nhl,BUF,,,Buffalo,42.875,-78.876
+nhl,CAR,,,Raleigh,35.803,-78.722
+nhl,CBJ,,,Columbus,39.969,-83.006
+nhl,CGY,,,Calgary,51.037,-114.052
+nhl,CHI,,,Chicago,41.881,-87.674
+nhl,COL,,,Denver,39.749,-105.008
+nhl,DAL,,,Dallas,32.790,-96.810
+nhl,DET,,,Detroit,42.341,-83.055
+nhl,EDM,,,Edmonton,53.547,-113.498
+nhl,FLA,,,Sunrise FL,26.158,-80.326
+nhl,LAK,,,Los Angeles,34.043,-118.267
+nhl,MIN,,,St. Paul,44.945,-93.101
+nhl,MTL,,,Montreal,45.496,-73.569
+nhl,NJD,,,Newark,40.734,-74.171
+nhl,NSH,,,Nashville,36.159,-86.779
+nhl,NYI,,2021,Uniondale NY,40.723,-73.590
+nhl,NYI,2022,,Elmont NY,40.712,-73.726
+nhl,NYR,,,New York,40.751,-73.993
+nhl,OTT,,,Ottawa (Kanata),45.297,-75.927
+nhl,PHI,,,Philadelphia,39.901,-75.172
+nhl,PIT,,,Pittsburgh,40.439,-79.989
+nhl,SEA,,,Seattle,47.622,-122.354
+nhl,SJS,,,San Jose,37.333,-121.901
+nhl,STL,,,St. Louis,38.627,-90.203
+nhl,TBL,,,Tampa,27.943,-82.452
+nhl,TOR,,,Toronto,43.643,-79.379
+nhl,UTA,,2022,Glendale AZ (Coyotes),33.532,-112.261
+nhl,UTA,2023,2024,Tempe (Coyotes),33.427,-111.932
+nhl,UTA,2025,,Salt Lake City,40.768,-111.901
+nhl,VAN,,,Vancouver,49.278,-123.109
+nhl,VGK,,,Las Vegas,36.103,-115.178
+nhl,WPG,,2011,Atlanta (Thrashers),33.757,-84.396
+nhl,WPG,2012,,Winnipeg,49.893,-97.144
+nhl,WSH,,,Washington,38.898,-77.021

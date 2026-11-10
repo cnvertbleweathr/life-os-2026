@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: mart_nba_game_features
+    description: One row per NBA game with pregame home / away / gap features (no lookahead), the ratings-implied spread and the market line.
+    columns:
+      - name: game_key
+        data_tests: [unique, not_null]
+      - name: home_team
+        data_tests: [not_null]
+
+  - name: mart_nhl_game_features
+    description: One row per NHL game with pregame home / away / gap features (no lookahead), the xG-implied win probability and the no-vig market probability.
+    columns:
+      - name: game_key
+        data_tests: [unique, not_null]
+      - name: home_team
+        data_tests: [not_null]
