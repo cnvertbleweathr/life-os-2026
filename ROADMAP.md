@@ -256,6 +256,7 @@ Plan: [`docs/film/ONS_FILM_SECTION_PLAN.md`](./docs/film/ONS_FILM_SECTION_PLAN.m
 | 🟢 | 5 · Display | `/api/display/playlist` (live games pre-empt films; quiet hours), 64×32 score frames, Pi player + systemd unit (#30) |
 | 🔵 | LED panel hardware | 64×32 HUB75 panel, Pi + RGB matrix HAT, 5 V 4 A supply; install per `ops/pi/display/README.md`. The player has only run emulated |
 | 🔵 | First suggestions and renders | The 2026-11-08 sync suggests scenes for ~33 films; approve them on `/film`; the next sync renders |
+| 🟢 | YouTube clips | Any watched film: **Set clip** in the Recent watches table takes a YouTube link and start time; the API renders the 5-second GIF at once (yt-dlp + ffmpeg, no Plex needed), with the 9:00 sync retrying failures. Owner only, like Plex clips |
 | 🔵 | Public-domain starter set | Sprites for Metropolis, Caligari, A Trip to the Moon, Night of the Living Dead (only Nosferatu exists) |
 | ⚪ | Clip tuning | Suggested timestamps are rough (set clips on approval); bright clips stay bright on the dark matrix palette |
 | ⚪ | Rewatch semantics | A film played on Plex on two days counts as a rewatch; the plan's "rewatch gets its own GIF?" question is answered "no" for now (one GIF per film) |

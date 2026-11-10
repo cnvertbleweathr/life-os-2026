@@ -19,13 +19,21 @@ Writers:
   scripts/film_suggest_scenes.py   new rows, status "suggested" (daily sync, after dbt)
   api/routers/film.py              approve / edit / reject (owner only)
   scripts/film_catalog.py          the same three from the command line
-  scripts/film_gif_render.py       marks approved rows rendered (daily sync, after suggestions)
+  scripts/film_gif_render.py       marks approved rows rendered or failed (daily sync, after suggestions)
+  api/film_render_jobs.py          the same, for a YouTube clip the moment the owner saves it
 
 Render mode is decided by rule, not by the model (copyright matters too much
 to leave to a suggestion):
   sprite     a hand-built pixel scene; only for films in the US public domain
   plex_clip  pixelated from your own Plex file; needs the file
   motif      an original mood loop; always allowed
+  youtube    pixelated from a YouTube video the owner picked on /film; always
+             allowed, because the owner chose the source (owner-only, like plex_clip)
+
+Setting a YouTube clip (set_youtube_clip) approves the row on the spot and
+keeps any GIF it already had, so the old loop stays up until the new one has
+rendered. render_error holds the last failed render's reason until the next
+attempt.
 """
 
 from __future__ import annotations
@@ -34,11 +42,14 @@ from datetime import date
 from typing import Any
 
 from api.store import JsonlLog, timestamp, today_local
+from film import youtube
 
 CATALOG_LOG = JsonlLog("film", "scene_catalog.jsonl")
 
 STATUSES = ("suggested", "approved", "rejected", "rendered")
-RENDER_MODES = ("sprite", "plex_clip", "motif")
+RENDER_MODES = ("sprite", "plex_clip", "motif", "youtube")
+CLIP_MODES = ("plex_clip", "youtube")       # a clip window means something
+PRIVATE_MODES = ("plex_clip", "youtube")    # personal-use derivatives: owner only
 LOOP_MAX_SECONDS = 10   # a plex_clip window; the GIF itself is 5s, so leave room to choose
 
 # Later films in the US public domain (lapsed or never-registered copyright).
@@ -58,13 +69,15 @@ PUBLIC_DOMAIN_LATER: frozenset[tuple[str, int]] = frozenset({
 FIELDS = (
     "film_key", "tmdb_id", "title", "year",
     "scene_label", "scene_note", "suggested_timestamp_s", "suggestion_confidence",
-    "render_mode", "clip_start", "clip_end", "plex_file",
-    "status", "gif_web", "gif_matrix",
+    "render_mode", "clip_start", "clip_end", "plex_file", "youtube_url",
+    "status", "gif_web", "gif_matrix", "render_error",
     "suggested_by", "suggested_at", "approved_at", "rejected_at", "rendered_at",
     "updated_at",
 )
 
-EDITABLE = ("scene_label", "scene_note", "render_mode", "clip_start", "clip_end")
+EDITABLE = ("scene_label", "scene_note", "render_mode", "clip_start", "clip_end", "youtube_url")
+# The fields a GIF is made from: if any changes mid-render, that render is stale.
+SOURCE_FIELDS = ("render_mode", "clip_start", "plex_file", "youtube_url")
 
 
 class CatalogError(ValueError):
@@ -122,6 +135,20 @@ def check_render_mode(row: dict[str, Any]) -> None:
                 raise CatalogError("clip_end must be after clip_start, and clip_start >= 0")
             if end - start > LOOP_MAX_SECONDS:
                 raise CatalogError(f"the clip window can be at most {LOOP_MAX_SECONDS}s")
+    if mode == "youtube":
+        try:
+            youtube.parse_url(row.get("youtube_url") or "")
+        except ValueError as e:
+            raise CatalogError(f"youtube needs a YouTube link: {e}") from e
+        if (row.get("clip_start") or 0) < 0:
+            raise CatalogError("clip_start must be >= 0")
+
+
+def is_visible(row: dict[str, Any], owner: bool) -> bool:
+    """Whether this requester may see the row's GIF. An approved row can still
+    have one: a re-picked YouTube clip keeps its old loop until the new renders."""
+    return row.get("status") in ("approved", "rendered") and bool(row.get("gif_web")) and (
+        owner or row.get("render_mode") not in PRIVATE_MODES)
 
 
 # ── reads ────────────────────────────────────────────────────────────────────
@@ -182,9 +209,14 @@ def _apply_edits(row: dict[str, Any], edits: dict[str, Any]) -> dict[str, Any]:
     for key in ("scene_label", "scene_note"):
         if isinstance(new.get(key), str):
             new[key] = new[key].strip() or None
-    if edits.get("render_mode") and edits["render_mode"] != "plex_clip" \
+    if edits.get("render_mode") and edits["render_mode"] not in CLIP_MODES \
             and "clip_start" not in edits and "clip_end" not in edits:
-        new["clip_start"] = new["clip_end"] = None   # a clip window means nothing outside plex_clip
+        new["clip_start"] = new["clip_end"] = None   # a clip window means nothing outside the clip modes
+    if isinstance(new.get("youtube_url"), str) and new["youtube_url"].strip():
+        try:
+            new["youtube_url"] = youtube.parse_url(new["youtube_url"])[0]
+        except ValueError:
+            pass   # check_render_mode says why, if the mode needs it
     check_render_mode(new)
     return new
 
@@ -196,7 +228,7 @@ def edit(film_key: str, edits: dict[str, Any]) -> dict[str, Any]:
     new = _apply_edits(row, edits)
     if row["status"] == "rendered":
         new = {**new, "status": "approved", "gif_web": None, "gif_matrix": None, "rendered_at": None}
-    return _write(new)
+    return _write({**new, "render_error": None})
 
 
 def approve(film_key: str, edits: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -217,10 +249,48 @@ def reject(film_key: str) -> dict[str, Any]:
                    "gif_web": None, "gif_matrix": None, "rendered_at": None})
 
 
-def mark_rendered(film_key: str, gif_web: str, gif_matrix: str) -> dict[str, Any]:
-    """Called by the renderer (scripts/film_gif_render.py). Paths are relative to the data dir."""
+def set_youtube_clip(film: dict[str, Any], url: str, start: float) -> dict[str, Any]:
+    """Point a film's GIF at 5 seconds of a YouTube video, and approve it.
+
+    `film` has film_key, tmdb_id, title, year (from mart_film_watches); a film
+    with no catalog row gets one. The row keeps any GIF it already has, so the
+    old loop stays visible until the renderer replaces it."""
+    try:
+        canonical, _ = youtube.parse_url(url)
+    except ValueError as e:
+        raise CatalogError(str(e)) from e
+    if start is None or start < 0:
+        raise CatalogError("give a start time of 0 or more")
+    row = catalog().get(film["film_key"]) or {
+        **{k: film.get(k) for k in ("film_key", "tmdb_id", "title", "year")},
+        "suggested_by": "owner",
+    }
+    return _write({
+        **row,
+        "render_mode": "youtube", "youtube_url": canonical,
+        "clip_start": float(start), "clip_end": float(start) + 5,
+        "status": "approved", "approved_at": timestamp(), "rejected_at": None, "render_error": None,
+    })
+
+
+def mark_rendered(film_key: str, gif_web: str, gif_matrix: str,
+                  source: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Called by the renderer (film/render.py). Paths are relative to the data dir.
+    `source` is the row the GIF was made from: if the owner changed the clip
+    while it rendered, the row stays approved so the new clip renders next."""
     row = get(film_key)
     if row["status"] not in ("approved", "rendered"):
         raise CatalogError(f"{film_key} is {row['status']}, not approved", status=409)
+    if source is not None and any(source.get(k) != row.get(k) for k in SOURCE_FIELDS):
+        raise CatalogError(f"{film_key} changed while it rendered; it will render again", status=409)
     return _write({**row, "status": "rendered", "gif_web": gif_web, "gif_matrix": gif_matrix,
-                   "rendered_at": timestamp()})
+                   "rendered_at": timestamp(), "render_error": None})
+
+
+def mark_failed(film_key: str, error: str) -> dict[str, Any] | None:
+    """Record why a render failed. The row stays approved (the next run tries
+    again) and keeps any GIF it had. A no-op if the row has moved on."""
+    row = catalog().get(film_key)
+    if not row or row["status"] != "approved":
+        return None
+    return _write({**row, "render_error": (error or "render failed")[:300]})

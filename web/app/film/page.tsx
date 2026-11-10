@@ -6,12 +6,14 @@
 //   scene     /film/scene     the latest watch, for the title scene
 //   queue     /film/queue     scene suggestions waiting for approval (owner only: read only when this
 //                             device already has the write key, so a visitor never sees a key prompt)
-// plex_clip GIFs come from the owner's own copies; the API hides them from anyone without the key.
+//   clip      /film/clip      the owner picks any watched film's GIF from a YouTube link and start time;
+//                             the API renders it at once and the row polls until it's done
+// plex_clip and youtube GIFs are personal-use derivatives; the API hides them from anyone without the key.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import {
   filmApi, hasWriteKey,
-  type CatalogRow, type FilmLibrary, type FilmScene, type FilmWatch, type RenderMode,
+  type CatalogRow, type ClipStatus, type FilmLibrary, type FilmScene, type FilmWatch, type RenderMode,
 } from "@/lib/api";
 import { PageHead, Loading, ErrorState } from "@/components/ui/primitives";
 import { PixelScene } from "@/components/ui/PixelScene";
@@ -28,10 +30,43 @@ const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "Ju
 const SOURCE: Record<FilmWatch["source"], [string, string]> = {
   both: ["both", "Both"], letterboxd: ["lb", "Letterboxd"], plex: ["px", "Plex only"],
 };
-const MODE: Record<RenderMode, string> = { sprite: "Public-domain scene", plex_clip: "From your copy", motif: "Motif" };
+const MODE: Record<RenderMode, string> = { sprite: "Public-domain scene", plex_clip: "From your copy", motif: "Motif", youtube: "From YouTube" };
+const GIF_LABEL: Record<RenderMode, string> = { youtube: "Clip", plex_clip: "Clip", motif: "Title card", sprite: "Scene" };
+const RENDERING = new Set<ClipStatus["state"]>(["queued", "rendering"]);
+const POLL_MS = 2000;
 const SHOWN = 15;
 const rating = (r: number | null) => (r == null ? "–" : r.toFixed(1));
 const clock = (s: number | null) => (s == null ? "" : `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`);
+const clockLong = (s: number) => (s >= 3600 ? `${Math.floor(s / 3600)}:${clock(s % 3600).padStart(5, "0")}` : clock(s));
+
+/** Seconds from "83", "1:23", "1:02:03", "1m23s"; null when blank, NaN when unreadable. Mirrors film/youtube.py. */
+function parseTime(v: string): number | null {
+  const s = v.trim().toLowerCase();
+  if (!s) return null;
+  if (/^\d+(\.\d+)?$/.test(s)) return Number(s);
+  if (/^\d+(:\d{1,2}){1,2}(\.\d+)?$/.test(s)) {
+    const parts = s.split(":").map(Number);
+    if (parts.slice(1).some((p) => p >= 60)) return NaN;
+    return parts.reduce((t, p) => t * 60 + p, 0);
+  }
+  const m = s.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?$/);
+  if (m && (m[1] || m[2] || m[3])) return Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + Number(m[3] ?? 0);
+  return NaN;
+}
+
+/** The start time a YouTube link carries (?t=83, ?t=1m23s, ?start=83), if any. */
+function linkStart(url: string): number | null {
+  try {
+    const u = new URL(url.trim());
+    const t = u.searchParams.get("t") ?? u.searchParams.get("start");
+    const n = t ? parseTime(t) : null;
+    return n != null && Number.isFinite(n) ? n : null;
+  } catch { return null; }
+}
+
+const looksLikeYouTube = (url: string) => {
+  try { return /(^|\.)(youtube\.com|youtu\.be)$/.test(new URL(url.trim()).hostname); } catch { return false; }
+};
 
 /** Object URLs for a film's light and dark strips, preloaded so the scene engine never draws a half-loaded image. */
 function useStrips(key: string | null, opts: { motif?: boolean; version?: string | null } = {}) {
@@ -128,6 +163,103 @@ function QueueRow({ row, onDone }: { row: CatalogRow; onDone: (key: string) => v
   );
 }
 
+/** The GIF column: what the film shows now, or where its new clip stands, and the button that opens the editor. */
+function GifCell({ w, open, onToggle }: { w: FilmWatch; open: boolean; onToggle: () => void }) {
+  const c = w.clip!;
+  const [cls, label] = RENDERING.has(c.state) ? ["busy", "Rendering…"]
+    : c.state === "failed" ? ["bad", "Failed"]
+    : c.state === "waiting" && !w.gif ? ["wait", "At 9:00"]
+    : w.gif_mode ? [w.gif_mode === "youtube" || w.gif_mode === "plex_clip" ? "clip" : "card", GIF_LABEL[w.gif_mode]]
+    : ["none", "None"];
+  const hasClip = w.gif_mode === "youtube" || w.gif_mode === "plex_clip";
+  return (
+    <td className="ons-gif-cell">
+      <span className={`ons-gif ${cls}`}>{label}</span>
+      <button type="button" id={`gifbtn-${w.watch_id}`} className="ons-linkbtn" aria-expanded={open} onClick={onToggle}
+        aria-label={`${open ? "Close" : hasClip ? "Replace" : "Set"} the clip for ${w.title}`}>
+        {open ? "Close" : hasClip ? "Replace" : "Set clip"}
+      </button>
+    </td>
+  );
+}
+
+/** The loop a film shows now (owner's own strip, so youtube and plex clips included). */
+function ClipPreview({ w }: { w: FilmWatch }) {
+  const urls = useStrips(w.gif ? w.film_key : null, { version: w.gif_version });
+  if (!w.gif) return <div className="ons-clip-preview empty" aria-hidden="true">No GIF yet</div>;
+  return (
+    <div className="ons-clip-preview">
+      <PixelScene scene="loop" data={{ "strip-light": urls?.light, "strip-dark": urls?.dark }} label={`${w.title} loop`} />
+    </div>
+  );
+}
+
+/** Under a watch row: paste a YouTube link and a start time; the API renders the 5-second GIF straight away. */
+function ClipEditor({ w, cols, onSaved, onClose }: {
+  w: FilmWatch; cols: number; onSaved: (key: string, status: ClipStatus) => void; onClose: () => void;
+}) {
+  const c = w.clip!;
+  const [url, setUrl] = useState(c.youtube_url ?? "");
+  const [start, setStart] = useState(c.clip_start != null ? clockLong(c.clip_start) : "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const id = `clip-${w.watch_id.replace(/[^a-z0-9]/gi, "-")}`;
+  const busy = RENDERING.has(c.state);
+
+  const changeUrl = (v: string) => {
+    setUrl(v);
+    const t = linkStart(v);
+    if (t != null) setStart(clockLong(t));
+  };
+
+  const save = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const seconds = parseTime(start) ?? 0;
+    if (!looksLikeYouTube(url)) { setError("Paste a YouTube link (youtube.com or youtu.be)."); return; }
+    if (!Number.isFinite(seconds)) { setError("Use a time like 1:23, 1:02:03 or 83."); return; }
+    setSaving(true); setError(null);
+    filmApi.setClip(w.film_key, url.trim(), seconds)
+      .then((s) => onSaved(w.film_key, s))
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setSaving(false));
+  };
+
+  const status = busy ? "Rendering the 5-second loop. This usually takes under 30 seconds."
+    : c.state === "failed" ? null
+    : c.state === "waiting" && c.render_mode === "youtube" ? "Saved. It renders at the 9:00 sync."
+    : c.state === "done" && c.render_mode === "youtube" ? `Showing ${clockLong(c.clip_start ?? 0)}–${clockLong((c.clip_start ?? 0) + 5)} of the video.`
+    : "Pick 5 seconds of any YouTube video: it becomes this film's 64×32 loop, seen only by you.";
+
+  return (
+    <tr className="ons-clip-edit">
+      <td colSpan={cols}>
+        <form className="ons-clip-form" onSubmit={save} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} aria-labelledby={`${id}-h`}>
+          <ClipPreview w={w} />
+          <div className="ons-clip-fields">
+            <h3 id={`${id}-h`} className="sr-only">Clip for {w.title}</h3>
+            <label className="url"><span>YouTube link</span>
+              <input className="ons-input" type="url" inputMode="url" autoFocus value={url} onChange={(e) => changeUrl(e.target.value)}
+                placeholder="https://youtu.be/…" spellCheck={false} autoComplete="off" maxLength={500} />
+            </label>
+            <label className="start"><span>Start</span>
+              <input className="ons-input ons-n" value={start} onChange={(e) => setStart(e.target.value)} placeholder="1:23" autoComplete="off" />
+            </label>
+            <div className="acts">
+              <button type="submit" className="ons-btn pri" disabled={saving || busy || !url.trim()}>
+                {c.state === "failed" ? "Try again" : busy ? "Rendering…" : "Save"}
+              </button>
+              <button type="button" className="ons-btn" onClick={onClose}>{c.state === "done" ? "Done" : "Cancel"}</button>
+            </div>
+            {error || c.state === "failed"
+              ? <p className="note err" role="alert">{error ?? `Couldn't render: ${c.error ?? "unknown error"}.`}</p>
+              : <p className="note" role="status">{status}</p>}
+          </div>
+        </form>
+      </td>
+    </tr>
+  );
+}
+
 export default function FilmPage() {
   const [today, setToday] = useState<string | null>(null);
   const [watches, setWatches] = useState<FilmWatch[] | null>(null);
@@ -137,6 +269,7 @@ export default function FilmPage() {
   const [year, setYear] = useState<number | null>(null);
   const [all, setAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);   // watch_id whose clip editor is open
 
   const loadLibrary = useCallback(() => filmApi.library().then(setLibrary).catch(() => setLibrary({ films: [], counts: { suggested: 0, approved: 0, rejected: 0, rendered: 0 } })), []);
 
@@ -148,6 +281,35 @@ export default function FilmPage() {
     loadLibrary();
     if (hasWriteKey()) filmApi.queue().then(setQueue).catch(() => setQueue(null));
   }, [loadLibrary]);
+
+  // Closing the editor hands focus back to the row's Set clip / Replace button.
+  const closeEditor = useCallback((watchId: string) => {
+    setEditing(null);
+    requestAnimationFrame(() => document.getElementById(`gifbtn-${watchId}`)?.focus());
+  }, []);
+
+  // A clip status for one film lands on every watch row of that film.
+  const applyClip = useCallback((key: string, clip: ClipStatus) => {
+    setWatches((ws) => ws && ws.map((w) => (w.film_key !== key ? w : {
+      ...w, clip,
+      ...(clip.state === "done" ? { gif: true, gif_mode: clip.render_mode, gif_version: clip.rendered_at } : {}),
+    })));
+    if (clip.state === "done") loadLibrary();
+  }, [loadLibrary]);
+
+  // Poll the films that are rendering until each is done or failed.
+  const pending = useMemo(
+    () => Array.from(new Set((watches ?? []).filter((w) => w.clip && RENDERING.has(w.clip.state)).map((w) => w.film_key))).sort().join("\n"),
+    [watches],
+  );
+  useEffect(() => {
+    if (!pending) return;
+    const keys = pending.split("\n");
+    const t = window.setTimeout(() => {
+      keys.forEach((k) => filmApi.clipStatus(k).then((s) => applyClip(k, s)).catch(() => {}));
+    }, POLL_MS);
+    return () => window.clearTimeout(t);
+  }, [pending, watches, applyClip]);
 
   const y = today ? +today.slice(0, 4) : 0;
   const view = useMemo(() => {
@@ -172,6 +334,7 @@ export default function FilmPage() {
   const nowFilms = new Set(now.map((w) => w.film_key)).size;
   const plexOnlyNow = now.filter((w) => w.source === "plex").length;
   const last = watches[0];
+  const owner = watches.some((w) => w.clip);
   const waiting = queue?.length ?? 0;
   const isNow = year === y;
   const maxMonth = Math.max(1, ...view.months);
@@ -243,21 +406,26 @@ export default function FilmPage() {
           {view.rows.length ? (
             <div style={{ overflowX: "auto" }}>
               <table className="ons-table">
-                <thead><tr><th>Date</th><th>Film</th><th className="r">Rating</th><th>Logged on</th></tr></thead>
+                <thead><tr><th>Date</th><th>Film</th><th className="r">Rating</th><th className="hide-p">Logged on</th>{owner && <th>GIF</th>}</tr></thead>
                 <tbody>
                   {(all ? view.rows : view.rows.slice(0, SHOWN)).map((w) => {
                     const [cls, label] = SOURCE[w.source];
                     const notes = [w.is_rewatch && "Rewatch", w.liked && "Liked", w.plex_plays > 1 && `${w.plex_plays} Plex plays`].filter(Boolean).join(" · ");
+                    const open = editing === w.watch_id;
                     return (
-                      <tr key={w.watch_id}>
+                      <Fragment key={w.watch_id}>
+                      <tr className={open ? "open" : undefined}>
                         <td style={{ whiteSpace: "nowrap" }}>{short(w.watch_date)}</td>
                         <td>
                           {w.letterboxd_url ? <a className="ons-film-link" href={w.letterboxd_url} target="_blank" rel="noreferrer">{w.title}</a> : <span style={{ fontWeight: 500 }}>{w.title}</span>}
                           <span className="sub">{[w.film_year, notes].filter(Boolean).join(" · ")}</span>
                         </td>
                         <td className="r ons-n">{rating(w.rating)}</td>
-                        <td><span className={`ons-src ${cls}`}>{label}</span></td>
+                        <td className="hide-p"><span className={`ons-src ${cls}`}>{label}</span></td>
+                        {owner && w.clip && <GifCell w={w} open={open} onToggle={() => setEditing(open ? null : w.watch_id)} />}
                       </tr>
+                      {open && w.clip && <ClipEditor w={w} cols={5} onSaved={applyClip} onClose={() => closeEditor(w.watch_id)} />}
+                      </Fragment>
                     );
                   })}
                 </tbody>
