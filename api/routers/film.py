@@ -8,8 +8,8 @@ Public (`public` router; narcisystem.com is public, see api/auth.py):
   GET   /api/film/strip/{film_key}?theme=light|dark[&fallback=motif]
                                           the film's 40 frames as one 2560×32 PNG strip
 
-plex_clip GIFs are a personal-use derivative of copyrighted films: only the
-owner (a local request, or one with the write key) can list or fetch them.
+plex_clip and youtube GIFs are a personal-use derivative of copyrighted films:
+only the owner (a local request, or one with the write key) can list or fetch them.
 Sprite (public-domain) and motif (original) GIFs are public.
 
 Owner only (`router`, mounted with require_owner):
@@ -18,6 +18,10 @@ Owner only (`router`, mounted with require_owner):
   PATCH /api/film/queue/{film_key}        edit label, note, render mode, clip window
   POST  /api/film/queue/{film_key}/approve   approve, optionally with the same edits
   POST  /api/film/queue/{film_key}/reject
+  PUT   /api/film/clip/{film_key}         {youtube_url, start}: point the film's GIF at
+                                          5 s of a YouTube video, approve it, and render
+                                          it now in the background (any watched film)
+  GET   /api/film/clip/{film_key}         that render's progress, for the page to poll
 
 film_key is 'tmdb:<id>' or 'title:<title>:<year>' (from mart_film_watches);
 URL-encode it. Writes go to data/film/scene_catalog.jsonl via api.film_catalog;
@@ -35,6 +39,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from api import film_catalog as fc
+from api import film_render_jobs as jobs
 from api.auth import require_owner
 from api.deps import get_db, query
 from api.store import data_dir
@@ -54,10 +59,7 @@ def is_owner(request: Request) -> bool:
         return False
 
 
-def visible(row: dict, owner: bool) -> bool:
-    """A rendered GIF this requester may see."""
-    return row.get("status") == "rendered" and bool(row.get("gif_web")) and (
-        owner or row.get("render_mode") != "plex_clip")
+visible = fc.is_visible   # a GIF this requester may see
 
 
 # ── public ───────────────────────────────────────────────────────────────────
@@ -77,6 +79,10 @@ async def watches(request: Request, limit: int = 2000):
     for r in rows:
         c = cat.get(r["film_key"])
         r["gif"] = bool(c and visible(c, owner))
+        r["gif_mode"] = c.get("render_mode") if r["gif"] else None
+        r["gif_version"] = c.get("rendered_at") if r["gif"] else None
+        if owner:   # what the clip editor on /film needs
+            r["clip"] = _clip_status(r["film_key"], c)
     return rows
 
 
@@ -110,6 +116,31 @@ async def scene(request: Request):
         "scene_label": row.get("scene_label") if gif else None,
         "strip": "gif" if gif else "motif",
         "version": row.get("rendered_at") if gif else None,
+    }
+
+
+def _clip_status(film_key: str, row: dict | None) -> dict:
+    """Where a film's clip stands, for the owner's editor:
+    rendering / queued (this process is on it), failed (render_error), waiting
+    (approved, for the 9:00 sync), done (rendered), or none (no catalog row)."""
+    row = row or {}
+    job = jobs.state(film_key)
+    status = row.get("status")
+    if job:
+        state = job
+    elif status == "approved" and row.get("render_error"):
+        state = "failed"
+    elif status == "approved":
+        state = "waiting"
+    elif status == "rendered":
+        state = "done"
+    else:
+        state = "none"
+    return {
+        "state": state, "error": row.get("render_error") if state == "failed" else None,
+        "render_mode": row.get("render_mode"), "youtube_url": row.get("youtube_url"),
+        "clip_start": row.get("clip_start") if row.get("render_mode") == "youtube" else None,
+        "rendered_at": row.get("rendered_at"),
     }
 
 
@@ -151,7 +182,7 @@ async def strip(film_key: str, request: Request, theme: Theme = "light", fallbac
     if row and visible(row, owner):
         path = data_dir() / row["gif_web" if theme == "light" else "gif_matrix"]
         if path.exists():
-            private = row.get("render_mode") == "plex_clip"
+            private = row.get("render_mode") in fc.PRIVATE_MODES
             return Response(_gif_strip(str(path), path.stat().st_mtime), media_type="image/png",
                             headers={"Cache-Control": f"{'private' if private else 'public'}, max-age=3600"})
     if fallback == "motif":
@@ -169,9 +200,15 @@ async def strip(film_key: str, request: Request, theme: Theme = "light", fallbac
 class CatalogEdit(BaseModel):
     scene_label: str | None = Field(default=None, max_length=120)
     scene_note:  str | None = Field(default=None, max_length=500)
-    render_mode: Literal["sprite", "plex_clip", "motif"] | None = None
+    render_mode: Literal["sprite", "plex_clip", "motif", "youtube"] | None = None
     clip_start:  float | None = Field(default=None, ge=0)
     clip_end:    float | None = Field(default=None, ge=0)
+    youtube_url: str | None = Field(default=None, max_length=500)
+
+
+class ClipPick(BaseModel):
+    youtube_url: str = Field(max_length=500)
+    start: float = Field(ge=0, le=24 * 3600)
 
 
 def _edits(body: CatalogEdit | None) -> dict:
@@ -206,3 +243,20 @@ async def approve(film_key: str, body: CatalogEdit | None = None):
 @router.post("/queue/{film_key:path}/reject")
 async def reject(film_key: str):
     return _call(fc.reject, film_key)
+
+
+@router.put("/clip/{film_key:path}")
+async def set_clip(film_key: str, body: ClipPick, request: Request):
+    film = fc.catalog().get(film_key) or next(iter(query(get_db(request), """
+        select film_key, tmdb_id, title, film_year as year from main_marts.mart_film_watches
+        where film_key = ? limit 1""", [film_key])), None)
+    if not film:
+        raise HTTPException(404, "no watch for this film")
+    row = _call(fc.set_youtube_clip, film, body.youtube_url, body.start)
+    jobs.submit(film_key)
+    return _clip_status(film_key, row)
+
+
+@router.get("/clip/{film_key:path}")
+async def clip_status(film_key: str):
+    return _clip_status(film_key, fc.catalog().get(film_key))

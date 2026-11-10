@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from api import film_catalog as fc  # noqa: E402
 from film import FRAMES, H, W, canvas, clip, font, motifs, palette, sprites  # noqa: E402
+from film import render as film_render  # noqa: E402
 
 spec = importlib.util.spec_from_file_location("film_gif_render", ROOT / "scripts/film_gif_render.py")
 render = importlib.util.module_from_spec(spec)
@@ -148,8 +149,8 @@ def test_render_all_approved(env, monkeypatch):
         seen.update(source=source, start=start, headers=headers)
         return fake
 
-    monkeypatch.setattr(render.clip, "extract_frames", fake_extract)
-    monkeypatch.setattr(render, "plex_stream", lambda f: ("http://plex/library/parts/1/file.mkv", "X-Plex-Token: t\r\n"))
+    monkeypatch.setattr(clip, "extract_frames", fake_extract)
+    monkeypatch.setattr(film_render, "plex_stream", lambda f: ("http://plex/library/parts/1/file.mkv", "X-Plex-Token: t\r\n"))
 
     assert render.main([]) == 0
     cat = fc.catalog()
@@ -179,7 +180,7 @@ def test_edit_after_render_requeues(env):
 
 def test_clip_failure_keeps_row_approved_and_exits_1(env, monkeypatch):
     approved(TCSM)
-    monkeypatch.setattr(render, "plex_stream", lambda f: (_ for _ in ()).throw(clip.ClipError("Plex is down")))
+    monkeypatch.setattr(film_render, "plex_stream", lambda f: (_ for _ in ()).throw(clip.ClipError("Plex is down")))
     assert render.main([]) == 1
     assert fc.get("tmdb:30497")["status"] == "approved"
 

@@ -31,3 +31,4 @@ spotipy==2.25.2
 tzdata==2025.3
 uritemplate==4.2.0
 urllib3==2.6.2
+yt-dlp[default]==2026.10.26

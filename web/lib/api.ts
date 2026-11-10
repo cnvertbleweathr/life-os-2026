@@ -1118,12 +1118,13 @@ export const kglwApi = {
 
 // ── Film ─────────────────────────────────────────────────────────────────────
 // /api/film (api/routers/film.py). Watches, library and scene are public; the
-// review queue is owner only. plex_clip GIFs reach only the owner, so strips are
+// review queue and the clip editor are owner only. plex_clip and youtube GIFs
+// reach only the owner, so strips are
 // fetched with the write key when this device has it and handed to the scene
 // engine as object URLs.
 
 export type FilmSource = "letterboxd" | "plex" | "both";
-export type RenderMode = "sprite" | "plex_clip" | "motif";
+export type RenderMode = "sprite" | "plex_clip" | "motif" | "youtube";
 export type CatalogStatus = "suggested" | "approved" | "rejected" | "rendered";
 
 export interface FilmWatch {
@@ -1144,6 +1145,23 @@ export interface FilmWatch {
   plex_plays: number;
   /** A rendered GIF this device may see. */
   gif: boolean;
+  /** How that GIF was made, and its version for cache-busting the strip. */
+  gif_mode: RenderMode | null;
+  gif_version: string | null;
+  /** Owner only: where the film's clip stands, for the editor. */
+  clip?: ClipStatus;
+}
+
+/** rendering / queued: the API is on it; failed: see error; waiting: approved, for the 9:00 sync. */
+export type ClipState = "queued" | "rendering" | "failed" | "waiting" | "done" | "none";
+
+export interface ClipStatus {
+  state: ClipState;
+  error: string | null;
+  render_mode: RenderMode | null;
+  youtube_url: string | null;
+  clip_start: number | null;
+  rendered_at: string | null;
 }
 
 export interface LibraryFilm {
@@ -1199,7 +1217,7 @@ export interface CatalogEdit {
 const enc = (key: string) => key.split("/").map(encodeURIComponent).join("/");
 const stripCache = new Map<string, Promise<string>>();
 
-async function ownerSend<T>(path: string, method: "POST" | "PATCH", body?: unknown): Promise<T> {
+async function ownerSend<T>(path: string, method: "POST" | "PATCH" | "PUT", body?: unknown): Promise<T> {
   const res = await ownerFetch(path, {
     method,
     headers: { "Content-Type": "application/json" },
@@ -1210,7 +1228,8 @@ async function ownerSend<T>(path: string, method: "POST" | "PATCH", body?: unkno
 }
 
 export const filmApi = {
-  watches: () => get<FilmWatch[]>("/film/watches"),
+  // With the key, rows carry the owner's clip status (locally the API trusts the request anyway).
+  watches: () => (hasWriteKey() ? ownerGet<FilmWatch[]>("/film/watches") : get<FilmWatch[]>("/film/watches")),
   library: async (): Promise<FilmLibrary> => {
     // With the key, the owner also sees plex_clip GIFs; without it, ask nothing.
     if (!hasWriteKey()) return get<FilmLibrary>("/film/library");
@@ -1221,6 +1240,10 @@ export const filmApi = {
   approve: (key: string, edits: CatalogEdit = {}) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}/approve`, "POST", edits),
   edit: (key: string, edits: CatalogEdit) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}`, "PATCH", edits),
   reject: (key: string) => ownerSend<CatalogRow>(`/film/queue/${enc(key)}/reject`, "POST"),
+  /** Point the film's GIF at 5 s of a YouTube video; the API renders it straight away. */
+  setClip: (key: string, youtube_url: string, start: number) =>
+    ownerSend<ClipStatus>(`/film/clip/${enc(key)}`, "PUT", { youtube_url, start }),
+  clipStatus: (key: string) => ownerGet<ClipStatus>(`/film/clip/${enc(key)}`),
   /** An object URL for the film's 40-frame strip; cached per film, theme and version. */
   strip: (key: string, theme: "light" | "dark", opts: { motif?: boolean; version?: string | null } = {}): Promise<string> => {
     const q = new URLSearchParams({ theme });

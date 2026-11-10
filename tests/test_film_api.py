@@ -44,8 +44,9 @@ def client(tmp_path, monkeypatch):
     # Heat rendered as a motif (public); 28 Days Later rendered from the owner's copy (private).
     spec = importlib.util.spec_from_file_location("film_gif_render", ROOT / "scripts/film_gif_render.py")
     render = importlib.util.module_from_spec(spec); sys.modules["film_gif_render"] = render; spec.loader.exec_module(render)
-    monkeypatch.setattr(render.clip, "extract_frames", lambda *a, **k: np.full((40, 32, 64, 3), 90, np.uint8))
-    monkeypatch.setattr(render, "plex_stream", lambda f: ("http://plex/x", None))
+    from film import clip, render as film_render
+    monkeypatch.setattr(clip, "extract_frames", lambda *a, **k: np.full((40, 32, 64, 3), 90, np.uint8))
+    monkeypatch.setattr(film_render, "plex_stream", lambda f: ("http://plex/x", None))
     for key, title, year, plex in (("tmdb:949", "Heat", 1995, None), ("tmdb:170", "28 Days Later", 2002, "/m/28.mkv")):
         fc.add_suggestion({"film_key": key, "tmdb_id": None, "title": title, "year": year, "plex_file": plex},
                           {"scene_label": "Scene", "scene_note": "", "timestamp_s": 480, "confidence": "high"}, "t")
@@ -98,3 +99,62 @@ def test_strips(client):
     assert motif.status_code == 200 and Image.open(io.BytesIO(motif.content)).size == (64 * 40, 32)
     assert client.get("/api/film/strip/tmdb:30497").status_code == 404
     assert client.get("/api/film/strip/tmdb:1?fallback=motif").status_code == 404
+
+
+# ── YouTube clips (owner only) ───────────────────────────────────────────────
+
+LINK = "https://youtu.be/dQw4w9WgXcQ?t=83"
+
+
+@pytest.fixture()
+def submitted(monkeypatch):
+    from api import film_render_jobs as jobs
+    keys = []
+    monkeypatch.setattr(jobs, "submit", keys.append)
+    return keys
+
+
+def test_set_clip_for_a_film_with_no_catalog_row(client, submitted, tmp_path):
+    con = client.app.state.db
+    con.execute("""insert into main_marts.mart_film_watches values
+        ('w4', 'tmdb:1700', 1700, 'Misery', 1990, date '2026-10-02', 2026, 'letterboxd', 4.0, false, false, false, 1, null, 0, null)""")
+    r = client.put("/api/film/clip/tmdb:1700", json={"youtube_url": LINK, "start": 83})
+    assert r.status_code == 200, r.text
+    assert r.json()["state"] == "waiting" and r.json()["clip_start"] == 83.0
+    assert submitted == ["tmdb:1700"]
+    row = fc.get("tmdb:1700")
+    assert (row["title"], row["year"], row["status"], row["render_mode"]) == ("Misery", 1990, "approved", "youtube")
+
+
+def test_set_clip_over_a_rendered_motif_keeps_it_visible(client, submitted):
+    r = client.put("/api/film/clip/tmdb:949", json={"youtube_url": LINK, "start": 10})
+    assert r.status_code == 200
+    watches = {w["film_key"]: w for w in client.get("/api/film/watches").json()}
+    assert watches["tmdb:949"]["gif"] is True                       # old motif still up for the owner
+    assert watches["tmdb:949"]["clip"]["youtube_url"] == "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    public = {w["film_key"]: w for w in client.get("/api/film/watches", headers=TUNNEL).json()}
+    assert "clip" not in public["tmdb:949"] and public["tmdb:949"]["gif"] is False   # youtube rows are private
+
+
+def test_clip_status_states(client, submitted):
+    assert client.get("/api/film/clip/tmdb:949").json()["state"] == "done"
+    assert client.get("/api/film/clip/tmdb:30497").json()["state"] == "none"   # suggested, not approved
+    client.put("/api/film/clip/tmdb:949", json={"youtube_url": LINK, "start": 10})
+    fc.mark_failed("tmdb:949", "the video is private")
+    s = client.get("/api/film/clip/tmdb:949").json()
+    assert s["state"] == "failed" and s["error"] == "the video is private"
+
+
+def test_set_clip_rejects_bad_input(client, submitted):
+    assert client.put("/api/film/clip/tmdb:949", json={"youtube_url": "https://vimeo.com/1", "start": 0}).status_code == 422
+    assert client.put("/api/film/clip/tmdb:949", json={"youtube_url": LINK, "start": -1}).status_code == 422
+    assert client.put("/api/film/clip/tmdb:nope", json={"youtube_url": LINK, "start": 0}).status_code == 404
+    assert submitted == []
+
+
+def test_set_clip_needs_the_key_from_outside(client, submitted):
+    r = client.put("/api/film/clip/tmdb:949", json={"youtube_url": LINK, "start": 0}, headers=TUNNEL)
+    assert r.status_code in (401, 403)
+    ok = client.put("/api/film/clip/tmdb:949", json={"youtube_url": LINK, "start": 0},
+                    headers={**TUNNEL, "X-ONS-Write-Token": "s3cret"})
+    assert ok.status_code == 200
