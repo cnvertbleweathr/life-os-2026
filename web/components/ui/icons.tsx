@@ -34,6 +34,14 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M4 9h4M4 12h4M4 15h4M16 9h4M16 12h4M16 15h4" />
     </>
   ),
+  progeny: (
+    <>
+      <path d="M12 20.5V11" />
+      <path d="M12 13c0-3.6-2.6-6-6.5-6 0 3.6 2.6 6 6.5 6z" />
+      <path d="M12 11c0-3.3 2.4-5.5 6-5.5 0 3.3-2.4 5.5-6 5.5z" />
+      <path d="M7.5 20.5h9" />
+    </>
+  ),
   goals: (
     <>
       <circle cx="12" cy="12" r="8.5" />

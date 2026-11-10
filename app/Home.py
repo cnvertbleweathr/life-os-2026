@@ -143,26 +143,6 @@ with st.sidebar:
     if LOGO_PATH.exists():
         st.image(str(LOGO_PATH))
     st.caption(today.strftime("%A, %B %d, %Y"))
-    # Progeny countdowns (main_marts.mart_progeny_kids). Silent until set up.
-    try:
-        con = duckdb.connect(DB_PATH, read_only=True)
-        kids = con.execute("""
-            SELECT display_name, is_born, days_to_birthday, turning_age, days_to_due
-            FROM main_marts.mart_progeny_kids
-        """).df()
-        con.close()
-        lines = []
-        for _, k in kids.iterrows():
-            if k["is_born"]:
-                d = int(k["days_to_birthday"])
-                lines.append(f"🎂 {k['display_name']} turns {int(k['turning_age'])} "
-                             + ("today!" if d == 0 else f"in {d}d"))
-            elif pd.notna(k["days_to_due"]):
-                lines.append(f"👶 {k['display_name']} due in {int(k['days_to_due'])}d")
-        if lines:
-            st.caption("  \n".join(lines))
-    except Exception:
-        pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────

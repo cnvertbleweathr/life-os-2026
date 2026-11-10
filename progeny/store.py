@@ -5,7 +5,8 @@ Privacy: everything about the kids lives in data/progeny/ (gitignored). Only the
 generic reference YAML in progeny/reference/ and the template in progeny/config/
 are committed.
 
-Write path: the dashboard forms call append_entry(), which appends one line to
+Write path: the web page's forms (POST /api/progeny/<kind>, api/routers/progeny.py)
+call append_entry(), which appends one line to
 data/progeny/<kind>.jsonl through api.store.JsonlLog (file lock + fsync). Nothing
 here writes to DuckDB; the daily sync loads the logs with
 pipelines/progeny_pipeline.py.
@@ -175,7 +176,8 @@ def _validate(kind: str, rec: dict[str, Any]) -> None:
         rec["repeat"] = bool(rec.get("repeat", False))
 
 
-def append_entry(kind: str, fields: dict[str, Any], entry_id: str | None = None) -> dict[str, Any]:
+def append_entry(kind: str, fields: dict[str, Any], entry_id: str | None = None,
+                 source: str = "web") -> dict[str, Any]:
     """Validate and append one entry. Pass entry_id to edit an existing entry."""
     if kind not in KINDS:
         raise ValueError(f"unknown kind {kind!r}")
@@ -186,7 +188,7 @@ def append_entry(kind: str, fields: dict[str, Any], entry_id: str | None = None)
         rec["created_date"] = today_local().isoformat()
     _validate(kind, rec)
     record = {"id": entry_id or str(uuid.uuid4()), **rec,
-              "deleted": False, "logged_at": timestamp(), "source": "streamlit"}
+              "deleted": False, "logged_at": timestamp(), "source": source}
     return LOGS[kind].append(record)
 
 

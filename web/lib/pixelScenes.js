@@ -719,7 +719,86 @@ const loop = {
   },
 };
 
-const SCENES = { cfb, week, fitness, reading, music, kglw, sports, film, loop };
+// ---------------- Progeny ----------------
+// A backyard. A small kid kicks a ball up and down the lawn with the puggle at their heels. Real data: the pile
+// of picture books under the tree gains one book per 100 read-alouds (ten books is 1,000 Books Before
+// Kindergarten, data-reads), and while a baby is on the way a pram waits by a sign counting the days to the due
+// date (data-due). No sign or pram once there's no due date to count to. Static camera: the kid walks, the ground
+// doesn't scroll, so the 2-frame gait moves the sprite one foot-travel per frame.
+const KID_TOP = [ // 12 wide, facing right; big head, short body
+  '....HHHH....',
+  '...HHHHHH...',
+  '..HHHHHsss..',
+  '..HHHHsses..',
+  '..HHHsssss..',
+  '...Htssss...',
+  '....tttt....',
+  '...jjjjjj...',
+  '..sjjjjjjs..',
+  '...jjjjkk...',
+  '...rrrrrr...',
+];
+const KID_LEGS = [
+  ['..pp...qq...', '.xx.....xx..'], // stride
+  ['....ppqq....', '....xxxx....'], // passing
+  ['...q....pp..', '..xx.....xx.'], // kick: near foot forward
+];
+const PRAM = ['.NNNN.....', 'NNNNNW....', 'NNNNNNNNN.', 'NNNNNNNNN.', '.NNNNNNN..', '..o....o..'];
+const flip = rows => rows.map(r => [...r].reverse().join(''));
+const progeny = {
+  ms: 140, stride: 2, still: 0,
+  draw(ctx, W, n, P, data) {
+    // sky, sun or moon and stars
+    px(ctx, P.sky, 0, 0, W, H);
+    if (P.dark) {
+      for (let i = 0; i < W / 4; i++) { if (rnd(i + Math.floor(n / 3) * 31) > 0.15) px(ctx, P.star, Math.floor(rnd(i * 13) * W), Math.floor(rnd(i * 29) * 12)); }
+      const mx = W - 18; px(ctx, P.sun, mx + 1, 2, 4, 1); px(ctx, P.sun, mx, 3, 5, 3); px(ctx, P.sun, mx + 1, 6, 4, 1); px(ctx, P.sky, mx + 3, 3, 2, 2);
+    } else {
+      const sx = W - 18; px(ctx, P.sun, sx + 1, 2, 4, 6); px(ctx, P.sun, sx, 3, 6, 4);
+      for (let k = 0; k < 3; k++) { const span = W + 40; tiles(ctx, CLOUD, ((k * 47 + Math.floor(n / 10)) % span) - 20, 2 + k * 3, { C: P.cloud }); }
+    }
+    for (let x = 0; x < W; x++) { const h = 4 + Math.round(2 * Math.sin(x / 13) + Math.sin(x / 5)); px(ctx, P.hill2, x, 24 - h, 1, h); }
+    // fence along the back of the yard
+    px(ctx, P.wood, 0, 17, W, 1); px(ctx, P.wood, 0, 20, W, 1);
+    for (let x = 1; x < W; x += 6) { px(ctx, P.wood, x, 15, 2, 9); px(ctx, P['wood-d'], x + 1, 16, 1, 8); }
+    // lawn
+    px(ctx, P.grass, 0, 24, W, H - 24);
+    for (let x = 0; x < W; x++) { if (x % 7 === 3) px(ctx, P.grass2, x, 26); if (x % 11 === 6) px(ctx, P.grass2, x, 29); const fl = rnd(x * 3 + 1); if (fl > 0.94) px(ctx, fl > 0.97 ? P.bloom1 : P.bloom2, x, 24); }
+    // the tree and the book pile under it: one book per 100 read-alouds, up to ten
+    const tx = 3;
+    tiles(ctx, TREE.slice(0, 5), tx, 6, { T: P.tree, D: P['tree-d'] }); px(ctx, P.trunk, tx + 3, 11, 1, 14);
+    const books = Math.max(0, Math.min(10, Math.floor((Number(data.reads) || 0) / 100)));
+    const SPINES = [[P.read, P['read-d']], [P.navy, P['navy-d']], [P.plate, P['plate-d']], [P.lift, P['lift-d']], [P.run, P['run-d']]];
+    for (let i = 0; i < books; i++) {
+      const [a, b] = SPINES[i % SPINES.length], y = 27 - (i + 1) * 2, x = tx + 6 + (i % 2);
+      px(ctx, a, x, y, 7, 2); px(ctx, b, x, y + 1, 7, 1); px(ctx, P.white, x + 6, y, 1, 1);
+    }
+    // a baby on the way: the pram and the countdown sign
+    const due = String(data.due ?? '').replace(/[^0-9]/g, '').slice(0, 3);
+    if (due) {
+      const bx = W - 26, bw = due.length * 4 + 3;
+      px(ctx, P['wood-d'], bx + Math.floor(bw / 2), 21, 1, 6);
+      px(ctx, P.outline, bx - 1, 13, bw + 2, 9); px(ctx, P.white, bx, 14, bw, 7); text(ctx, due, bx + 2, 15, P.outline);
+      tiles(ctx, PRAM, bx - 12, 21, { N: P.navy, W: P.white, o: P.outline });
+    }
+    // the kid kicks the ball across the lawn and back; the puggle follows
+    const lo = tx + 34, hi = Math.max(lo + 20, W - (due ? 46 : 26)), span = hi - lo, step = n % (2 * span);
+    const dir = step < span ? 1 : -1, kx = dir > 0 ? lo + step : hi - (step - span);
+    const legs = KID_LEGS[(kx === lo + 1 || kx === hi - 1) ? 2 : n % 2], top = KID_TOP.concat(legs);
+    const grid = toGrid(dir > 0 ? top : flip(top));
+    const kidMap = { H: P.hair, s: P.skin, t: P['skin-d'], e: P.outline, j: P.lift, k: P['lift-d'], r: P.navy, p: P.skin, q: P['skin-d'], x: P.white };
+    const ballX = kx + (dir > 0 ? 12 : -4), roll = n % 2;
+    const pug = toGrid(dir > 0 ? PETS.puggle[n % 2] : flip(PETS.puggle[n % 2]));
+    const pugX = kx + (dir > 0 ? -16 : 14);
+    px(ctx, P['grass-d'], kx + 2, 30, 9, 1); px(ctx, P['grass-d'], pugX + 1, 30, 9, 1);
+    drawSprite(ctx, pug, pugX, 24, { T: P.tan, E: P['tan-d'], M: P.muzzle, W: P.white }, P.outline);
+    drawSprite(ctx, grid, kx, 17, kidMap, P.outline);
+    px(ctx, P.outline, ballX - 1, 27, 5, 3); px(ctx, P.outline, ballX, 26, 3, 5);
+    px(ctx, P.plate, ballX, 27, 3, 3); px(ctx, P.white, ballX + (roll ? 0 : 2), 27 + roll, 1, 1);
+  },
+};
+
+const SCENES = { cfb, week, fitness, reading, music, kglw, sports, film, loop, progeny };
 
 function mount(el) {
   if (!el.querySelector('canvas')) return () => {};
