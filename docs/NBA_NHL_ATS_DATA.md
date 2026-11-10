@@ -263,6 +263,46 @@ Full per-season output: `uv run python scripts/nba_nhl_spine_report.py` (read-on
 - **Scores**: ESPN and nba_api agree on all 16,748 comparable games. ESPN NHL scores count the
   shootout goal (628 games differ from MoneyPuck for that reason); 5 more differ, ESPN is used.
 
+## Pregame features (Phase 3, 2026-11-09)
+
+`main_marts.mart_nba_game_features` (24,404 games, 225 columns) and `mart_nhl_game_features`
+(23,222 games, 165 columns): one row per spine game with `home_*`, `away_*` and `gap_*`
+(home − away) features, the market line, and the results as labels.
+`uv run dbt build --profiles-dir profiles --select +mart_nba_game_features +mart_nhl_game_features`.
+
+| | NBA | NHL |
+|---|---|---|
+| Team form (stats source) | ORtg, DRtg, net, pace, eFG%, TOV%, ORB%, FT rate, for and against — last 5, last 10, season to date, prior season (`int_nba__team_box_features`) | 5v5 xGF%, Corsi%, high-danger share, PP xGF/60, PK xGA/60, finishing (goals − xG per game), all-situations xGF% — last 10, season to date, prior season (`int_nhl__team_xg_features`) |
+| Schedule (spine) | days rest, back-to-back, 3-in-4, games in last 7 days, road-trip game, travel miles, last-10 ATS record and margin (`int_*__team_schedule`) | same, with puck-line form |
+| Goalie | – | starter's GSAx and save% over his last 10 starts and season to date (`int_nhl__goalie_form`, 2019-20 on) |
+| Model vs market | ratings-implied spread: blended net rating gap × pace + a home-court constant fitted on earlier seasons only (3.75 pts in 2009 drifting to 2.69 in 2026); `home_spread_edge = home_spread − implied_home_spread`, > 0 = ratings like home more than the market | xG-implied win probability: log5 of blended xGF% + home-ice log-odds fitted on earlier seasons only; `home_prob_edge` vs the no-vig moneyline probability |
+
+**No lookahead.** Every window ends at `1 PRECEDING` (or uses `lag`); prior-season values come from
+the whole previous season; the home-court / home-ice constants pool earlier seasons only.
+"Blended" = season to date with the prior season weighted as 10 games. Checks:
+- `assert_nba_rolling_feature_recomputes_from_raw` / `assert_nhl_…`: 20 random games, one rolling
+  feature rebuilt from `nba.team_game_logs` / `nhl.moneypuck_team_games` without window functions.
+- `scripts/feature_lookahead_check.py`: pandas reimplementation from the raw tables for 300 games per
+  league (10 NBA + 4 NHL features, including rest / back-to-back from raw `nba.games` and goalie
+  save%): 0 mismatches. It also computes each feature *with* the game included; that canary agrees
+  with the marts on 0–7 rows per feature (coincidences, e.g. a game with no power-play time).
+
+**Notes**
+- Rolling windows reset each season (regular season and playoffs together); early-season rows lean
+  on `_prior`. Rest and travel are null for a team's first game of a season.
+- Box-score windows count games with a box score, so the three NBA Cup finals (no LeagueGameLog row)
+  have null box features but keep schedule features.
+- Travel uses the ESPN venue (`dbt/seeds/nba_nhl_venues.csv`, city-level coordinates; covers neutral
+  sites, the 2020 bubbles, outdoor games), else the home team's city
+  (`dbt/seeds/nba_nhl_team_cities.csv`) for pre-ESPN seasons. Pre-ESPN neutral-site games (London,
+  Mexico City, NHL Global Series) are placed in the home team's city.
+- NHL GSAx is approximate: the goalie is charged his ice-time share of the team's xG against.
+  Team xGA includes empty-net chances while goals against doesn't, so GSAx runs +0.03 to +0.28 per
+  start league-wide (2020–2026). The bias is shared, so home − away goalie gaps cancel it.
+- How the simple models fare against the market (not edges, just calibration): NBA ratings margin
+  correlates 0.405 with the result vs 0.466 for the closing spread; NHL Brier 0.238–0.246 vs the
+  no-vig moneyline's 0.225–0.244 (2020–2026). Phase 4 tests where the gaps disagree with the market.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
@@ -298,5 +338,5 @@ One lead worth testing with efficiency features, **not validated**:
 ## Next
 
 1. ~~dbt staging + team crosswalk seeds; join ESPN ↔ NBA stats ↔ historical lines, ESPN ↔ MoneyPuck ↔ goalies.~~ Done in Phase 2 (above).
-2. Rolling pregame features with no lookahead: NBA net rating / four factors (last 10, season-to-date), rest, travel; NHL xG% 5v5, PP/PK xG, starter GSAx, rest.
+2. ~~Rolling pregame features with no lookahead: NBA net rating / four factors (last 10, season-to-date), rest, travel; NHL xG% 5v5, PP/PK xG, starter GSAx, rest.~~ Done in Phase 3 (above).
 3. Efficiency-gap vs line edges (the PPA-gap analogue), validated cross-season like `cfb_edge_validation.py`.

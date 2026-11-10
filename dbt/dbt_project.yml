@@ -18,6 +18,11 @@ seeds:
     nhl_team_crosswalk:
       +column_types: {team_code: varchar, source: varchar, source_key: varchar,
                       valid_from_season: integer, valid_to_season: integer, source_name: varchar}
+    nba_nhl_venues:
+      +column_types: {venue: varchar, city: varchar, lat: double, lng: double}
+    nba_nhl_team_cities:
+      +column_types: {league: varchar, team_code: varchar, valid_from_season: integer,
+                      valid_to_season: integer, city: varchar, lat: double, lng: double}
     nba_nhl_odds_providers:
       +column_types: {league: varchar, provider_id: varchar, provider_name: varchar,
                       is_book: boolean, priority: integer, note: varchar}

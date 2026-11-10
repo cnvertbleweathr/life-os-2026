@@ -59,3 +59,40 @@ models:
           - accepted_values:
               arguments:
                 values: ['espn', 'moneypuck']
+
+  # Pregame feature inputs (Phase 3). Every window ends at 1 PRECEDING; the
+  # assert_*_rolling_feature_recomputes_from_raw tests rebuild one from raw tables.
+  - name: int_nba__team_box_features
+    description: NBA box-score ratings, pace and four factors per (nba_game_id, team) over the previous 5 / 10 games, season to date and the prior season.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nba_game_id || team_code"
+
+  - name: int_nba__team_schedule
+    description: NBA rest, back-to-back, 3-in-4, games in last 7 days, road-trip game, travel miles and last-10 ATS per (game_key, team).
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "game_key || team_code"
+
+  - name: int_nhl__team_xg_features
+    description: NHL 5v5 xGF%, Corsi%, high-danger share, PP xGF/60, PK xGA/60, finishing and all-situations xGF% per (nhl_game_id, team).
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nhl_game_id || team_code"
+
+  - name: int_nhl__team_schedule
+    description: NHL rest, back-to-back, 3-in-4, games in last 7 days, road-trip game, travel miles and last-10 puck-line form per (game_key, team).
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "game_key || team_code"
+
+  - name: int_nhl__goalie_form
+    description: Starting goalie per (nhl_game_id, team), 2019-20 on, with GSAx and save% over his previous 10 starts and this season.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nhl_game_id || team_code"
