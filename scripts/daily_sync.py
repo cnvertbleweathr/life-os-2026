@@ -579,6 +579,14 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Seeds (NBA / NHL team crosswalks, odds provider priorities) are small
+        # CSVs in dbt/seeds; reload them so a seed edit reaches the staging views.
+        Step(
+            name="dbt_seed",
+            cmd=["dbt", "seed", "--profiles-dir", "dbt/profiles", "--project-dir", "dbt"],
+            required=True,
+            tags=["dbt"],
+        ),
         Step(
             name="dbt",
             cmd=dbt_cmd,

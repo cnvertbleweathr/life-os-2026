@@ -1,0 +1,61 @@
+version: 2
+
+models:
+  - name: stg_nba__games
+    description: ESPN NBA games between two franchises, canonical team codes, Eastern game_date.
+    columns:
+      - name: game_id
+        data_tests: [unique, not_null]
+      - name: home_team
+        data_tests: [not_null]
+      - name: away_team
+        data_tests: [not_null]
+      - name: game_date
+        data_tests: [not_null]
+
+  - name: stg_nba__odds
+    description: One chosen ESPN line per NBA game; rule in macros/espn_odds.sql.
+    columns:
+      - name: game_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nba__games')
+                field: game_id
+              config:
+                severity: warn   # odds for exhibitions have no franchise game
+      - name: home_spread
+        data_tests: [not_null]
+      - name: line_source
+        data_tests: [not_null]
+
+  - name: stg_nba__historical_lines
+    description: SBR closing lines with canonical team codes.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "cast(game_date as varchar) || home_team || away_team"
+    columns:
+      - name: home_team
+        data_tests: [not_null]
+      - name: away_team
+        data_tests: [not_null]
+
+  - name: stg_nba__team_game_logs
+    description: nba_api team box scores with canonical team and opponent codes.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nba_game_id || team_code"
+    columns:
+      - name: team_code
+        data_tests: [not_null]
+      - name: opp_code
+        data_tests: [not_null]
+      - name: season_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [2, 3]

@@ -1,0 +1,61 @@
+version: 2
+
+# NBA / NHL game spines. Season-level stats match rates and duplicate checks are
+# singular tests in dbt/tests/ (assert_*_spine_*).
+
+models:
+  - name: int_nba__game_spine
+    description: One row per completed NBA game (2007-08 on) with canonical teams, scores, the chosen closing line and the nba_api stats key.
+    columns:
+      - name: game_key
+        data_tests: [unique, not_null]
+      - name: espn_game_id
+        data_tests: [unique]
+      - name: nba_game_id
+        data_tests: [unique]
+      - name: home_team
+        data_tests: [not_null]
+      - name: away_team
+        data_tests: [not_null]
+      - name: home_score
+        data_tests: [not_null]
+      - name: away_score
+        data_tests: [not_null]
+      - name: season_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [2, 3]
+      - name: game_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['espn', 'nba_api']
+
+  - name: int_nhl__game_spine
+    description: One row per completed NHL game (2008-09 on) with canonical teams, scores, went_ot / shootout, the chosen puck line and the NHL game id for MoneyPuck and goalie rows.
+    columns:
+      - name: game_key
+        data_tests: [unique, not_null]
+      - name: espn_game_id
+        data_tests: [unique]
+      - name: nhl_game_id
+        data_tests: [unique]
+      - name: home_team
+        data_tests: [not_null]
+      - name: away_team
+        data_tests: [not_null]
+      - name: home_score
+        data_tests: [not_null]
+      - name: away_score
+        data_tests: [not_null]
+      - name: season_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [2, 3]
+      - name: game_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['espn', 'moneypuck']

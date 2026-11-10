@@ -1,0 +1,73 @@
+league,provider_id,provider_name,is_book,priority,note
+nba,100,Draft Kings,true,1,DraftKings feed from 2025-26
+nba,40,DraftKings,true,2,
+nba,58,ESPN BET,true,3,only book in 2024-25
+nba,47,MGM,true,4,
+nba,45,Caesars Sportsbook (New Jersey),true,5,
+nba,31,Caesars Sportsbook,true,26,off the market median on 4.5% of games
+nba,38,Caesars,true,7,
+nba,28,Caesar's,true,8,
+nba,52,Caesars Sportsbook (Colorado),true,9,
+nba,57,Caesars Sportsbook (Tennessee),true,10,
+nba,43,Caesars Sportsbook (Pennsylvania),true,11,
+nba,25,Westgate,true,41,posts 0 / -110 / -110 placeholders (1.2% of rows); below the 2013-17 offshore books
+nba,36,Unibet,true,27,off the market median on 4.4% of games
+nba,41,SugarHouse,true,28,off the market median on 4.0% of games
+nba,50,BetfairSportsbook,true,15,
+nba,53,Titanbets,true,16,
+nba,48,PointsBet,true,17,
+nba,32,Wynn,true,18,
+nba,35,CG Technology,true,19,
+nba,55,Holland Casino,true,20,
+nba,37,Betradar,true,21,
+nba,39,BetStars,true,22,
+nba,2000,Bet 365,true,23,no lines in the feed
+nba,18,5Dimes.eu,true,30,2013-14 to 2016-17 era
+nba,2,PinnacleSports.com,true,31,
+nba,19,BETONLINE.ag,true,32,
+nba,20,BOVADA.lv,true,33,
+nba,24,BOVADA.lv,true,34,
+nba,15,SportsBetting.ag,true,35,
+nba,3,Sportsbook.com,true,36,
+nba,4,BetUS.COM,true,37,
+nba,1,SportsInteraction.com,true,38,
+nba,26,BETNOW.eu,true,39,
+nba,21,Fantasy911.com,true,40,
+nba,23,Opening,false,,opening-line feed; each book row carries its own open
+nba,1001,accuscore,false,,projection site
+nba,1002,teamrankings,false,,projection site
+nba,1003,numberfire,false,,projection site
+nba,1004,consensus,false,,aggregate
+nba,1005,betegy,false,,projection site (NBA id; 1005 is FanDuel in NHL)
+nba,44,Caesars (New Jersey) - Live Odds,false,,in-game feed
+nba,46,Caesars Sportsbook (New Jersey) - Live Odds,false,,in-game feed
+nba,59,ESPN Bet - Live Odds,false,,in-game feed
+nba,200,Draft Kings - Live Odds,false,,in-game feed
+nhl,100,Draft Kings,true,1,DraftKings feed from 2025-26
+nhl,40,DraftKings,true,2,
+nhl,58,ESPN BET,true,3,only book in 2024-25
+nhl,47,MGM,true,4,
+nhl,45,Caesars Sportsbook (New Jersey),true,5,
+nhl,31,Caesars Sportsbook,true,6,
+nhl,38,Caesars,true,7,
+nhl,52,Caesars Sportsbook (Colorado),true,9,
+nhl,57,Caesars Sportsbook (Tennessee),true,10,
+nhl,43,Caesars Sportsbook (Pennsylvania),true,11,
+nhl,1001,Bet365,true,12,NHL id (Bet 365 is 2000 in the NBA)
+nhl,1005,FanDuel,true,13,NHL id (betegy in the NBA)
+nhl,25,Westgate,true,14,
+nhl,36,Unibet,true,30,off the market median on 5.6% of games
+nhl,41,SugarHouse,true,16,
+nhl,50,BetfairSportsbook,true,17,
+nhl,53,Titanbets,true,18,
+nhl,48,PointsBet,true,19,
+nhl,32,Wynn,true,20,
+nhl,35,CG Technology,true,21,
+nhl,55,Holland Casino,true,22,
+nhl,37,Betradar,true,23,
+nhl,39,BetStars,true,24,
+nhl,51,Rushbet,true,25,no lines in the feed
+nhl,44,Caesars (New Jersey) - Live Odds,false,,in-game feed
+nhl,46,Caesars Sportsbook (New Jersey) - Live Odds,false,,in-game feed
+nhl,59,ESPN Bet - Live Odds,false,,in-game feed
+nhl,200,Draft Kings - Live Odds,false,,in-game feed

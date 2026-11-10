@@ -1,0 +1,56 @@
+version: 2
+
+# Raw NBA tables loaded by DLT. Keys and grain: .claude/skills/nba-nhl-ats/SKILL.md.
+
+sources:
+  - name: nba
+    schema: nba
+    tables:
+      - name: games
+        description: ESPN scoreboard, one row per ESPN game (pipelines/espn_odds_pipeline.py). Includes exhibitions and unplayed games.
+        columns:
+          - name: game_id
+            data_tests: [unique, not_null]
+          - name: season
+            data_tests: [not_null]
+          - name: game_date
+            description: US/Eastern date (YYYY-MM-DD).
+            data_tests: [not_null]
+
+      - name: odds
+        description: ESPN core odds, one row per (game, provider) with item-level and open / close / current snapshots.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "game_id || '|' || provider_id"
+        columns:
+          - name: game_id
+            data_tests: [not_null]
+          - name: provider_id
+            data_tests: [not_null]
+
+      - name: historical_lines
+        description: SBR closing lines 2007-08 to Jan 2026 via kyleskom (pipelines/nba_stats_pipeline.py --lines-bootstrap). Full team names; sign rebuilt from the ML favourite.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "game_date || '|' || home_team || '|' || away_team"
+        columns:
+          - name: game_date
+            data_tests: [not_null]
+          - name: home_team
+            data_tests: [not_null]
+          - name: away_team
+            data_tests: [not_null]
+
+      - name: team_game_logs
+        description: stats.nba.com LeagueGameLog, one row per (game, team), regular season and playoffs.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "game_id || '|' || team_id"
+        columns:
+          - name: game_id
+            data_tests: [not_null]
+          - name: team_id
+            data_tests: [not_null]

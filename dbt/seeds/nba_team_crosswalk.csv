@@ -1,0 +1,158 @@
+team_code,source,source_key,valid_from_season,valid_to_season,source_name
+ATL,espn_id,1,,,Atlanta Hawks
+BKN,espn_id,17,,,Brooklyn Nets
+BOS,espn_id,2,,,Boston Celtics
+CHA,espn_id,30,,,Charlotte Hornets
+CHI,espn_id,4,,,Chicago Bulls
+CLE,espn_id,5,,,Cleveland Cavaliers
+DAL,espn_id,6,,,Dallas Mavericks
+DEN,espn_id,7,,,Denver Nuggets
+DET,espn_id,8,,,Detroit Pistons
+GSW,espn_id,9,,,Golden State Warriors
+HOU,espn_id,10,,,Houston Rockets
+IND,espn_id,11,,,Indiana Pacers
+LAC,espn_id,12,,,LA Clippers
+LAL,espn_id,13,,,Los Angeles Lakers
+MEM,espn_id,29,,,Memphis Grizzlies
+MIA,espn_id,14,,,Miami Heat
+MIL,espn_id,15,,,Milwaukee Bucks
+MIN,espn_id,16,,,Minnesota Timberwolves
+NOP,espn_id,3,,,New Orleans Pelicans
+NYK,espn_id,18,,,New York Knicks
+OKC,espn_id,25,,,Oklahoma City Thunder
+ORL,espn_id,19,,,Orlando Magic
+PHI,espn_id,20,,,Philadelphia 76ers
+PHX,espn_id,21,,,Phoenix Suns
+POR,espn_id,22,,,Portland Trail Blazers
+SAC,espn_id,23,,,Sacramento Kings
+SAS,espn_id,24,,,San Antonio Spurs
+TOR,espn_id,28,,,Toronto Raptors
+UTA,espn_id,26,,,Utah Jazz
+WAS,espn_id,27,,,Washington Wizards
+ATL,espn_abbr,ATL,,,Atlanta Hawks
+BKN,espn_abbr,BKN,,,Brooklyn Nets
+BOS,espn_abbr,BOS,,,Boston Celtics
+CHA,espn_abbr,CHA,,,Charlotte Hornets
+CHI,espn_abbr,CHI,,,Chicago Bulls
+CLE,espn_abbr,CLE,,,Cleveland Cavaliers
+DAL,espn_abbr,DAL,,,Dallas Mavericks
+DEN,espn_abbr,DEN,,,Denver Nuggets
+DET,espn_abbr,DET,,,Detroit Pistons
+GSW,espn_abbr,GS,,,Golden State Warriors
+HOU,espn_abbr,HOU,,,Houston Rockets
+IND,espn_abbr,IND,,,Indiana Pacers
+LAC,espn_abbr,LAC,,,LA Clippers
+LAL,espn_abbr,LAL,,,Los Angeles Lakers
+MEM,espn_abbr,MEM,,,Memphis Grizzlies
+MIA,espn_abbr,MIA,,,Miami Heat
+MIL,espn_abbr,MIL,,,Milwaukee Bucks
+MIN,espn_abbr,MIN,,,Minnesota Timberwolves
+NOP,espn_abbr,NO,,,New Orleans Pelicans
+NYK,espn_abbr,NY,,,New York Knicks
+OKC,espn_abbr,OKC,,,Oklahoma City Thunder
+ORL,espn_abbr,ORL,,,Orlando Magic
+PHI,espn_abbr,PHI,,,Philadelphia 76ers
+PHX,espn_abbr,PHX,,,Phoenix Suns
+POR,espn_abbr,POR,,,Portland Trail Blazers
+SAC,espn_abbr,SAC,,,Sacramento Kings
+SAS,espn_abbr,SA,,,San Antonio Spurs
+TOR,espn_abbr,TOR,,,Toronto Raptors
+UTA,espn_abbr,UTAH,,,Utah Jazz
+WAS,espn_abbr,WSH,,,Washington Wizards
+ATL,nba_api_id,1610612737,,,Atlanta Hawks
+BKN,nba_api_id,1610612751,,,Brooklyn Nets
+BOS,nba_api_id,1610612738,,,Boston Celtics
+CHA,nba_api_id,1610612766,,,Charlotte Hornets
+CHI,nba_api_id,1610612741,,,Chicago Bulls
+CLE,nba_api_id,1610612739,,,Cleveland Cavaliers
+DAL,nba_api_id,1610612742,,,Dallas Mavericks
+DEN,nba_api_id,1610612743,,,Denver Nuggets
+DET,nba_api_id,1610612765,,,Detroit Pistons
+GSW,nba_api_id,1610612744,,,Golden State Warriors
+HOU,nba_api_id,1610612745,,,Houston Rockets
+IND,nba_api_id,1610612754,,,Indiana Pacers
+LAC,nba_api_id,1610612746,,,LA Clippers
+LAL,nba_api_id,1610612747,,,Los Angeles Lakers
+MEM,nba_api_id,1610612763,,,Memphis Grizzlies
+MIA,nba_api_id,1610612748,,,Miami Heat
+MIL,nba_api_id,1610612749,,,Milwaukee Bucks
+MIN,nba_api_id,1610612750,,,Minnesota Timberwolves
+NOP,nba_api_id,1610612740,,,New Orleans Pelicans
+NYK,nba_api_id,1610612752,,,New York Knicks
+OKC,nba_api_id,1610612760,,,Oklahoma City Thunder
+ORL,nba_api_id,1610612753,,,Orlando Magic
+PHI,nba_api_id,1610612755,,,Philadelphia 76ers
+PHX,nba_api_id,1610612756,,,Phoenix Suns
+POR,nba_api_id,1610612757,,,Portland Trail Blazers
+SAC,nba_api_id,1610612758,,,Sacramento Kings
+SAS,nba_api_id,1610612759,,,San Antonio Spurs
+TOR,nba_api_id,1610612761,,,Toronto Raptors
+UTA,nba_api_id,1610612762,,,Utah Jazz
+WAS,nba_api_id,1610612764,,,Washington Wizards
+ATL,nba_api_abbr,ATL,,,Atlanta Hawks
+BKN,nba_api_abbr,BKN,2013,,Brooklyn Nets
+BKN,nba_api_abbr,NJN,,2012,New Jersey Nets
+BOS,nba_api_abbr,BOS,,,Boston Celtics
+CHA,nba_api_abbr,CHA,,,Charlotte Hornets
+CHI,nba_api_abbr,CHI,,,Chicago Bulls
+CLE,nba_api_abbr,CLE,,,Cleveland Cavaliers
+DAL,nba_api_abbr,DAL,,,Dallas Mavericks
+DEN,nba_api_abbr,DEN,,,Denver Nuggets
+DET,nba_api_abbr,DET,,,Detroit Pistons
+GSW,nba_api_abbr,GSW,,,Golden State Warriors
+HOU,nba_api_abbr,HOU,,,Houston Rockets
+IND,nba_api_abbr,IND,,,Indiana Pacers
+LAC,nba_api_abbr,LAC,,,LA Clippers
+LAL,nba_api_abbr,LAL,,,Los Angeles Lakers
+MEM,nba_api_abbr,MEM,,,Memphis Grizzlies
+MIA,nba_api_abbr,MIA,,,Miami Heat
+MIL,nba_api_abbr,MIL,,,Milwaukee Bucks
+MIN,nba_api_abbr,MIN,,,Minnesota Timberwolves
+NOP,nba_api_abbr,NOH,,2013,New Orleans Hornets
+NOP,nba_api_abbr,NOP,2014,,New Orleans Pelicans
+NYK,nba_api_abbr,NYK,,,New York Knicks
+OKC,nba_api_abbr,OKC,2009,,Oklahoma City Thunder
+OKC,nba_api_abbr,SEA,,2008,Seattle SuperSonics
+ORL,nba_api_abbr,ORL,,,Orlando Magic
+PHI,nba_api_abbr,PHI,,,Philadelphia 76ers
+PHX,nba_api_abbr,PHX,,,Phoenix Suns
+POR,nba_api_abbr,POR,,,Portland Trail Blazers
+SAC,nba_api_abbr,SAC,,,Sacramento Kings
+SAS,nba_api_abbr,SAS,,,San Antonio Spurs
+TOR,nba_api_abbr,TOR,,,Toronto Raptors
+UTA,nba_api_abbr,UTA,,,Utah Jazz
+WAS,nba_api_abbr,WAS,,,Washington Wizards
+ATL,historical_lines,Atlanta Hawks,,,Atlanta Hawks
+BKN,historical_lines,Brooklyn Nets,2013,,Brooklyn Nets
+BKN,historical_lines,New Jersey Nets,,2012,New Jersey Nets
+BOS,historical_lines,Boston Celtics,,,Boston Celtics
+CHA,historical_lines,Charlotte Bobcats,,2022,Charlotte Bobcats
+CHA,historical_lines,Charlotte Hornets,2023,,Charlotte Hornets
+CHI,historical_lines,Chicago Bulls,,,Chicago Bulls
+CLE,historical_lines,Cleveland Cavaliers,,,Cleveland Cavaliers
+DAL,historical_lines,Dallas Mavericks,,,Dallas Mavericks
+DEN,historical_lines,Denver Nuggets,,,Denver Nuggets
+DET,historical_lines,Detroit Pistons,,,Detroit Pistons
+GSW,historical_lines,Golden State Warriors,,,Golden State Warriors
+HOU,historical_lines,Houston Rockets,,,Houston Rockets
+IND,historical_lines,Indiana Pacers,,,Indiana Pacers
+LAC,historical_lines,LA Clippers,2025,,LA Clippers
+LAC,historical_lines,Los Angeles Clippers,,2024,Los Angeles Clippers
+LAL,historical_lines,Los Angeles Lakers,,,Los Angeles Lakers
+MEM,historical_lines,Memphis Grizzlies,,,Memphis Grizzlies
+MIA,historical_lines,Miami Heat,,,Miami Heat
+MIL,historical_lines,Milwaukee Bucks,,,Milwaukee Bucks
+MIN,historical_lines,Minnesota Timberwolves,,,Minnesota Timberwolves
+NOP,historical_lines,New Orleans Pelicans,,,New Orleans Pelicans
+NYK,historical_lines,New York Knicks,,,New York Knicks
+OKC,historical_lines,Oklahoma City Thunder,2009,,Oklahoma City Thunder
+OKC,historical_lines,Seattle SuperSonics,,2008,Seattle SuperSonics
+ORL,historical_lines,Orlando Magic,,,Orlando Magic
+PHI,historical_lines,Philadelphia 76ers,,,Philadelphia 76ers
+PHX,historical_lines,Phoenix Suns,,,Phoenix Suns
+POR,historical_lines,Portland Trail Blazers,,,Portland Trail Blazers
+SAC,historical_lines,Sacramento Kings,,,Sacramento Kings
+SAS,historical_lines,San Antonio Spurs,,,San Antonio Spurs
+TOR,historical_lines,Toronto Raptors,,,Toronto Raptors
+UTA,historical_lines,Utah Jazz,,,Utah Jazz
+WAS,historical_lines,Washington Wizards,,,Washington Wizards
