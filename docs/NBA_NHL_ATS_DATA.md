@@ -379,6 +379,57 @@ Playoff totals stay out: since 2024 the model's playoff gap to the market has sh
 points, so any correction designed now would itself be tuned on these seasons. The test can't
 start until the pipelines load 2026-27: `nba.games` currently ends 2026-06-13.
 
+## 2026-27 rules, team profiles, pregame lookup (Phase 5, 2026-11-09)
+
+**Rules: none.** Only edges marked SHIP become rules, and Phase 4 shipped none.
+
+| Rule group | NBA | NHL |
+|---|---|---|
+| BET WHEN | none | none |
+| AUTO BET | none | none |
+| NEVER BET | none | none |
+| Totals | none (the regular-season open-totals model is a paper forward test only, see Phase 4) | none |
+
+**Team profiles:** `main_marts.mart_nba_team_profiles` and `mart_nhl_team_profiles`.
+- **Grain:** one row per (team, season the profile applies to). Each row uses only that team's
+  games in the four seasons before, so it is safe to join to any game of that season.
+- **Market:** ATS is the spread (NBA) or the standard ±1.5 puck line (NHL), at the actual price,
+  with `historical_lines` at −110.
+- **Columns:** overall and home/away × favourite/underdog cover% and ROI, seasons positive, an O/U
+  lean (≥ 55% over or ≤ 45%), NHL moneyline win% and ROI, and a tier.
+- **Tiers:** CFB's walk-forward v3 rules (macro `dbt/macros/team_profiles.sql`). Directional
+  tiers need 2+ seasons in the window.
+- **Tiers have no predictive value.** Betting each tier's team in the season the tier applies to
+  (out of sample) loses roughly the vig. They are descriptive and are not a rule.
+
+| Tier | NBA bets | NBA ROI | NHL bets | NHL ROI |
+|---|---|---|---|---|
+| STRONG | 274 | −4.0% | 102 | +3.2% (1 season) |
+| NEUTRAL | 38,640 | −4.1% | 13,720 | −4.5% |
+| FADE | 6,182 | −4.5% | 1,882 | −2.0% |
+| STRONG_FADE | 314 | −8.2% | – | – |
+
+Few teams reach a directional tier in any season: NBA 2027 has 3 FADE, the rest NEUTRAL; NHL 2027
+has 5 FADE.
+
+**Pregame lookups:** `scripts/nba_pregame_lookup.py` and `scripts/nhl_pregame_lookup.py`, modeled
+on `scripts/pregame_lookup.py`.
+- **Usage:** `--home --away [--date] [--spread | --puckline] [--total] [--ml HOME AWAY]`; NHL also
+  takes `--home-goalie` / `--away-goalie`. Teams are given by code or name.
+- **Report:** team form over the last 5 / last 10 / season / prior season, starting goalies
+  (NHL), schedule spots, team profiles, and the ratings or xG model vs the market. Then the rules
+  section (none fire) and the bottom line, which is NO BET.
+- **NBA paper test:** a game that meets the paper forward test is shown as a paper entry, never a bet.
+- **Shared code:** `scripts/nba_nhl_lookup_common.py`.
+- **As-of date:** every value is computed from games before the game date with the mart's
+  definitions. For a past game the lookup cross-checks itself against
+  `mart_*_game_features` and prints the result.
+- **Tested on 5 past games each:** NBA 2025-03-08 GSW-DET, 2025-01-15 MIL-ORL and DEN-HOU,
+  2025-01-23 IND-SAS (Paris, neutral), 2012-02-15 BOS-DET (`historical_lines`); NHL 2025 STL-CHI
+  (shootout), STL-CBJ, VAN-TOR, CGY-SEA (OT), MIN-BUF. Every report matched the mart (13 NBA /
+  10 NHL values each). An upcoming game has no mart row and uses each team's most recent starter,
+  marked PROBABLE.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
