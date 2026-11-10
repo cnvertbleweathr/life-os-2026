@@ -16,6 +16,8 @@ Your Life → DLT Pipelines → DuckDB → dbt → FastAPI → Next.js
 
 AI layer: OpenClaw (Claude API) — morning brief, weekly recap, CFB narratives
           → being replaced by LangGraph agents
+Film:     Letterboxd + Plex → mart_film_watches → scene catalog (Claude suggests, you approve)
+          → 64×32 pixel GIFs → /film page and a Raspberry Pi LED panel (/api/display)
 ```
 
 The dashboard runs on FastAPI + Next.js (replaced Streamlit in June 2026). FastAPI is a thin query layer over DuckDB/dbt marts and never writes to the warehouse: what you enter in the UI (habits, check-ins, Capture) is appended to JSONL logs under `data/` and loaded by the nightly sync (see [Personal input](#personal-input--the-write-key)). Next.js is the actual UI. OpenClaw is the current AI layer (daily briefs, weekly reviews, game analysis); it is being retired in favor of LangGraph agents — see [ROADMAP › Agentic Layer](./ROADMAP.md#agentic-layer--replaces-openclaw-new-track-2026-10-11).
@@ -54,7 +56,9 @@ life-os-2026/
 │   ├── cfbd_pipeline.py
 │   ├── cfbd_extended_pipeline.py      # Per-game PPA (current season), recruiting, etc.
 │   ├── live_picks_pipeline.py         # Graded picks → cfbd.live_picks
-│   ├── letterboxd_pipeline.py
+│   ├── letterboxd_pipeline.py         # Letterboxd RSS → letterboxd.diary_entries (TMDB id, rating, liked)
+│   ├── plex_pipeline.py               # Plex watch history (movies) → plex.history, incremental; --full reloads
+│   ├── film_catalog_pipeline.py       # scene catalog JSONL → film.scene_catalog
 │   ├── kglw_pipeline.py
 │   └── kglw_youtube_pipeline.py
 │
@@ -71,13 +75,26 @@ life-os-2026/
 │   ├── grade_picks.py                 # Grades results (Mon + Thu–Sun)
 │   ├── generate_postmortem.py
 │   ├── kglw_video_qa.py               # KGLW freshness + unmatched-upload report
+│   ├── import_letterboxd_csv.py       # one-off: full Letterboxd history from the data export
+│   ├── film_suggest_scenes.py         # Claude (Haiku 5.5) suggests each new film's GIF scene
+│   ├── film_catalog.py                # review the scene catalog: list / approve / edit / reject
+│   ├── film_gif_render.py             # render approved films' 64×32 GIFs
+│   ├── dev.sh                         # dev servers (:8001 API with ONS_DEV=1, :3001 UI)
 │   └── [20+ other utilities]
+│
+├── film/                              # GIF renderer: palette (from globals.css), 3×5 font,
+│   ├── canvas.py · palette.py · font.py   #   motifs (rain · projector · vhs), sprites/ (public-domain
+│   ├── motifs.py · clip.py            #   scenes, e.g. Nosferatu), clip.py (ffmpeg + Bayer dither)
+│   └── sprites/
 │
 ├── api/                               # FastAPI backend — never writes to DuckDB
 │   ├── main.py
 │   ├── deps.py
 │   ├── store.py                       # append-only JSONL write path (habits, check-in, inbox)
 │   ├── auth.py                        # write key for personal endpoints over the tunnel
+│   ├── espn.py                        # ESPN client; my_games() feeds the ticker and the LED panel
+│   ├── film_catalog.py                # scene catalog rules + approve/edit/reject (JSONL snapshots)
+│   ├── display.py                     # 64×32 score and clock frames for the LED panel
 │   └── routers/
 │       ├── home.py                    # /api/home — digest, brief, calendar, WOD, daily10
 │       ├── habits.py                  # incl. POST /log, GET /recent
@@ -90,7 +107,9 @@ life-os-2026/
 │       ├── shows.py
 │       ├── sports.py
 │       ├── cfb.py
-│       └── kglw.py
+│       ├── kglw.py
+│       ├── film.py                    # /api/film — watches, library, scene, strip (public); queue (owner)
+│       └── display.py                 # /api/display — LED panel playlist, GIFs, frames (owner)
 │
 ├── web/                               # Next.js frontend
 │   ├── app/
@@ -105,7 +124,8 @@ life-os-2026/
 │   │   ├── cfb/page.tsx               # This Week · Matchup Lab · Teams
 │   │   ├── kglw/page.tsx
 │   │   ├── checkin/page.tsx
-│   │   └── capture/page.tsx           # Capture inbox
+│   │   ├── capture/page.tsx           # Capture inbox
+│   │   └── film/page.tsx              # Film: watches, review queue, Screening Room
 │   ├── components/
 │   │   ├── nav/Sidebar.tsx
 │   │   ├── cfb/LiveTrackerBanner.tsx
@@ -120,7 +140,8 @@ life-os-2026/
 │   │   ├── staging/
 │   │   └── marts/                     # incl. core__life_events, mart_cfb_live_strength,
 │   │                                  #      mart_live_picks, mart_goal_pacing,
-│   │                                  #      mart_kglw_youtube_matches, mart_kglw_music_videos
+│   │                                  #      mart_kglw_youtube_matches, mart_kglw_music_videos,
+│   │                                  #      mart_film_watches (Letterboxd + Plex, one row per film per day)
 │   └── profiles.yml                   # profile: ons → data/warehouse/ons.duckdb
 │
 ├── data/
@@ -131,19 +152,29 @@ life-os-2026/
 │   ├── habits/habits_log.jsonl        # written by the web UI (append-only)
 │   ├── checkin/checkin_log.jsonl      # written by the web UI (append-only)
 │   ├── inbox/capture_inbox.jsonl      # written by the web UI (append-only)
+│   ├── film/scene_catalog.jsonl       # film scene catalog (append-only snapshots)
+│   ├── film/gifs/                     # rendered GIFs — gitignored; plex_clip ones are owner-only
+│   ├── display/logos/                 # ESPN logos cached at 12×12 for the LED panel
 │   ├── bets/todays_picks.json
 │   └── [other domains]
 │
 ├── tests/
 │   ├── smoke_test.py                  # 18 checks — cfb/env/metrics/sync groups (run directly)
 │   ├── test_write_path.py             # 15 tests — store, endpoints, write key, pipelines
-│   ├── test_freshness_check.py        # 8 tests — incl. replays of the Oct 2026 silent failures
-│   └── test_spotify_compat.py         # 3 tests — old/new playlist shapes, unreadable playlists
+│   ├── test_freshness_check.py        # 10 tests — incl. replays of the Oct 2026 silent failures
+│   ├── test_spotify_compat.py         # 3 tests — old/new playlist shapes, unreadable playlists
+│   ├── test_film_pipelines.py         # 6 tests — Letterboxd RSS parsing, Plex GUIDs, --full reload
+│   ├── test_letterboxd_csv.py         # 21 tests — CSV import, TMDB lookup cache, RSS/CSV dedupe via dbt
+│   ├── test_film_catalog.py           # 15 tests — catalog rules, queue API, suggestion step, mirror
+│   ├── test_film_render.py            # 16 tests — palette, font, loops, clip dither, render flow
+│   ├── test_film_api.py               # 4 tests — /api/film visibility and strips
+│   └── test_display.py                # 21 tests — score frames, playlist curation, the Pi player
 │
 ├── ops/macmini/
 │   ├── harden.sh                      # check: what would keep ONS offline · apply: power, updates, heartbeat
 │   ├── heartbeat.sh                   # 5-min healthchecks.io ping from boot; /fail with reason
 │   └── com.ons.heartbeat.plist.template
+├── ops/pi/display/                    # LED panel player for the Raspberry Pi (+ systemd unit, setup README)
 │
 ├── .github/workflows/                 # ci.yml (syntax, Python tests, ShellCheck, hardcode audit,
 │                                      #   dbt parse, TypeScript), picks-validation.yml (Thu)
@@ -158,7 +189,7 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 36 steps in order. Some steps only run on certain days:
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 39 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
@@ -167,7 +198,9 @@ Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate n
 | CFB in-season | `cfbd_pipeline --skip-advanced` (games + final scores, lines, SP+) → `cfbd_extended_pipeline` (per-game PPA) → `mart_cfb_live_strength` → `grade_picks` → `live_picks_pipeline` → `mart_live_picks` | Mon + Thu–Sun |
 | CFB picks | `generate_picks` · `generate_picks_report` | Mon–Wed · Thu |
 | King Gizzard | `kglw` (kglw.net catalog, `--shows-only`), `kglw_youtube` (channel uploads + music-videos playlist) | Daily, before dbt |
+| Film in | `letterboxd` (RSS diary), `plex` (watch history; a no-op until `PLEX_URL`/`PLEX_TOKEN` are set) | Daily, before dbt |
 | Goals + transform | `sync_playlist_artists`, `sync_goal_progress`, `dbt`, `load_goals`, `load_goal_progress` | Daily |
+| Film out | `film_suggest_scenes` (Claude suggests a scene per new film), `film_gif_render` (approved → GIFs), `film_catalog` (catalog → DuckDB) | Daily, after dbt |
 | Ops + AI + backup | `openclaw_generation`, `freshness_check`, `backup_duckdb` | Daily, last |
 
 ```bash
@@ -229,6 +262,11 @@ cp .env.example .env
 | `CFBD_API_TOKEN` | [CFBD](https://collegefootballdata.com) |
 | `NTFY_TOPIC` | [ntfy.sh](https://ntfy.sh) |
 | `LETTERBOXD_USERNAME` | Your Letterboxd handle — public RSS |
+| `PLEX_URL` / `PLEX_TOKEN` | Your Plex server and its `X-Plex-Token` — film watch history and `plex_clip` GIFs |
+| `PLEX_ACCOUNT_ID` | Optional — whose plays count: `1` (server owner, default) or `all` |
+| `PLEX_MEDIA_PATH_MAP` | Optional — `server_prefix=local_prefix` if Plex's media is mounted on the Mac mini (otherwise clips stream from Plex) |
+| `TMDB_API_KEY` | Optional — [TMDB](https://www.themoviedb.org/settings/api) v3 key or v4 token; resolves TMDB ids for the Letterboxd CSV backfill |
+| `DISPLAY_QUIET_HOURS` | Optional — e.g. `23-7`: the LED panel goes dark between those local hours |
 | `LASTFM_API_KEY` | [Last.fm](https://www.last.fm/api/account/create) — Artist of the Day bios |
 | `AUDIODB_API_KEY` | [TheAudioDB](https://www.theaudiodb.com/api_guide.php) — optional, premium key only |
 | `YOUTUBE_API_KEY` | [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com) — KGLW live recordings + music videos |
@@ -267,6 +305,7 @@ The Mac mini is the single host for the warehouse, API, UI and tunnel, so it has
 | **King Gizzard** | **Shows:** live shows and music videos in one list (All · Upcoming · Music Videos · Watchable), with embedded YouTube recordings and official videos · **Songs:** song catalog |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log with readiness score; saved, and re-saving updates today's entry |
 | **Capture** | Quick inbox for ideas, tasks, links and notes (⌘/Ctrl+Enter), tagged by kind and area; newest first |
+| **Film** | Watches this year (Letterboxd + Plex, with the source of each), average rating, by month and by decade; the scene review queue (owner only); the Screening Room wall of every rendered loop. The title scene is a cinema playing your latest watch's loop |
 
 ---
 
@@ -279,10 +318,11 @@ The API holds a read-only DuckDB connection (single-writer rule), so it never wr
 | Habit toggles | `POST /api/habits/log` | `data/habits/habits_log.jsonl` | `habits.habit_log`, `habits.habit_summary` |
 | Daily check-in | `POST /api/checkin/log` | `data/checkin/checkin_log.jsonl` | `checkin.daily_checkin` |
 | Capture | `POST /api/inbox` | `data/inbox/capture_inbox.jsonl` | `raw.capture_inbox` |
+| Film scene review | `POST /api/film/queue/{film}/approve` · `/reject`, `PATCH /api/film/queue/{film}` | `data/film/scene_catalog.jsonl` | `film.scene_catalog` |
 
 The Habits page reads today and the 21-day strip straight from the log, so a toggle shows up immediately; streaks and YTD figures update after the sync. Habits can be backfilled up to 7 days.
 
-**Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin` and `/api/inbox` require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+**Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin`, `/api/inbox`, `/api/film/queue` and `/api/display` require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
 
 ---
 
@@ -304,6 +344,20 @@ cat data/ai/generations.jsonl | jq '.[-1]'
 ```
 
 **RBAC:** Read-only access to 12 mart tables. Writes only to 5 `raw.ai_*` tables. Enforced in `openclaw/rbac/policy.py`.
+
+---
+
+## Film
+
+Plan: [`docs/film/ONS_FILM_SECTION_PLAN.md`](./docs/film/ONS_FILM_SECTION_PLAN.md). Four stages, all in the daily sync:
+
+1. **Watched.** `letterboxd` (RSS, ~50 latest entries) and `plex` (watch history, movies only) feed `stg_letterboxd__diary` and `stg_plex__history` → `mart_film_watches`: one row per film per day, `source` = letterboxd / plex / both. Films key on the TMDB id; a Plex play within a day of a Letterboxd entry for the same film counts as that watch. For full Letterboxd history, run the one-off CSV backfill: `python scripts/import_letterboxd_csv.py --file ~/Downloads/letterboxd-export/diary.csv` (stop `com.ons.fastapi` first; see the script).
+2. **Scene picked.** `film_suggest_scenes` asks Claude Haiku 5.5 for each new film's most iconic moment (about $0.0001 a film, logged to `data/ai/generations.jsonl`, stopping at the shared $5/month AI budget). Nothing renders until you approve it, on `/film` or with `python scripts/film_catalog.py approve tmdb:30497 --clip 3400 3405`.
+3. **GIF rendered.** `film_gif_render` makes two 64×32, 5-second loops per approved film: `gif_web` (light palette) and `gif_matrix` (dark palette, for the LED panel). The render mode is set by rule, not by the model:
+   - `sprite` — a hand-built pixel scene, only for US public-domain films (`film/sprites/`);
+   - `plex_clip` — 5 seconds of your own Plex copy, pixelated (owner-only: never served publicly);
+   - `motif` — an original loop with the title (rain, projector, VHS).
+4. **Shown.** On `/film` (title scene and Screening Room), and on a 64×32 LED panel: a Raspberry Pi plays whatever `GET /api/display/playlist` returns — film loops with score cards for your teams between them, and live games pre-empting the films. Setup: [`ops/pi/display/README.md`](./ops/pi/display/README.md).
 
 ---
 
@@ -347,11 +401,13 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 | SugarWOD | CSV export | CrossFit classes, PRs |
 | Spotify | JSON export + API | Streaming stats, Daily 10 |
 | AEG / Ticketmaster | Public API | Denver shows |
-| Letterboxd | Public RSS | Film diary, ratings (pipeline built, not yet in the daily sync) |
+| Letterboxd | Public RSS + data-export CSV | Film diary, ratings, likes, rewatches; TMDB id from the feed |
+| Plex | Server API (`X-Plex-Token`) | Movie watch history, TMDB ids, and the files `plex_clip` GIFs are cut from |
+| TMDB | Search API (optional) | TMDB ids for the Letterboxd CSV backfill |
 | KGLW.net | Public API v2 | Shows (incl. announced dates), songs, venues, jam chart |
 | YouTube (KGLW channel) | Data API v3 | Live recordings matched to shows; official music videos from the band's music-videos playlist |
 | Last.fm / Wikipedia / TheAudioDB | Public APIs | Artist of the Day bios |
-| ESPN | Public site API (unofficial, keyless) | Live scores, team schedules, team news |
+| ESPN | Public site API (unofficial, keyless) | Live scores, team schedules, team news, team logos (ticker, Sports page, LED panel) |
 | CFBD | DLT + Bearer | CFB games, lines, SP+, PPA, weather |
 
 ---
