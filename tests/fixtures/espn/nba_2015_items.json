@@ -1,0 +1,288 @@
+{
+ "5Dimes.eu": {
+  "provider": {
+   "id": "18",
+   "name": "5Dimes.eu",
+   "priority": 0
+  },
+  "details": "OKC -3",
+  "overUnder": 208.5,
+  "spread": 3.0,
+  "initialSpread": -2.0,
+  "initialOverUnder": 206.0,
+  "overOdds": -105.0,
+  "underOdds": -105.0,
+  "awayTeamOdds": {
+   "favorite": true,
+   "underdog": false,
+   "moneyLine": -140,
+   "spreadOdds": -105.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "-3",
+     "american": "-3"
+    },
+    "spread": {
+     "alternateDisplayValue": "-105",
+     "american": "-105"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "-140",
+     "american": "-140"
+    }
+   }
+  },
+  "homeTeamOdds": {
+   "favorite": false,
+   "underdog": true,
+   "moneyLine": 130,
+   "spreadOdds": -105.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "+3",
+     "american": "+3"
+    },
+    "spread": {
+     "alternateDisplayValue": "-105",
+     "american": "-105"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "+130",
+     "american": "+130"
+    }
+   }
+  },
+  "moneylineWinner": false,
+  "spreadWinner": false,
+  "current": {
+   "over": {
+    "alternateDisplayValue": "-105",
+    "american": "-105"
+   },
+   "under": {
+    "alternateDisplayValue": "-105",
+    "american": "-105"
+   },
+   "total": {
+    "alternateDisplayValue": "208.5",
+    "american": "208.5"
+   }
+  }
+ },
+ "BOVADA.lv": {
+  "provider": {
+   "id": "20",
+   "name": "BOVADA.lv",
+   "priority": 0
+  },
+  "details": "OKC -2.5",
+  "overUnder": 209.0,
+  "spread": 2.5,
+  "initialSpread": -2.0,
+  "initialOverUnder": 206.0,
+  "overOdds": -115.0,
+  "underOdds": -105.0,
+  "awayTeamOdds": {
+   "favorite": true,
+   "underdog": false,
+   "moneyLine": 0,
+   "spreadOdds": -115.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "-2.5",
+     "american": "-2.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "-115",
+     "american": "-115"
+    }
+   }
+  },
+  "homeTeamOdds": {
+   "favorite": false,
+   "underdog": true,
+   "moneyLine": 0,
+   "spreadOdds": -105.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "+2.5",
+     "american": "+2.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "-105",
+     "american": "-105"
+    }
+   }
+  },
+  "moneylineWinner": false,
+  "spreadWinner": false,
+  "current": {
+   "over": {
+    "alternateDisplayValue": "-115",
+    "american": "-115"
+   },
+   "under": {
+    "alternateDisplayValue": "-105",
+    "american": "-105"
+   },
+   "total": {
+    "alternateDisplayValue": "209",
+    "american": "209"
+   }
+  }
+ },
+ "Opening": {
+  "provider": {
+   "id": "23",
+   "name": "Opening",
+   "priority": 0
+  },
+  "details": "HOU -2",
+  "overUnder": 206.0,
+  "spread": -2.0,
+  "initialSpread": -2.0,
+  "initialOverUnder": 206.0,
+  "overOdds": -110.0,
+  "underOdds": -110.0,
+  "awayTeamOdds": {
+   "favorite": false,
+   "underdog": true,
+   "moneyLine": 105,
+   "spreadOdds": -110.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "+2",
+     "american": "+2"
+    },
+    "spread": {
+     "alternateDisplayValue": "-110",
+     "american": "-110"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "+105",
+     "american": "+105"
+    }
+   }
+  },
+  "homeTeamOdds": {
+   "favorite": true,
+   "underdog": false,
+   "moneyLine": -125,
+   "spreadOdds": -110.0,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "-2",
+     "american": "-2"
+    },
+    "spread": {
+     "alternateDisplayValue": "-110",
+     "american": "-110"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "-125",
+     "american": "-125"
+    }
+   }
+  },
+  "moneylineWinner": false,
+  "spreadWinner": false,
+  "current": {
+   "over": {
+    "alternateDisplayValue": "-110",
+    "american": "-110"
+   },
+   "under": {
+    "alternateDisplayValue": "-110",
+    "american": "-110"
+   },
+   "total": {
+    "alternateDisplayValue": "206",
+    "american": "206"
+   }
+  }
+ },
+ "numberfire": {
+  "provider": {
+   "id": "1003",
+   "name": "numberfire",
+   "priority": 0
+  },
+  "details": "OKC -2.5",
+  "overUnder": 208.5,
+  "spread": 2.5,
+  "initialSpread": -2.0,
+  "initialOverUnder": 206.0,
+  "overOdds": 30.51,
+  "underOdds": 69.49,
+  "awayTeamOdds": {
+   "averageScore": 98.05,
+   "winPercentage": 42.66,
+   "favorite": true,
+   "underdog": false,
+   "moneyLine": -134,
+   "moneyLineOdds": 42.66,
+   "moneyLineReturn": -0.255,
+   "spreadOdds": 36.87,
+   "similarities": {},
+   "spreadReturn": -0.296,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "-2.5",
+     "american": "-2.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "+37",
+     "american": "+37"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "-134",
+     "american": "-134"
+    }
+   }
+  },
+  "homeTeamOdds": {
+   "averageScore": 100.0,
+   "winPercentage": 57.34,
+   "favorite": false,
+   "underdog": true,
+   "moneyLine": 121,
+   "moneyLineOdds": 57.34,
+   "moneyLineReturn": 0.267,
+   "spreadOdds": 63.13,
+   "similarities": {},
+   "spreadReturn": 0.205,
+   "current": {
+    "pointSpread": {
+     "alternateDisplayValue": "+2.5",
+     "american": "+2.5"
+    },
+    "spread": {
+     "alternateDisplayValue": "+63",
+     "american": "+63"
+    },
+    "moneyLine": {
+     "alternateDisplayValue": "+121",
+     "american": "+121"
+    }
+   }
+  },
+  "headToHeads": {},
+  "predictors": {},
+  "moneylineWinner": false,
+  "spreadWinner": false,
+  "current": {
+   "over": {
+    "alternateDisplayValue": "+31",
+    "american": "+31"
+   },
+   "under": {
+    "alternateDisplayValue": "+69",
+    "american": "+69"
+   },
+   "total": {
+    "alternateDisplayValue": "208.5",
+    "american": "208.5"
+   }
+  }
+ }
+}
