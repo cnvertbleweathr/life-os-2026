@@ -33,6 +33,7 @@ from api.routers import (
     kglw,
     progeny,
     music,
+    nba_nhl,
     reading,
     shows,
     sports,
@@ -90,6 +91,7 @@ app.include_router(music.router,   prefix="/api/music",   tags=["music"])
 app.include_router(shows.router,   prefix="/api/shows",   tags=["shows"])
 app.include_router(sports.router,  prefix="/api/sports",  tags=["sports"])
 app.include_router(cfb.router,     prefix="/api/cfb",     tags=["cfb"])
+app.include_router(nba_nhl.router, prefix="/api/nba-nhl", tags=["nba-nhl"])
 app.include_router(kglw.router,    prefix="/api/kglw",    tags=["kglw"])
 app.include_router(film.public,    prefix="/api/film",    tags=["film"])
 

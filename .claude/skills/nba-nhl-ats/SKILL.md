@@ -72,6 +72,9 @@ Raw ESPN responses are cached in `data/raw/espn/{league}/`, NHL boxscores in
   CLV) → `pipelines/nba_nhl_live_picks_pipeline.py` → `mart_{nba,nhl}_live_picks`. When a rule
   ships, put it in `build()` (generator) and add bet grading in `grade_game()`, which currently
   raises if it sees a bet.
+- UI: `/nba`, `/nhl` (`web/components/ProSlate.tsx`) read `/api/nba-nhl/{league}/slate|record`
+  (`api/routers/nba_nhl.py`), which read the pick-history JSON directly. A shipped rule needs a
+  `bet` string and `verdict` other than NO_BET in the generator; the page then shows it as a bet.
 - For backtests: NBA rows with `line_source = 'historical_lines'` have no prices (use -110).
   NHL: drop `is_standard_puck_line = false` (±2.5 alternates, 19 games) and consider dropping
   `line_consistent = false` (31 games).

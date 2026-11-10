@@ -23,6 +23,8 @@ export const NAV: NavItem[] = [
   { kind: "link", href: "/progeny", label: "Progeny",          icon: "progeny" },
   { kind: "section", label: "Degenerates Corner" },
   { kind: "link", href: "/cfb",     label: "College Football", icon: "cfb",     area: "edge" },
+  { kind: "link", href: "/nba",     label: "NBA",              icon: "nba",     area: "edge" },
+  { kind: "link", href: "/nhl",     label: "NHL",              icon: "nhl",     area: "edge" },
   { kind: "section", label: "Play" },
   { kind: "link", href: "/music",   label: "Music",            icon: "music" },
   { kind: "link", href: "/kglw",    label: "King Gizzard",     icon: "kglw" },

@@ -402,6 +402,10 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .ons-kick .g b { font-weight: 600; }
 .ons-kick .lab { position: absolute; left: -128px; width: 120px; font-size: 13px; color: var(--ink-2); font-weight: 500; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+.ons-table .show-p, .ons-table td .sub.show-p { display: none; }
+.ons-rowlink { all: unset; cursor: pointer; }
+.ons-rowlink:focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; border-radius: 2px; }
+
 @media (min-width: 768px) and (max-width: 1100px) {
   .ons-grid > [class*="s"] { grid-column: 1 / -1; }
   .ons-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -414,6 +418,9 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
   .ons-tiles { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px 20px; padding: 0 16px 4px; scroll-padding: 0 16px; scrollbar-width: none; }
   .ons-tile { flex: 0 0 84%; scroll-snap-align: start; }
   .ons-table .hide-p { display: none; }
+  .ons-table .show-p { display: revert; }
+  .ons-table td .sub.hide-p { display: none; }
+  .ons-table td .sub.show-p { display: block; }
   .ons-badge { white-space: normal; height: auto; line-height: 16px; padding: 2px 8px; text-align: center; }
   .ons-kick { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; height: auto !important; margin: 0; }
   .ons-kick .hr { display: none; }
