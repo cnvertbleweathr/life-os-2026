@@ -6,6 +6,21 @@ profile: ons
 
 model-paths: ["models"]
 macro-paths: ["macros"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+seeds:
+  ons:
+    +schema: seeds
+    nba_team_crosswalk:
+      +column_types: {team_code: varchar, source: varchar, source_key: varchar,
+                      valid_from_season: integer, valid_to_season: integer, source_name: varchar}
+    nhl_team_crosswalk:
+      +column_types: {team_code: varchar, source: varchar, source_key: varchar,
+                      valid_from_season: integer, valid_to_season: integer, source_name: varchar}
+    nba_nhl_odds_providers:
+      +column_types: {league: varchar, provider_id: varchar, provider_name: varchar,
+                      is_book: boolean, priority: integer, note: varchar}
 
 models:
   ons:

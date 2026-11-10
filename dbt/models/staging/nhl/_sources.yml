@@ -1,0 +1,60 @@
+version: 2
+
+# Raw NHL tables loaded by DLT. Keys and grain: .claude/skills/nba-nhl-ats/SKILL.md.
+
+sources:
+  - name: nhl
+    schema: nhl
+    tables:
+      - name: games
+        description: ESPN scoreboard, one row per ESPN game (pipelines/espn_odds_pipeline.py). Includes exhibitions and unplayed games.
+        columns:
+          - name: game_id
+            data_tests: [unique, not_null]
+          - name: season
+            data_tests: [not_null]
+          - name: game_date
+            description: US/Eastern date (YYYY-MM-DD).
+            data_tests: [not_null]
+
+      - name: odds
+        description: ESPN core odds, one row per (game, provider). home_spread is the puck line.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "game_id || '|' || provider_id"
+        columns:
+          - name: game_id
+            data_tests: [not_null]
+          - name: provider_id
+            data_tests: [not_null]
+
+      - name: moneypuck_team_games
+        description: MoneyPuck game-by-game team stats, one row per (game, team, situation). Raw season is the start year; use season_end.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "gameid || '|' || playerteam || '|' || situation"
+        columns:
+          - name: gameid
+            data_tests: [not_null]
+          - name: playerteam
+            data_tests: [not_null]
+          - name: situation
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['all', '5on5', '5on4', '4on5']
+
+      - name: goalie_games
+        description: NHL API boxscore goalies, one row per (game, goalie), 2019-20 on.
+        data_tests:
+          - unique:
+              arguments:
+                column_name: "game_id || '|' || player_id"
+        columns:
+          - name: game_id
+            data_tests: [not_null]
+          - name: player_id
+            data_tests: [not_null]

@@ -1,0 +1,58 @@
+version: 2
+
+models:
+  - name: stg_nhl__games
+    description: ESPN NHL games between two franchises, canonical team codes, Eastern game_date.
+    columns:
+      - name: game_id
+        data_tests: [unique, not_null]
+      - name: home_team
+        data_tests: [not_null]
+      - name: away_team
+        data_tests: [not_null]
+      - name: game_date
+        data_tests: [not_null]
+
+  - name: stg_nhl__odds
+    description: One chosen ESPN line per NHL game; rule in macros/espn_odds.sql.
+    columns:
+      - name: game_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nhl__games')
+                field: game_id
+              config:
+                severity: warn   # odds for exhibitions have no franchise game
+      - name: home_spread
+        data_tests: [not_null]
+      - name: line_source
+        data_tests: [not_null]
+
+  - name: stg_nhl__moneypuck_team_games
+    description: MoneyPuck team-game stats with canonical teams, end-year season and a repaired home flag.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nhl_game_id || team_code || situation"
+    columns:
+      - name: team_code
+        data_tests: [not_null]
+      - name: opp_code
+        data_tests: [not_null]
+      - name: is_home
+        data_tests: [not_null]
+
+  - name: stg_nhl__goalie_games
+    description: NHL API goalie lines with canonical teams.
+    data_tests:
+      - unique:
+          arguments:
+            column_name: "nhl_game_id || cast(player_id as varchar)"
+    columns:
+      - name: team_code
+        data_tests: [not_null]
+      - name: opp_code
+        data_tests: [not_null]

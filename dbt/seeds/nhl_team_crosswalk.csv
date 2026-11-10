@@ -1,0 +1,139 @@
+team_code,source,source_key,valid_from_season,valid_to_season,source_name
+ANA,espn_id,25,,,Anaheim Ducks
+BOS,espn_id,1,,,Boston Bruins
+BUF,espn_id,2,,,Buffalo Sabres
+CAR,espn_id,7,,,Carolina Hurricanes
+CBJ,espn_id,29,,,Columbus Blue Jackets
+CGY,espn_id,3,,,Calgary Flames
+CHI,espn_id,4,,,Chicago Blackhawks
+COL,espn_id,17,,,Colorado Avalanche
+DAL,espn_id,9,,,Dallas Stars
+DET,espn_id,5,,,Detroit Red Wings
+EDM,espn_id,6,,,Edmonton Oilers
+FLA,espn_id,26,,,Florida Panthers
+LAK,espn_id,8,,,Los Angeles Kings
+MIN,espn_id,30,,,Minnesota Wild
+MTL,espn_id,10,,,Montreal Canadiens
+NJD,espn_id,11,,,New Jersey Devils
+NSH,espn_id,27,,,Nashville Predators
+NYI,espn_id,12,,,New York Islanders
+NYR,espn_id,13,,,New York Rangers
+OTT,espn_id,14,,,Ottawa Senators
+PHI,espn_id,15,,,Philadelphia Flyers
+PIT,espn_id,16,,,Pittsburgh Penguins
+SEA,espn_id,124292,2022,,Seattle Kraken
+SJS,espn_id,18,,,San Jose Sharks
+STL,espn_id,19,,,St. Louis Blues
+TBL,espn_id,20,,,Tampa Bay Lightning
+TOR,espn_id,21,,,Toronto Maple Leafs
+UTA,espn_id,129764,2025,,Utah Mammoth
+UTA,espn_id,24,,2024,Arizona Coyotes
+VAN,espn_id,22,,,Vancouver Canucks
+VGK,espn_id,37,,,Vegas Golden Knights
+WPG,espn_id,28,,,Winnipeg Jets
+WSH,espn_id,23,,,Washington Capitals
+ANA,espn_abbr,ANA,,,Anaheim Ducks
+BOS,espn_abbr,BOS,,,Boston Bruins
+BUF,espn_abbr,BUF,,,Buffalo Sabres
+CAR,espn_abbr,CAR,,,Carolina Hurricanes
+CBJ,espn_abbr,CBJ,,,Columbus Blue Jackets
+CGY,espn_abbr,CGY,,,Calgary Flames
+CHI,espn_abbr,CHI,,,Chicago Blackhawks
+COL,espn_abbr,COL,,,Colorado Avalanche
+DAL,espn_abbr,DAL,,,Dallas Stars
+DET,espn_abbr,DET,,,Detroit Red Wings
+EDM,espn_abbr,EDM,,,Edmonton Oilers
+FLA,espn_abbr,FLA,,,Florida Panthers
+LAK,espn_abbr,LA,,,Los Angeles Kings
+MIN,espn_abbr,MIN,,,Minnesota Wild
+MTL,espn_abbr,MTL,,,Montreal Canadiens
+NJD,espn_abbr,NJ,,,New Jersey Devils
+NSH,espn_abbr,NSH,,,Nashville Predators
+NYI,espn_abbr,NYI,,,New York Islanders
+NYR,espn_abbr,NYR,,,New York Rangers
+OTT,espn_abbr,OTT,,,Ottawa Senators
+PHI,espn_abbr,PHI,,,Philadelphia Flyers
+PIT,espn_abbr,PIT,,,Pittsburgh Penguins
+SEA,espn_abbr,SEA,2022,,Seattle Kraken
+SJS,espn_abbr,SJ,,,San Jose Sharks
+STL,espn_abbr,STL,,,St. Louis Blues
+TBL,espn_abbr,TB,,,Tampa Bay Lightning
+TOR,espn_abbr,TOR,,,Toronto Maple Leafs
+UTA,espn_abbr,ARI,,2024,Arizona Coyotes
+UTA,espn_abbr,UTA,2026,,Utah Mammoth
+UTA,espn_abbr,UTAH,2025,2025,Utah Hockey Club
+VAN,espn_abbr,VAN,,,Vancouver Canucks
+VGK,espn_abbr,VGK,,,Vegas Golden Knights
+WPG,espn_abbr,WPG,,,Winnipeg Jets
+WSH,espn_abbr,WSH,,,Washington Capitals
+ANA,moneypuck,ANA,,,ANA
+BOS,moneypuck,BOS,,,BOS
+BUF,moneypuck,BUF,,,BUF
+CAR,moneypuck,CAR,,,CAR
+CBJ,moneypuck,CBJ,,,CBJ
+CGY,moneypuck,CGY,,,CGY
+CHI,moneypuck,CHI,,,CHI
+COL,moneypuck,COL,,,COL
+DAL,moneypuck,DAL,,,DAL
+DET,moneypuck,DET,,,DET
+EDM,moneypuck,EDM,,,EDM
+FLA,moneypuck,FLA,,,FLA
+LAK,moneypuck,L.A,,2021,L.A
+LAK,moneypuck,LAK,2022,,LAK
+MIN,moneypuck,MIN,,,MIN
+MTL,moneypuck,MTL,,,MTL
+NJD,moneypuck,N.J,,2021,N.J
+NJD,moneypuck,NJD,2022,,NJD
+NSH,moneypuck,NSH,,,NSH
+NYI,moneypuck,NYI,,,NYI
+NYR,moneypuck,NYR,,,NYR
+OTT,moneypuck,OTT,,,OTT
+PHI,moneypuck,PHI,,,PHI
+PIT,moneypuck,PIT,,,PIT
+SEA,moneypuck,SEA,2022,,SEA
+SJS,moneypuck,S.J,,2021,S.J
+SJS,moneypuck,SJS,2022,,SJS
+STL,moneypuck,STL,,,STL
+TBL,moneypuck,T.B,,2021,T.B
+TBL,moneypuck,TBL,2022,,TBL
+TOR,moneypuck,TOR,,,TOR
+UTA,moneypuck,ARI,,2024,ARI
+UTA,moneypuck,UTA,2025,,UTA
+VAN,moneypuck,VAN,,,VAN
+VGK,moneypuck,VGK,2018,,VGK
+WPG,moneypuck,ATL,,2011,ATL
+WPG,moneypuck,WPG,2012,,WPG
+WSH,moneypuck,WSH,,,WSH
+ANA,nhl_api,ANA,,,ANA
+BOS,nhl_api,BOS,,,BOS
+BUF,nhl_api,BUF,,,BUF
+CAR,nhl_api,CAR,,,CAR
+CBJ,nhl_api,CBJ,,,CBJ
+CGY,nhl_api,CGY,,,CGY
+CHI,nhl_api,CHI,,,CHI
+COL,nhl_api,COL,,,COL
+DAL,nhl_api,DAL,,,DAL
+DET,nhl_api,DET,,,DET
+EDM,nhl_api,EDM,,,EDM
+FLA,nhl_api,FLA,,,FLA
+LAK,nhl_api,LAK,,,LAK
+MIN,nhl_api,MIN,,,MIN
+MTL,nhl_api,MTL,,,MTL
+NJD,nhl_api,NJD,,,NJD
+NSH,nhl_api,NSH,,,NSH
+NYI,nhl_api,NYI,,,NYI
+NYR,nhl_api,NYR,,,NYR
+OTT,nhl_api,OTT,,,OTT
+PHI,nhl_api,PHI,,,PHI
+PIT,nhl_api,PIT,,,PIT
+SEA,nhl_api,SEA,2022,,SEA
+SJS,nhl_api,SJS,,,SJS
+STL,nhl_api,STL,,,STL
+TBL,nhl_api,TBL,,,TBL
+TOR,nhl_api,TOR,,,TOR
+UTA,nhl_api,ARI,,2024,ARI
+UTA,nhl_api,UTA,2025,,UTA
+VAN,nhl_api,VAN,,,VAN
+VGK,nhl_api,VGK,,,VGK
+WPG,nhl_api,WPG,,,WPG
+WSH,nhl_api,WSH,,,WSH

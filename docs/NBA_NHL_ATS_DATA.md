@@ -189,6 +189,80 @@ Data issues for Phase 2 (staging and the game spine):
   `(league, provider_id)`.
 - **Utah's ESPN abbreviation changed**: `UTAH` in 2025, `UTA` in 2026, same team id 129764.
 
+## dbt foundation (Phase 2, 2026-11-09)
+
+```
+seeds (main_seeds)            staging (main_staging, views)        intermediate (main_intermediate)
+nba_team_crosswalk ─┐         stg_nba__games, stg_nba__odds,       int_nba__game_spine
+nhl_team_crosswalk ─┼──────▶  stg_nba__historical_lines,     ───▶  int_nhl__game_spine
+nba_nhl_odds_providers┘       stg_nba__team_game_logs,
+                              stg_nhl__games, stg_nhl__odds,
+                              stg_nhl__moneypuck_team_games, stg_nhl__goalie_games
+```
+
+`uv run dbt build --profiles-dir profiles --select +int_nba__game_spine +int_nhl__game_spine`
+(from `dbt/`, API stopped). The daily sync now runs `dbt seed` before `dbt run`.
+
+**Team crosswalks** are generated, not hand-written: `scripts/nba_nhl_build_crosswalks.py` reads the
+distinct team keys in every raw table and writes `dbt/seeds/{nba,nhl}_team_crosswalk.csv`
+(one row per franchise code, source, key, valid-from/to season; blank = open-ended). Canonical codes
+are franchises: nba_api abbreviations (`SEA`→`OKC`, `NJN`→`BKN`, `NOH`→`NOP`) and NHL API codes
+(MoneyPuck `L.A`→`LAK`, `ATL`→`WPG`; `ARI`→`UTA` in every source). historical_lines full names map
+through the names nba_api and ESPN report. Rerun the script after loading a new season; the test
+`assert_nba_nhl_staging_keeps_franchise_rows` fails if a key goes missing. The only unmapped keys are
+exhibition sides (All-Star teams, 4 Nations countries: 28 NBA, 24 NHL keys).
+
+**One line per game** (`stg_*__odds`, rule in `dbt/macros/espn_odds.sql`, priorities in
+`dbt/seeds/nba_nhl_odds_providers.csv` keyed on `(league, provider_id)`):
+1. books only (projection sites, consensus, Opening and live feeds are `is_book = false`);
+2. per market, the close snapshot when present (2023-24 on), else the item-level final line;
+   prices from the same snapshot;
+3. spread: agrees with its own ML favourite → within 3 pts (NHL 1 goal) of the median of all books
+   on the game (≥ 3 books) → NHL standard ±1.5 → seed priority (DraftKings, ESPN BET, MGM, Caesars …;
+   5Dimes, Pinnacle, BetOnline, Bovada … for 2013-17);
+4. moneyline from the spread's book when it has one, total picked separately (agreeing with the
+   median, spread's book first). `line_source = 'espn:<book>:<close|final>'`, plus `ml_book` /
+   `total_book`.
+
+The spine falls back to `historical_lines` (flat -110, no prices) for NBA games with no ESPN line,
+and uses it alone for 2008–2013. NHL has no lines before 2019-20.
+
+### Spine coverage
+
+| | NBA | NHL |
+|---|---|---|
+| Games | 24,404 (2008–2026) | 23,222 (2009–2026) |
+| Games source | nba_api 2008–13, ESPN 2014+ | MoneyPuck 2009–19, ESPN 2020+ |
+| Stats match, ESPN seasons | 99.9–100% per season; 3 unmatched = the NBA Cup finals (not in LeagueGameLog) | 100% every season |
+| Line coverage | 98–100% every season (ESPN 2014+; SBR before, and for 79 ESPN gaps in 2014/15/17/25) | 99.8–100% 2020+ |
+| Close snapshot | 2024–2026 | 2024–2026 |
+
+Full per-season output: `uv run python scripts/nba_nhl_spine_report.py` (read-only; rerun after `dbt build`).
+
+### Findings from building it
+
+- **Late tips**: ESPN's Eastern date is one day after stats.nba.com's local date when a West-coast
+  game tips at 9 pm PT (4 games, Feb 2020). The spine matches stats rows within ±1 day.
+- **Neutral sites**: nba_api lists *both* teams as away for NBA Cup knockouts and the Paris /
+  Mexico City games (10 games, 2024-25 on). The spine matches on the unordered team pair and
+  keeps ESPN's home side.
+- **MoneyPuck home flag**: 115 Phoenix home games in 2011-12 to 2013-14 are labelled AWAY for both
+  teams. Staging treats the ARI side as home when a game has no HOME row.
+- **historical_lines names**: "Charlotte Bobcats" through 2021-22, "New Orleans Pelicans" back to
+  2007-08. Harmless with franchise codes.
+- **Noisy books**: Caesars Sportsbook (id 31), Unibet and SugarHouse are > 3 pts off the other
+  books on ~4% of NBA games (others < 0.5%); Westgate posts 0 / -110 / -110 placeholders (1.2% of
+  rows). All four sit at the bottom of the priority list.
+- **DraftKings NHL quotes no total on 29% of rows**, hence the separate total pick.
+- **ESPN BET alternates**: 18 NHL games in 2024-25, when ESPN BET is the only book, carry only a
+  ±2.5 line, and the suspended ANA–STL game (2020-03-11) has 0.0 (`is_standard_puck_line = false`
+  on all 19). 31 NHL chosen lines still disagree with their ML favourite (`line_consistent = false`).
+  Filter both in backtests.
+- **ESPN vs SBR**: spreads agree within 0.3–1.4 pts mean absolute difference per season;
+  1–11 games a season (< 1%) have opposite signs with |SBR| ≥ 2.
+- **Scores**: ESPN and nba_api agree on all 16,748 comparable games. ESPN NHL scores count the
+  shootout goal (628 games differ from MoneyPuck for that reason); 5 more differ, ESPN is used.
+
 ## First run (Mac mini — stop FastAPI first)
 
 With Claude Code, use the phase prompts in `docs/NBA_NHL_PROMPTS.md` instead of running these by hand.
@@ -223,6 +297,6 @@ One lead worth testing with efficiency features, **not validated**:
 
 ## Next
 
-1. dbt staging + team crosswalk seeds; join ESPN ↔ NBA stats ↔ historical lines, ESPN ↔ MoneyPuck ↔ goalies.
+1. ~~dbt staging + team crosswalk seeds; join ESPN ↔ NBA stats ↔ historical lines, ESPN ↔ MoneyPuck ↔ goalies.~~ Done in Phase 2 (above).
 2. Rolling pregame features with no lookahead: NBA net rating / four factors (last 10, season-to-date), rest, travel; NHL xG% 5v5, PP/PK xG, starter GSAx, rest.
 3. Efficiency-gap vs line edges (the PPA-gap analogue), validated cross-season like `cfb_edge_validation.py`.
