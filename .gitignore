@@ -176,3 +176,8 @@ web/.next-dev/
 # ignored if that rule changes: plex_clip GIFs are a personal-use derivative of
 # copyrighted films and must never be committed or served publicly.
 data/film/gifs/
+
+# Progeny — kids' personal data (names, quotes, milestones, health, photos).
+# Never commit anything under here. Listed last so no earlier "!" rule (e.g.
+# !data/**/README.md) can re-include a file inside it.
+data/progeny/

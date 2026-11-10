@@ -1,0 +1,62 @@
+version: 2
+
+models:
+  - name: mart_progeny_kids
+    description: "One row per kid (data/progeny/kids.yaml) with age and countdowns computed at query time."
+    columns:
+      - name: kid_id
+        tests: [unique, not_null]
+
+  - name: mart_progeny_timeline
+    description: "Quotes, firsts, milestones observed and learning path evidence, with age at the event."
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
+      - name: event_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['quote', 'first', 'milestone', 'path']
+
+  - name: mart_progeny_milestones
+    description: "CDC checklist for each born kid's current and next age band, observed or not yet. No scoring."
+    columns:
+      - name: milestone_id
+        tests: [not_null]
+      - name: band_role
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['current', 'next']
+
+  - name: mart_progeny_paths
+    description: "Per kid per learning path: reached level, % complete, focus level and activities, latest evidence."
+    columns:
+      - name: path_key
+        tests: [not_null]
+
+  - name: mart_progeny_reading
+    description: "Books read to each kid toward 1,000 Books Before Kindergarten (re-reads count)."
+    columns:
+      - name: kid_id
+        tests: [unique, not_null]
+
+  - name: mart_progeny_reading_titles
+    description: "Times each title was read to each kid."
+
+  - name: mart_progeny_prep_tasks
+    description: "Baby prep checklist with status (open, overdue, done)."
+    columns:
+      - name: task_id
+        tests: [unique, not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['open', 'overdue', 'done']
+
+  - name: mart_progeny_prep
+    description: "Daily burndown of open baby prep tasks against an ideal line to the due date."
+    columns:
+      - name: day
+        tests: [unique, not_null]

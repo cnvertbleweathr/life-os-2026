@@ -50,6 +50,7 @@ life-os-2026/
 │   ├── habits_pipeline.py             # habits JSONL → habits.* (latest entry per day)
 │   ├── checkin_pipeline.py            # check-in JSONL → checkin.daily_checkin
 │   ├── inbox_pipeline.py              # Capture JSONL → raw.capture_inbox
+│   ├── progeny_pipeline.py            # kids' YAML + JSONL → progeny.* (see Progeny)
 │   ├── _jsonl.py                      # shared latest-row-per-key reader
 │   ├── cfbd_pipeline.py
 │   ├── cfbd_extended_pipeline.py      # Per-game PPA (current season), recruiting, etc.
@@ -267,6 +268,7 @@ The Mac mini is the single host for the warehouse, API, UI and tunnel, so it has
 | **King Gizzard** | **Shows:** live shows and music videos in one list (All · Upcoming · Music Videos · Watchable), with embedded YouTube recordings and official videos · **Songs:** song catalog |
 | **Check-in** | 30-second daily energy/mood/focus/sleep/soreness/stress log with readiness score; saved, and re-saving updates today's entry |
 | **Capture** | Quick inbox for ideas, tasks, links and notes (⌘/Ctrl+Enter), tagged by kind and area; newest first |
+| **Progeny** (Streamlit) | Kids: birthday / due-date countdowns, this week's learning focus, timeline, learning paths, CDC milestones, read-aloud count, baby-prep burndown. See [Progeny](#progeny-kids-development) |
 
 ---
 
@@ -283,6 +285,39 @@ The API holds a read-only DuckDB connection (single-writer rule), so it never wr
 The Habits page reads today and the 21-day strip straight from the log, so a toggle shows up immediately; streaks and YTD figures update after the sync. Habits can be backfilled up to 7 days.
 
 **Write key.** narcisystem.com is public, so habit logging and everything under `/api/checkin` and `/api/inbox` require `X-ONS-Write-Token` when the request comes through Cloudflare. The first time a device needs it, the page asks for the key and keeps it in that browser. Requests on the Mac mini or over Tailscale don't need it. If `ONS_WRITE_TOKEN` isn't set, those endpoints refuse public traffic. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+
+---
+
+## Progeny (kids' development)
+
+A Streamlit page (`app/pages/8_Progeny.py`) for the kids: quotes, firsts, CDC milestones, learning paths, books read aloud (toward 1,000 Books Before Kindergarten) and a baby-prep burndown.
+
+**Privacy.** Everything about the kids lives in `data/progeny/`, which is gitignored (the rule sits at the end of `.gitignore` so nothing re-includes it). Only code, the generic reference YAML and the config template are committed. `tests/test_progeny.py` fails if `data/progeny/` ever stops being ignored. OpenClaw can't read the `progeny` schema (it isn't on the allowlist in `openclaw/rbac/policy.py`).
+
+| File | Committed? | What it is |
+|---|---|---|
+| `progeny/config/kids.example.yaml` | yes | Template for the kids config |
+| `progeny/reference/cdc_milestones.yaml` | yes | CDC *Learn the Signs. Act Early.* checklists, 2 months to 5 years, with stable ids |
+| `progeny/reference/learning_paths.yaml` | yes | Skill trees (literacy, numeracy, fine/gross motor, social-emotional, music, practical life) with levels and activities |
+| `data/progeny/kids.yaml` | **no** | Real kids: `kid_id`, `display_name`, `birthdate`, `due_date`, optional `kindergarten_start` |
+| `data/progeny/{quotes,firsts,books,milestones,path_evidence,prep_tasks}.jsonl` | **no** | Append-only logs written by the page |
+
+**Setup.** `mkdir -p data/progeny && cp progeny/config/kids.example.yaml data/progeny/kids.yaml`, then edit it. Every log row points at `kid_id`, never a name, so a kid can be renamed at any time. When the baby arrives, set `display_name` and `birthdate`: the header switches from the due-date countdown to the baby's age, and milestones start. Ages are never stored. The `mart_progeny_*` models are views that compute them from the birthdate on every read.
+
+**Logging.** Use **Quick log** on the page (quote, first, book, learning evidence, milestone, prep task), the **Seen it** buttons on the Milestones tab, or **Done** on Baby Prep. Each one appends a line with a uuid `id` to the matching JSONL file (`progeny/store.py`) and never touches DuckDB. Entries appear after the next daily sync, or run `python scripts/daily_sync.py --only progeny dbt`. To fix an entry, append a full copy with the same `id`. To delete one, append `{"id": "…", "deleted": true}`. The latest line per id wins.
+
+**Data flow.** `pipelines/progeny_pipeline.py` (`progeny` step in the daily sync) loads the YAML and the logs into the `progeny` schema, merging on `id`. Then dbt builds `stg_progeny__*` and these marts:
+
+| Mart | Grain |
+|---|---|
+| `mart_progeny_kids` | Kid: age, birthday and due-date countdowns, kindergarten target |
+| `mart_progeny_timeline` | Event (quote, first, milestone, learning evidence) with age at the event |
+| `mart_progeny_milestones` | Kid × milestone in the current and next CDC band: observed or not yet (no "behind" scoring) |
+| `mart_progeny_paths` | Kid × path: reached level, % complete, focus level and activities |
+| `mart_progeny_reading` / `_reading_titles` | Kid: reads toward 1,000 and the pace needed · Kid × title: times read |
+| `mart_progeny_prep` / `_prep_tasks` | Day: open tasks vs an ideal line to the due date · Task: status |
+
+Every staging model falls back to a typed empty select (`select_or_empty` macro) when the pipeline hasn't loaded a table yet, so dbt runs clean before anything has been logged.
 
 ---
 
