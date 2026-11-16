@@ -36,9 +36,9 @@ This is the evaluator–optimizer (reflection) pattern: one model writes, the ev
 - A tool that fails records an `error` and the rest still run. A missing log day is "unknown", not "missed".
 
 ```bash
-python -m agents.morning_brief.writer --show-prompt  # what the writer sees, no API call
-python -m agents.morning_brief.writer                # write today's brief
-python -m agents.morning_brief.snapshot --facts        # what the agent can see today
-python -m agents.morning_brief.snapshot --save         # keep it for the eval set
-pytest tests/test_morning_brief_*.py
+uv run python -m agents.morning_brief.writer --show-prompt  # what the writer sees, no API call
+uv run python -m agents.morning_brief.writer                # write today's brief
+uv run python -m agents.morning_brief.snapshot --facts        # what the agent can see today
+uv run python -m agents.morning_brief.snapshot --save         # keep it for the eval set
+uv run pytest tests/test_morning_brief_*.py
 ```

@@ -20,19 +20,26 @@ SNAPSHOT = {
 
 
 class FakeClient:
-    """Stands in for anthropic.Anthropic(): records the request, returns a canned tool call."""
+    """Stands in for anthropic.Anthropic(): records requests, returns canned replies.
 
-    def __init__(self, tool_input):
-        self.request = None
+    With prose_first=True the first reply is plain text, to exercise the nudge."""
+
+    def __init__(self, tool_input, prose_first=False):
+        self.requests = []
         self.messages = SimpleNamespace(create=self._create)
         self._input = tool_input
+        self._prose_first = prose_first
+
+    @property
+    def request(self):
+        return self.requests[-1]
 
     def _create(self, **kwargs):
-        self.request = kwargs
-        return SimpleNamespace(
-            content=[SimpleNamespace(type="tool_use", input=self._input)],
-            usage=SimpleNamespace(input_tokens=900, output_tokens=250),
-        )
+        self.requests.append(kwargs)
+        usage = SimpleNamespace(input_tokens=900, output_tokens=250)
+        if self._prose_first and len(self.requests) == 1:
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Good morning!")], usage=usage)
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._input)], usage=usage)
 
 
 def test_render_marks_stale_and_error_sections():
@@ -43,19 +50,32 @@ def test_render_marks_stale_and_error_sections():
     assert "## music: ERROR (no data)" in text
 
 
-def test_write_forces_the_tool_and_parses_claims():
-    client = FakeClient({
-        "headline": " One run, many films ",
-        "brief": "You ran 5.1 miles this week.",
-        "claims": [{"text": "You ran 5.1 miles this week.", "fact_ids": ["running.miles_7d"]}],
-    })
+TOOL_INPUT = {
+    "headline": " One run, many films ",
+    "brief": "You ran 5.1 miles this week.",
+    "claims": [{"text": "You ran 5.1 miles this week.", "fact_ids": ["running.miles_7d"]}],
+}
+
+
+def test_write_offers_the_tool_and_parses_claims():
+    client = FakeClient(TOOL_INPUT)
     draft = write(SNAPSHOT, client=client, model="test-model")
 
-    assert client.request["tool_choice"] == {"type": "tool", "name": "submit_brief"}
+    assert client.request["tools"][0]["name"] == "submit_brief"
     assert "running.miles_7d" in client.request["messages"][0]["content"]
     assert draft.headline == "One run, many films"
     assert draft.claims[0].fact_ids == ["running.miles_7d"]
     assert draft.usage == {"input_tokens": 900, "output_tokens": 250}
+
+
+def test_write_nudges_once_when_the_model_answers_in_prose():
+    client = FakeClient(TOOL_INPUT, prose_first=True)
+    draft = write(SNAPSHOT, client=client, model="test-model")
+
+    assert len(client.requests) == 2
+    assert "submit_brief" in client.requests[1]["messages"][-1]["content"]
+    assert draft.brief == "You ran 5.1 miles this week."
+    assert draft.usage == {"input_tokens": 1800, "output_tokens": 500}   # both calls counted
 
 
 def test_revision_prompt_includes_previous_draft_and_feedback():

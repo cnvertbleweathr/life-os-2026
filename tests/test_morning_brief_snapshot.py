@@ -35,6 +35,8 @@ def data(tmp_path, monkeypatch):
          "start_datetime": "2026-11-15T20:00:00-07:00"},
         {"artist": "RJD2", "title": "RJD2", "venue": "Ogden",
          "start_datetime": "2026-11-18T19:30:00-07:00"},
+        {"artist": "RJD2", "title": "RJD2 - Ages 16+", "venue": "Ogden - Denver",
+         "start_datetime": "2026-11-18T19:30:00-07:00"},   # duplicate listing
         {"artist": "Too Far", "title": "Too Far", "venue": "Gothic",
          "start_datetime": "2027-01-30T19:00:00-07:00"},
     ]}))

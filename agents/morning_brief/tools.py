@@ -283,12 +283,18 @@ def shows(ctx: Ctx) -> ToolResult:
         r.error = f"{path.name} not found"
         return r
     payload = json.loads(path.read_text())
-    upcoming = []
+    upcoming, seen = [], set()
     for s in payload.get("shows", []):
         try:
             start = datetime.fromisoformat(s["start_datetime"]).astimezone(ctx.tz)
         except (KeyError, ValueError):
             continue
+        # Ticket sites list one show several times ("Ages 16+", "Club Seating",
+        # a second venue spelling). Same start time + same venue = same show.
+        venue = (s.get("venue") or "").split(" - ")[0].strip().lower()
+        if (start, venue) in seen:
+            continue
+        seen.add((start, venue))
         if ctx.today <= start.date() <= ctx.today + timedelta(days=30):
             upcoming.append((start, s))
     upcoming.sort(key=lambda t: t[0])

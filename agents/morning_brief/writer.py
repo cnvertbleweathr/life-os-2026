@@ -7,16 +7,17 @@ ids it rests on. Those claims are what stage 3's grounding check verifies.
 
 Two ideas worth noticing:
 
-- Structured output through a forced tool call. The model must "call"
-  submit_brief, so its answer arrives as JSON matching our schema rather than
-  prose we'd have to parse.
+- Structured output through a tool call. The model answers by "calling"
+  submit_brief, so the brief arrives as JSON matching our schema rather than
+  prose we'd have to parse. (Forcing the tool with tool_choice isn't allowed
+  on every model, so we ask for it and nudge once if the model forgets.)
 - The writer takes optional `feedback` and the previous draft. Stage 1 doesn't
   use them, but stage 4's revise loop is just: write, evaluate, call write()
   again with what failed.
 
-    python -m agents.morning_brief.writer                  # today's live snapshot
-    python -m agents.morning_brief.writer --snapshot data/ai/morning_brief/snapshots/2026-11-15.json
-    python -m agents.morning_brief.writer --show-prompt    # see what the model sees, no API call
+    uv run python -m agents.morning_brief.writer                  # today's live snapshot
+    uv run python -m agents.morning_brief.writer --snapshot data/ai/morning_brief/snapshots/2026-11-15.json
+    uv run python -m agents.morning_brief.writer --show-prompt    # see what the model sees, no API call
 """
 
 from __future__ import annotations
@@ -118,23 +119,38 @@ def write(snapshot: dict[str, Any], *, feedback: list[str] | None = None,
         import anthropic   # imported here so tests and --show-prompt don't need a key
         client = anthropic.Anthropic()
 
-    response = client.messages.create(
-        model=model,
-        max_tokens=MAX_TOKENS,
-        system=PROMPT_PATH.read_text(),
-        tools=[SUBMIT_TOOL],
-        tool_choice={"type": "tool", "name": "submit_brief"},
-        messages=build_messages(snapshot, feedback, previous),
-    )
-    call = next(b for b in response.content if b.type == "tool_use")
+    # Some models reject a forced tool_choice, so the model picks the tool
+    # itself ("auto"). If it answers in prose instead, nudge it once.
+    messages = build_messages(snapshot, feedback, previous)
+    usage = {"input_tokens": 0, "output_tokens": 0}
+    call = None
+    for attempt in range(2):
+        response = client.messages.create(
+            model=model,
+            max_tokens=MAX_TOKENS,
+            system=PROMPT_PATH.read_text(),
+            tools=[SUBMIT_TOOL],
+            tool_choice={"type": "auto"},
+            messages=messages,
+        )
+        usage["input_tokens"] += response.usage.input_tokens
+        usage["output_tokens"] += response.usage.output_tokens
+        call = next((b for b in response.content if b.type == "tool_use"), None)
+        if call:
+            break
+        messages = messages + [
+            {"role": "assistant", "content": response.content},
+            {"role": "user", "content": "Submit the brief with the submit_brief tool, not as plain text."},
+        ]
+    if call is None:
+        raise RuntimeError("The writer never called submit_brief.")
     data = call.input
     return Draft(
         headline=data["headline"].strip(),
         brief=data["brief"].strip(),
         claims=[Claim(c["text"], list(c.get("fact_ids", []))) for c in data.get("claims", [])],
         model=model,
-        usage={"input_tokens": response.usage.input_tokens,
-               "output_tokens": response.usage.output_tokens},
+        usage=usage,
     )
 
 
