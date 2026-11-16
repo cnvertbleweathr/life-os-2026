@@ -181,7 +181,8 @@ life-os-2026/
 │                                      #   dbt parse, TypeScript), picks-validation.yml (Thu)
 ├── launchd/
 │   ├── com.ons.daily-sync.plist       # 9am daily sync
-│   └── com.ons.backup-duckdb.plist    # 2am nightly backup
+│   ├── com.ons.backup-duckdb.plist    # 2am nightly backup
+│   └── com.ons.offsite-backup.plist   # 2:30am copy to plex-server (30 days)
 │   # com.ons.fastapi / com.ons.nextjs live only in ~/Library/LaunchAgents on the Mac mini
 └── secrets/
 ```
@@ -190,7 +191,7 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`). The sync runs 39 steps in order. Some steps only run on certain days:
+Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`), and at 2:30am `ops/macmini/offsite_backup.sh` copies the backups to plex-server over Tailscale and keeps 30 days there (`com.ons.offsite-backup.plist`). The sync runs 39 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
@@ -274,6 +275,7 @@ cp .env.example .env
 | `KGLW_ATTENDED_SHOW_IDS` | Comma-separated show IDs from kglw.net (optional) |
 | `ONS_WRITE_TOKEN` | Any long random string — the write key for habits/check-in/Capture over narcisystem.com (see below) |
 | `HEARTBEAT_URL` / `HEALTHCHECK_SYNC_URL` | [healthchecks.io](https://healthchecks.io) ping URLs — Mac mini heartbeat and daily-sync dead-man's switch |
+| `BACKUP_OFFSITE_DEST` / `BACKUP_OFFSITE_DAYS` / `HEALTHCHECK_BACKUP_URL` | Off-machine backups: `user@plex-server:ons-backups`, days kept there (default 30), optional healthchecks.io ping |
 | `SPOTIFY_TEWNIDGE_PLAYLIST_ID` / `SPOTIFY_DEEDS_PLAYLIST_ID` | Optional overrides — must be playlists you own or collaborate on (Spotify, since Mar 2026) |
 
 ---

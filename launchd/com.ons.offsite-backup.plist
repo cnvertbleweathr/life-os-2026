@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.ons.offsite-backup.plist
+  Nightly copy of data/backups/duckdb to plex-server over Tailscale — 2:30am,
+  after com.ons.backup-duckdb (2:00am) has written and verified its copy.
+  Destination and retention come from .env (BACKUP_OFFSITE_DEST, BACKUP_OFFSITE_DAYS).
+
+  Install:
+    cp launchd/com.ons.offsite-backup.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ons.offsite-backup.plist
+
+  Run now:
+    launchctl kickstart gui/$(id -u)/com.ons.offsite-backup
+
+  Logs:
+    cat ~/Library/Logs/ons/offsite_backup.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ons.offsite-backup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/kg/life-os-2026/ops/macmini/offsite_backup.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/kg/life-os-2026</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/kg/Library/Logs/ons/offsite_backup.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/kg/Library/Logs/ons/offsite_backup.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
