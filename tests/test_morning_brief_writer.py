@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from agents.morning_brief.writer import Draft, build_messages, render_snapshot, write
 
 SNAPSHOT = {
@@ -24,11 +26,12 @@ class FakeClient:
 
     With prose_first=True the first reply is plain text, to exercise the nudge."""
 
-    def __init__(self, tool_input, prose_first=False):
+    def __init__(self, tool_input, prose_first=False, stop_reason="tool_use"):
         self.requests = []
         self.messages = SimpleNamespace(create=self._create)
         self._input = tool_input
         self._prose_first = prose_first
+        self._stop = stop_reason
 
     @property
     def request(self):
@@ -38,8 +41,10 @@ class FakeClient:
         self.requests.append(kwargs)
         usage = SimpleNamespace(input_tokens=900, output_tokens=250)
         if self._prose_first and len(self.requests) == 1:
-            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Good morning!")], usage=usage)
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._input)], usage=usage)
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Good morning!")],
+                                   usage=usage, stop_reason="end_turn")
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._input)],
+                               usage=usage, stop_reason=self._stop)
 
 
 def test_render_marks_stale_and_error_sections():
@@ -83,3 +88,10 @@ def test_revision_prompt_includes_previous_draft_and_feedback():
     content = build_messages(SNAPSHOT, ["50 miles isn't in the facts; it's 5.1."], prev)[0]["content"]
     assert "You ran 50 miles." in content
     assert "- 50 miles isn't in the facts; it's 5.1." in content
+
+
+def test_write_fails_loudly_when_cut_off():
+    # Real failure from Nov 15: the brief arrived, the claims list didn't.
+    client = FakeClient({**TOOL_INPUT, "claims": []}, stop_reason="max_tokens")
+    with pytest.raises(RuntimeError, match="max_tokens"):
+        write(SNAPSHOT, client=client, model="test-model")

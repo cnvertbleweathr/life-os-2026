@@ -34,7 +34,7 @@ from agents.morning_brief.snapshot import build_snapshot
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "writer.md"
 MODEL = os.getenv("ONS_BRIEF_MODEL", "claude-sonnet-5-5")
-MAX_TOKENS = 1500
+MAX_TOKENS = 4000   # the claims list is long; 1500 cut it off
 
 SUBMIT_TOOL = {
     "name": "submit_brief",
@@ -144,6 +144,10 @@ def write(snapshot: dict[str, Any], *, feedback: list[str] | None = None,
         ]
     if call is None:
         raise RuntimeError("The writer never called submit_brief.")
+    if response.stop_reason == "max_tokens":
+        # The tool call was cut off mid-JSON: whatever arrived is incomplete.
+        # Fail loudly rather than publish a brief whose claims went missing.
+        raise RuntimeError(f"The writer hit max_tokens ({MAX_TOKENS}); raise MAX_TOKENS.")
     data = call.input
     return Draft(
         headline=data["headline"].strip(),
