@@ -60,6 +60,8 @@ class ToolResult:
 
     def mark_as_of(self, newest: date, today: date) -> None:
         self.as_of = newest.isoformat()
+        # Also a citable fact, so "you haven't logged since Nov 6" has a source.
+        self.facts["newest_data"] = _day(newest)
         if self.freshness_days is not None:
             self.stale = (today - newest).days > self.freshness_days
 

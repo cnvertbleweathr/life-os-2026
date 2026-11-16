@@ -9,8 +9,7 @@ Two ideas worth noticing:
 
 - Structured output through a tool call. The model answers by "calling"
   submit_brief, so the brief arrives as JSON matching our schema rather than
-  prose we'd have to parse. (Forcing the tool with tool_choice isn't allowed
-  on every model, so we ask for it and nudge once if the model forgets.)
+  prose we'd have to parse. llm.call_tool handles the plumbing.
 - The writer takes optional `feedback` and the previous draft. Stage 1 doesn't
   use them, but stage 4's revise loop is just: write, evaluate, call write()
   again with what failed.
@@ -30,6 +29,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from agents.morning_brief.llm import call_tool, default_client
 from agents.morning_brief.snapshot import build_snapshot
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "writer.md"
@@ -115,40 +115,14 @@ def build_messages(snapshot: dict[str, Any], feedback: list[str] | None = None,
 
 def write(snapshot: dict[str, Any], *, feedback: list[str] | None = None,
           previous: Draft | None = None, client: Any = None, model: str = MODEL) -> Draft:
-    if client is None:
-        import anthropic   # imported here so tests and --show-prompt don't need a key
-        client = anthropic.Anthropic()
-
-    # Some models reject a forced tool_choice, so the model picks the tool
-    # itself ("auto"). If it answers in prose instead, nudge it once.
-    messages = build_messages(snapshot, feedback, previous)
-    usage = {"input_tokens": 0, "output_tokens": 0}
-    call = None
-    for attempt in range(2):
-        response = client.messages.create(
-            model=model,
-            max_tokens=MAX_TOKENS,
-            system=PROMPT_PATH.read_text(),
-            tools=[SUBMIT_TOOL],
-            tool_choice={"type": "auto"},
-            messages=messages,
-        )
-        usage["input_tokens"] += response.usage.input_tokens
-        usage["output_tokens"] += response.usage.output_tokens
-        call = next((b for b in response.content if b.type == "tool_use"), None)
-        if call:
-            break
-        messages = messages + [
-            {"role": "assistant", "content": response.content},
-            {"role": "user", "content": "Submit the brief with the submit_brief tool, not as plain text."},
-        ]
-    if call is None:
-        raise RuntimeError("The writer never called submit_brief.")
-    if response.stop_reason == "max_tokens":
-        # The tool call was cut off mid-JSON: whatever arrived is incomplete.
-        # Fail loudly rather than publish a brief whose claims went missing.
-        raise RuntimeError(f"The writer hit max_tokens ({MAX_TOKENS}); raise MAX_TOKENS.")
-    data = call.input
+    data, usage = call_tool(
+        client or default_client(),
+        model=model,
+        system=PROMPT_PATH.read_text(),
+        messages=build_messages(snapshot, feedback, previous),
+        tool=SUBMIT_TOOL,
+        max_tokens=MAX_TOKENS,
+    )
     return Draft(
         headline=data["headline"].strip(),
         brief=data["brief"].strip(),
