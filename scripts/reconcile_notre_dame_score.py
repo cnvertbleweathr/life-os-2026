@@ -24,6 +24,9 @@ import duckdb
 
 DB_PATH = str(ROOT / "data" / "warehouse" / "ons.duckdb")
 
+# The traced pick is Week 1 of the 2026 season; pinned on purpose, not "this year".
+SEASON = 2026
+
 
 def trace_score_game():
     """
@@ -149,15 +152,15 @@ def _trace_from_row(row, con):
     from backtest_walk_forward import score_game, build_tiers
     import pandas as pd
 
-    tiers = build_tiers(con, 2026)
+    tiers = build_tiers(con, SEASON)
     sp_df = con.execute('SELECT team, season, rating FROM cfbd.sp_ratings').df()
     coaches_df = con.execute(
         'SELECT school AS team, year AS season, full_name AS coach FROM cfbd.coaches'
     ).df()
     prior_sp = {(r['team'], int(r['season'])): float(r['rating'])
                 for _, r in sp_df.iterrows()}
-    curr = coaches_df[coaches_df['season'] == 2026]
-    prev = coaches_df[coaches_df['season'] == 2025]
+    curr = coaches_df[coaches_df['season'] == SEASON]
+    prev = coaches_df[coaches_df['season'] == SEASON - 1]
     merged = curr.merge(prev, on='team', suffixes=('_c', '_p'))
     coach_changes = set(merged[merged['coach_c'] != merged['coach_p']]['team'])
 

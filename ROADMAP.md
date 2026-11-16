@@ -1,6 +1,6 @@
 # ONS Product Roadmap
 
-Last updated: 2026-11-07
+Last updated: 2026-11-15
 
 ---
 
@@ -114,8 +114,8 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |
 | 🟢 | Remove hardcoded 2026 | 11 files updated with `datetime.now().year` |
 | 🟢 | Smoke tests | `tests/smoke_test.py` — 18/18 passing |
-| 🟢 | Python tests | `tests/` — 133 tests (write path, freshness, Spotify compat, calendar auth, CFB review, ESPN, film, LED panel), all in CI |
-| 🟡 | GitHub Actions CI | `ci.yml`: syntax, Python tests, ShellCheck, hardcode audit, dbt parse, TypeScript; Thursday picks report (`picks-validation.yml`). Red as of 2026-11-07: Python tests can't import Pillow (fix in #31), and the hardcoded-year audit flags `scripts/reconcile_notre_dame_score.py:160` (`season == 2025`, since before Nov 6; owner decision) |
+| 🟢 | Python tests | `tests/` — 236 tests as of #43 (write path, freshness, Spotify compat, calendar auth, CFB review, ESPN, film, LED panel, Progeny, NBA/NHL API), all in CI |
+| 🟢 | GitHub Actions CI | `ci.yml`: syntax, Python tests, ShellCheck, hardcode audit, dbt parse, TypeScript; Thursday picks report (`picks-validation.yml`). Green again 2026-11-15: Pillow import fixed (#31); `reconcile_notre_dame_score.py` traces a 2026 Week 1 pick, so its season is now a pinned `SEASON` constant instead of a literal `== 2025` |
 | 🟢 | OpenClaw integrated | Non-blocking sync step — to be retired (see Agentic Layer A0) |
 | 🟡 | Token health checks | Detect expired auth before sync fails |
 | 🟡 | Data freshness checks | `scripts/freshness_check.py` as a daily-sync step: steps failing 2+ runs or overdue (interval learned per step), sync not running, backups > 36h, CFB scores stale in season, Daily 10 and show listings. Built to catch the two Oct 2026 silent failures (CFB scores stuck at Week 4 for three weeks; `sync_playlist_artists` failing six days). Written 2026-10-23, deploys with the Mac mini runbook |
@@ -146,8 +146,8 @@ Domain: narcisystem.com (narcisystem.com → :3000, api.narcisystem.com → :800
 
 | Status | Item | Notes |
 |--------|------|-------|
-| 🟢 | FastAPI layer — 14 routers | Read routers plus `checkin`, `inbox` and the film review queue (write path), and `display` (LED panel, owner only) |
-| 🟢 | All 12 Next.js pages | Home, Habits, Fitness, Reading, Film, Goals, Music (incl. Shows), Sports, CFB, KGLW, Check-in, Capture; `/shows` redirects to `/music` |
+| 🟢 | FastAPI layer — 16 routers | Read routers plus `checkin`, `inbox` and the film review queue (write path), `display` (LED panel, owner only), `progeny` (owner only, reads included) and `nba-nhl` |
+| 🟢 | All 15 Next.js pages | Home, Habits, Fitness, Reading, Film, Goals, Music (incl. Shows), Sports, CFB, NBA, NHL, KGLW, Progeny, Check-in, Capture; `/shows` redirects to `/music` |
 | 🟢 | Film page | `/film`: watches, scene review queue (owner only), Screening Room; magenta area colour; cinema title scene (2026-11-07). See [Film](#film--watches-pixel-gifs-and-the-led-panel) |
 | 🟢 | Web write path | Habit toggles, Check-in and Capture persist via append-only JSONL (`api/store.py`), loaded by the daily sync. FastAPI never writes to DuckDB (2026-10-21) |
 | 🟢 | Write key for personal endpoints | `ONS_WRITE_TOKEN`; required through Cloudflare, not locally or over Tailscale; fails closed if unset (2026-10-21) |
@@ -229,6 +229,8 @@ Underdogs (official): 33-9 (78.6% cover, +50.0% ROI)
 | Daily 10 cover finishing | 🔵 | PhotoCraft step after the DALL-E image: crop to square, add "DAILY 10" title, date and vignette. Goes in `spotify_daily10_decorate.py` between `_openai_generate_image_bytes` and `_to_jpeg_bytes` (which already handles Spotify's size limit) |
 | CFBD | 🟢 | CFB games, 2021-2025 + 2026 live. `cfbd_pipeline` added to daily_sync 2026-10-17 — 2026 scores had stalled after Week 4 because only the PPA pipeline was scheduled |
 | KGLW | 🟢 | Daily via `daily_sync` (`kglw`, `--shows-only`): shows incl. announced dates, songs, venues, jam chart |
+| ESPN odds (NBA/NHL) | 🟢 | In daily_sync since 2026-11-09 (`espn_odds_nba_nhl`): snapshots lines before ESPN drops them at final; last 3 days + upcoming |
+| nba_api / MoneyPuck | 🟢 | NBA team stats daily; NHL team + goalie stats (MoneyPuck) Mon/Thu |
 | YouTube (KGLW) | 🟢 | Daily via `daily_sync` (`kglw_youtube`): uploads → `mart_kglw_youtube_matches`; music-videos playlist → `mart_kglw_music_videos`. New "Live in…" titles may need `festival_aliases` rows — check with `scripts/kglw_video_qa.py` |
 | KGLW show links | 🔴 | kglw.net `links/show/{id}` returns a PHP error server-side; recordings come from YouTube instead |
 | AEG/Ticketmaster | 🟢 | Denver shows |
@@ -261,6 +263,17 @@ Plan: [`docs/film/ONS_FILM_SECTION_PLAN.md`](./docs/film/ONS_FILM_SECTION_PLAN.m
 | ⚪ | Clip tuning | Suggested timestamps are rough (set clips on approval); bright clips stay bright on the dark matrix palette |
 | ⚪ | Rewatch semantics | A film played on Plex on two days counts as a rewatch; the plan's "rewatch gets its own GIF?" question is answered "no" for now (one GIF per film) |
 | ⚪ | Shared animation ticker | Each Screening Room loop runs its own rAF; worth one shared ticker if the library grows large |
+
+---
+
+## Progeny — Kids' Development Tracker
+
+Shipped 2026-11-09/10 (#34 Streamlit, #37 rebuilt on Next.js + FastAPI). Kid data stays in gitignored `data/progeny/` (a test fails if that changes); every `/api/progeny` endpoint is owner-only, reads included; the `progeny` schema is off the agent read allowlist.
+
+| Status | Item | Notes |
+|--------|------|-------|
+| 🟢 | Logging + marts | JSONL logs → `progeny` daily-sync step → 8 `mart_progeny_*` views (ages computed at read time, never stored) |
+| 🟢 | `/progeny` page | Countdowns, weekly focus, Timeline / Learning paths / Milestones / Reading / Baby prep, pixel backyard scene. No area colour (owner decision) |
 
 ---
 
@@ -396,8 +409,8 @@ Extend CFB model to other sports. Walk-forward backtesting, per-season ablation,
 
 | Sport | Status |
 |--------|--------|
-| NBA | 🔵 **Next — build in the offseason.** Net rating, pace, rest, injury signals |
-| NHL | 🔵 **Next — build in the offseason.** Corsi, Fenwick, PDO, goalie signals |
+| NBA | 🟡 Pipeline + UI live, **no rule shipped**. Phases 0–7 merged 2026-11-09/10 (#33, #35, #36, #39–43). Walk-forward validation rejected all 15 candidates; every game logs as NO_BET. `nba_totals_open_v1` runs as a paper forward test only |
+| NHL | 🟡 Pipeline + UI live, **no rule shipped**. Same phases; all 14 candidates rejected (closest: back-to-back vs rested ML, +4.1%, CI crosses 0). Every game logs as NO_BET |
 | NFL | 🔵 Planned — rest, efficiency, QB, weather signals |
 
 **Data plan for NBA/NHL (decided 2026-10-27):**
@@ -406,6 +419,10 @@ Extend CFB model to other sports. Walk-forward backtesting, per-season ablation,
 - **Results, schedules, box scores, injuries from ESPN** (scoreboard, team schedule, summary, team injuries). Map ESPN ids once into a `espn.teams` table
 - **Not used: ESPN's own predictive outputs** (predictor, win probability, BPI-style game projections). Models are built on raw inputs only
 - CFB is unchanged: CFBD stays the source for lines, SP+ and PPA
+
+**Built (2026-11-09/10):** backfill + coverage profile, dbt spines and team crosswalks, no-lookahead pregame features, edge validation (`scripts/nba_nhl_edges.py`, reviewed by the `ats-edge-validator` agent), team profiles, daily picks + grading, and `/nba` + `/nhl` slates in Degenerates Corner. Plan and prompts: [`docs/NBA_NHL_PROMPTS.md`](./docs/NBA_NHL_PROMPTS.md).
+
+**Next:** grade the NBA paper test as the season runs; re-run validation after the season with 2026-27 added. No rule ships without `ats-edge-validator` sign-off.
 
 - ⚪ **ESPN FPI (CFB) as a reference rating.** Interested, not now. `sports.core.api.espn.com/v2/sports/football/leagues/college-football/seasons/{year}/powerindex`, back to 2005. Would only be a cross-check next to SP+/PPA, not a model input, given the no-ESPN-predictive rule
 
