@@ -462,7 +462,53 @@ sudo cloudflared service uninstall
 
 ---
 
+## Off-machine backups
+
+`ops/macmini/offsite_backup.sh` runs at 2:30am (after the 2:00 local backup) and copies `data/backups/duckdb/ons_*.duckdb` to plex-server over Tailscale. plex-server keeps 30 days: up to about 35 GB, since some days have two backups (2:00 and the end of the 9:00 sync) at ~580 MB each; the Mac mini still keeps 7. Copies are only pruned after a successful send, and the newest copy is never pruned.
+
+**1. Let the Mac mini SSH to plex-server without a password** (Tailscale must be connected: `tailscale status` shows plex-server):
+
+```bash
+ls ~/.ssh/id_ed25519.pub || ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519
+ssh-copy-id <user>@plex-server
+ssh -o BatchMode=yes <user>@plex-server 'which rsync && df -h ~'
+```
+
+The last command must print rsync's path and show room for ~35 GB. If rsync is missing: `sudo apt install rsync` on plex-server.
+
+**2. Configure `.env`:**
+
+```
+BACKUP_OFFSITE_DEST=<user>@plex-server:ons-backups
+BACKUP_OFFSITE_DAYS=30
+HEALTHCHECK_BACKUP_URL=https://hc-ping.com/<uuid>   # optional: cron 30 2 * * *, America/Denver, grace 1h
+```
+
+**3. Run it once by hand** (the first run sends all 7 local backups, a few GB):
+
+```bash
+bash ops/macmini/offsite_backup.sh
+ssh <user>@plex-server 'ls -lh ~/ons-backups'
+```
+
+**4. Install the schedule:**
+
+```bash
+cp launchd/com.ons.offsite-backup.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ons.offsite-backup.plist
+```
+
+Each run appends to `data/backups/offsite_log.jsonl` and logs to `~/Library/Logs/ons/offsite_backup.log`.
+
+**Restore from plex-server:** copy a file back, then use the normal restore:
+
+```bash
+scp <user>@plex-server:ons-backups/ons_YYYY-MM-DD_HHMMSS.duckdb data/backups/duckdb/
+python scripts/backup_duckdb.py --restore ons_YYYY-MM-DD_HHMMSS
+```
+
+---
+
 ## Later (not part of this session)
 
 - **Run FastAPI/Next.js without a login session:** convert them to LaunchDaemons with `UserName`. This needs `daily_sync.py`'s FastAPI stop/start moved to the system domain (which needs root). It isn't needed under Option B.
-- **Off-machine backups:** copy `data/backups/duckdb` to plex-server nightly over Tailscale (`rsync`). Today the Mac mini is the only copy.

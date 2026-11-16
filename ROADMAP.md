@@ -126,7 +126,7 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟡 | Unattended recovery | `ops/macmini/harden.sh`: never sleep, wake-on-LAN, restart after power loss, no auto-installed macOS updates. Plus Tailscale → `tailscaled` (runs before login, Tailscale SSH) and cloudflared → boot daemon. Pending: run on the Mac mini |
 | 🔵 | FileVault decision | Keep it (unlock over SSH from the LAN via plex-server, macOS 26) or turn it off with auto-login. Record the choice here |
 | 🟡 | Heartbeat + dead-man's switches | healthchecks.io: 5-min machine heartbeat (`/fail` names the down service) and daily-sync check. Pending: create checks, set `HEARTBEAT_URL`/`HEALTHCHECK_SYNC_URL` |
-| 🔵 | Off-machine backups | Mac mini holds the only DuckDB copies; rsync nightly to plex-server over Tailscale |
+| 🟡 | Off-machine backups | `ops/macmini/offsite_backup.sh` + `com.ons.offsite-backup.plist` (2:30am): rsync `data/backups/duckdb` to `plex-server:~/ons-backups`, 30 days kept there, optional healthchecks.io ping. Pending: install on the Mac mini once Tailscale reaches plex-server (unreachable 2026-11-15); see runbook → Off-machine backups |
 | 🔵 | Mac Mini health dashboard | Disk, DuckDB size, dbt, backups, Tailscale (`harden.sh check` covers the CLI side) |
 
 ---
