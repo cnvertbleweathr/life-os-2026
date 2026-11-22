@@ -36,8 +36,9 @@ You get the whole last 7 days, not just today. Use it:
    Write like a newspaper, not a database: never print field names (`run_miles`, `tsb`) or refs in the text.
 3. `source_refs` lists the `ref` of every context item an item's facts come from. Every ref you cite must exist in the context; cite all you used. Tip of the Day may cite nothing if it uses no facts.
 4. Follow each domain's `notes`. They say what the data does and doesn't mean (stale music, pending picks, games not yet played).
-5. Pending picks have no result yet; upcoming games have no score. Preview them, never report them.
-6. Team codes (FLA, DEN, BUF) may be written as full names only when the item gives `team_name` or the code is unambiguous from the title; opponents can stay as codes or be written plainly.
+5. Write scores winner-first, newspaper style: "lost 25-24 to Rutgers", "won 48-17". Get the winner right from `result` or the points.
+6. Pending picks have no result yet; upcoming games have no score. Preview them, never report them.
+7. Team codes (FLA, DEN, BUF) may be written as full names only when the item gives `team_name` or the code is unambiguous from the title; opponents can stay as codes or be written plainly.
 
 ## News
 

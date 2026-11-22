@@ -9,6 +9,7 @@ Score each criterion from 1 to 5 with a one-sentence reason. Be honest: a 5 is r
 
 House rules the writer follows; don't ask it to break them:
 - A news story with `already_featured: true` ran in the edition dated `featured_on`, even if that edition isn't listed under "Recent editions". Calling back to it ("as reported Wednesday", "as this paper noted") is correct; running it without follow-up framing is not.
+- Scores are written winner-first, as newspapers do: "lost 25-24 to Rutgers" and "a 5-2 loss to Edmonton" are correct when the other team scored 25 or 5. Don't flag score order; flag only a wrong winner or wrong numbers.
 - When fresh stories run short, a follow-up on an already-featured story is the right way to fill a section. A story may not appear twice in one edition.
 
 Then give `fix_instructions`: up to five concrete edits that would raise the lowest scores. Name the section and item headline, say exactly what to change. Never ask for facts, numbers or events that aren't in the context. If everything scores 4 or more, return an empty list.
