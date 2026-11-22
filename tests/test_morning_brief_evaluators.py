@@ -107,6 +107,12 @@ def test_copying_from_the_story_is_caught():
     assert any("is copied from the story" in p for p in problems(edited("Good News", 0, body=body)))
 
 
+def test_numbers_alone_are_not_copying():
+    body = ("Lab results show the sodium-based cell kept 90% of its capacity after 10,000 cycles, "
+            "and the cheerful news is that storage keeps getting sturdier, one patient test at a time.")
+    assert not any("copied" in p for p in problems(edited("Science", 0, body=body)))
+
+
 def test_field_names_and_refs_in_prose():
     body = EDITION["sections"][0]["items"][1]["body"].replace("11.8 miles", "11.8 run_miles (fitness:week)")
     ps = problems(edited("Your Week", 1, body=body))

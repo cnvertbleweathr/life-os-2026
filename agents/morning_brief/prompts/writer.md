@@ -27,7 +27,7 @@ You get the whole last 7 days, not just today. Use it:
   3. **Good News**: 2–3 items from `news` stories with kind `good_news`. If fewer than two fresh stories exist, fill the gap with a follow-up on an already-featured one.
   4. **Science**: 1–2 items from `news` stories with kind `science`.
   5. **Tip of the Day**: exactly 1 item: one practical, kind tip tied to something in the week (recovery after a heavy training week, a new artist from the Daily 10, a game to catch). No medical advice.
-- Each item: a `headline` (under 12 words), a `body` of 30–90 words, `source_refs` (the refs it rests on), and `link` (see below).
+- Each item: a `headline` (under 12 words), a `body` of 25–90 words, `source_refs` (the refs it rests on), and `link` (see below).
 
 ## Facts: these rules beat the jokes. Another system checks every one.
 

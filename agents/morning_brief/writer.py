@@ -48,7 +48,7 @@ ANALYZER = "morning_brief_writer"
 SECTIONS = ["Your Week", "Sports Desk", "Good News", "Science", "Tip of the Day"]
 ITEM_COUNTS = {"Your Week": (1, 3), "Sports Desk": (2, 4), "Good News": (2, 3),
                "Science": (1, 2), "Tip of the Day": (1, 1)}
-BODY_WORDS = (30, 90)
+BODY_WORDS = (25, 90)   # 30 caused revisions over 28-29-word bodies
 HEADLINE_WORDS = 12
 LEAD_WORDS = 14
 

@@ -99,8 +99,9 @@ def _weekday(iso: str | None) -> str | None:
 
 
 def _copied_run(text: str, source: str, n: int = COPY_RUN) -> str | None:
-    words = re.findall(r"[a-z0-9']+", (text or "").lower())
-    src = " " + " ".join(re.findall(r"[a-z0-9']+", (source or "").lower())) + " "
+    # Numbers are left out: the writer must copy them exactly, so they aren't evidence of copying.
+    words = [w for w in re.findall(r"[a-z0-9']+", (text or "").lower()) if not w.isdigit()]
+    src = " " + " ".join(w for w in re.findall(r"[a-z0-9']+", (source or "").lower()) if not w.isdigit()) + " "
     for i in range(len(words) - n + 1):
         run = " ".join(words[i:i + n])
         if f" {run} " in src:
