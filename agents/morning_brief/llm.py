@@ -14,6 +14,7 @@ Every call is logged to data/ai/generations.jsonl in the OpenClaw shape
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Any
 
@@ -21,6 +22,7 @@ from api.store import JsonlLog, now_local
 
 GENERATIONS_LOG = JsonlLog("ai", "generations.jsonl")
 MONTHLY_BUDGET_USD = 5.00   # shared with OpenClaw and the film scripts (openclaw/config.py)
+REQUEST_TIMEOUT_S = float(os.getenv("ONS_LLM_TIMEOUT_S", "90"))
 
 # $ per million tokens (Claude API list prices, Nov 2026). Thinking tokens bill as output.
 PRICE_PER_MTOK = {
@@ -117,5 +119,9 @@ def call_tool(client: Any, *, model: str, system: str, messages: list[dict],
 
 
 def default_client() -> Any:
+    """A client whose requests give up fast. The SDK's default (600s) equals the
+    daily_sync step timeout, so on 2026-11-22 one stalled request ate the whole
+    step and nothing was saved or logged. Normal calls take ~15s; the SDK
+    retries a timed-out request up to max_retries times."""
     import anthropic   # imported lazily so tests and dry runs need no key
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(timeout=REQUEST_TIMEOUT_S, max_retries=2)

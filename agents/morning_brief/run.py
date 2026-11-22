@@ -45,6 +45,9 @@ from agents.morning_brief.writer import Edition, brief_dir, recent_editions, to_
 
 MAX_REVISIONS = 2
 NEWS_SECTIONS = ("Good News", "Science")
+# No new revision starts after this; the best attempt is saved instead. Keeps a
+# stalled run inside daily_sync's step timeout (900s) with a result on disk.
+DEADLINE_S = 480
 
 
 # ── the loop ─────────────────────────────────────────────────────────────────
@@ -56,13 +59,20 @@ def _rank(ev: Evaluation) -> tuple[int, int]:
 
 
 def run_loop(ctx: dict[str, Any], recent: list[dict], *, client: Any = None, judge_client: Any = None,
-             max_revisions: int = MAX_REVISIONS, log=print) -> dict[str, Any]:
+             max_revisions: int = MAX_REVISIONS, log=print, deadline_s: float = DEADLINE_S,
+             clock=time.monotonic) -> dict[str, Any]:
     attempts: list[dict[str, Any]] = []
     previous: Edition | None = None
     feedback: list[str] | None = None
     best: tuple[Edition, Evaluation] | None = None
+    stopped_early = None
+    started = clock()
 
     for n in range(max_revisions + 1):
+        if n > 0 and clock() - started > deadline_s:
+            stopped_early = "deadline"
+            log(f"  stopping: {deadline_s:.0f}s deadline passed; keeping the best attempt so far")
+            break
         label = "draft" if n == 0 else f"revision {n}"
         ed = write(ctx, feedback=feedback, previous=previous, recent=recent, client=client)
         ev = evaluate(ed.data, ctx, recent, client=judge_client)
@@ -88,6 +98,7 @@ def run_loop(ctx: dict[str, Any], recent: list[dict], *, client: Any = None, jud
         "edition": ed.data,
         "evaluation": ev.to_dict(),
         "revisions": len(attempts) - 1,
+        "stopped_early": stopped_early,
         "attempts": attempts,
         "cost_usd": round(sum(a["cost_usd"] for a in attempts), 6),
         "models": {"writer": ed.model, "judge": ev.judgement.model if ev.judgement else None},

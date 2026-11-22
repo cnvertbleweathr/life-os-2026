@@ -706,11 +706,13 @@ def build_steps(year: int) -> List[Step]:
         # ------------------------------------------------------------------
         Step(
             name="morning_brief",
-            cmd=["python3", "-m", "agents.morning_brief.run", "--print"],
+            # -u: unbuffered, so the step log keeps the progress lines even if
+            # the step is stopped (on 2026-11-22 a stalled API call left it empty).
+            cmd=["python3", "-u", "-m", "agents.morning_brief.run", "--print"],
             run_if_exists=ROOT / "agents/morning_brief/run.py",
             required=False,
             tags=["brief", "ai"],
-            timeout_s=600,
+            timeout_s=900,   # above run.py's 480s revision deadline + one slow attempt
         ),
     ]
 

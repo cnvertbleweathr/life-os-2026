@@ -156,3 +156,22 @@ def test_cli_dry_run_writes_nothing(_isolated, monkeypatch):
     monkeypatch.setattr(E, "default_client", lambda: client)
     assert R.main(["--fixture", "--dry-run"]) == 2               # needs_review
     assert not (_isolated / "data" / "ai" / "morning_brief" / "fixture_runs").exists()
+
+
+# ── hangs: a stalled request must not eat the whole daily_sync step ──────────
+
+def test_client_has_a_short_request_timeout(monkeypatch):
+    from agents.morning_brief import llm
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    client = llm.default_client()
+    assert client.timeout == llm.REQUEST_TIMEOUT_S <= 120     # SDK default is 600s, = the step timeout
+    assert client.max_retries == 2
+
+
+def test_no_new_revision_after_the_deadline():
+    clock = iter([0.0, 1000.0, 1000.0, 1000.0])                # first attempt "took" 1000s
+    client = FakeClient([broken(), CLEAN], [GOOD, GOOD])
+    res = R.run_loop(CTX, [], client=client, judge_client=client, log=lambda *_: None,
+                     deadline_s=480, clock=lambda: next(clock))
+    assert res["status"] == "needs_review" and res["revisions"] == 0
+    assert res["stopped_early"] == "deadline"
