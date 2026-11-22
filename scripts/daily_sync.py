@@ -693,6 +693,25 @@ def build_steps(year: int) -> List[Step]:
             required=False,
             tags=["infra"],
         ),
+
+        # ------------------------------------------------------------------
+        # Morning brief — deliberately the last step. Reads brief_context_7d
+        # (rebuilt by dbt above), writes and evaluates the newspaper edition
+        # (up to 2 revisions, shared $5/month AI budget), saves
+        # data/brief/<date>.json + .md, records featured news in
+        # brief.featured_news (the API is still stopped, so the write lock is
+        # free), and prints it on weekdays. Not required: exit 2
+        # (needs_review) or any failure shows in health.txt and nothing else
+        # is affected. Skips itself if today's edition is already published.
+        # ------------------------------------------------------------------
+        Step(
+            name="morning_brief",
+            cmd=["python3", "-m", "agents.morning_brief.run", "--print"],
+            run_if_exists=ROOT / "agents/morning_brief/run.py",
+            required=False,
+            tags=["brief", "ai"],
+            timeout_s=600,
+        ),
     ]
 
 
