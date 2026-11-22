@@ -599,6 +599,18 @@ def build_steps(year: int) -> List[Step]:
         ),
 
         # ------------------------------------------------------------------
+        # News — Good News + Science headlines for the morning brief.
+        # Must run before dbt so news_for_brief / brief_context_7d rebuild.
+        # ------------------------------------------------------------------
+        Step(
+            name="news",
+            cmd=["python3", "pipelines/news_pipeline.py"],
+            run_if_exists=ROOT / "pipelines/news_pipeline.py",
+            tags=["news", "brief", "pipelines"],
+            timeout_s=300,
+        ),
+
+        # ------------------------------------------------------------------
         # Goals + dbt — always run, required
         # ------------------------------------------------------------------
         Step(
