@@ -92,7 +92,15 @@ fitness as (
             'active_minutes',    coalesce(sum(a.moving_minutes) filter (where a.activity_date >= p.week_start), 0),
             'prev_week_run_miles', round(coalesce(sum(a.distance_miles) filter (where a.is_run and a.activity_date < p.week_start), 0), 1),
             'run_streak_days',   (select days from run_streak),
-            'newest_activity_date', max(a.activity_date)
+            'newest_activity_date', max(a.activity_date),
+            -- SugarWOD is a manual export (a few times a year), so these can lag
+            'crossfit_days',     (select count(distinct w.date) from sugarwod.workouts w, params q
+                                  where w.date between q.week_start and q.today),
+            'crossfit_workouts', (select count(*) from sugarwod.workouts w, params q
+                                  where w.date between q.week_start and q.today),
+            'crossfit_prs',      (select count(*) from sugarwod.workouts w, params q
+                                  where w.date between q.week_start and q.today and w.pr),
+            'newest_crossfit_date', (select max(date) from sugarwod.workouts)
         )
     from activities a, params p
     where a.activity_date between p.week_start - 7 and p.today
