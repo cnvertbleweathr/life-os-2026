@@ -17,15 +17,12 @@ write lock (in daily_sync, after the dbt step, while the API is stopped).
 from __future__ import annotations
 
 import argparse
-import os
 from datetime import date, timedelta
-from pathlib import Path
 
 import duckdb
 
+from agents.morning_brief.tools import DB_PATH
 from pipelines.news_pipeline import article_id, canonical_url
-
-ROOT = Path(__file__).resolve().parents[2]
 
 # Keep in step with the on-run-start hook in dbt/dbt_project.yml, which
 # creates the same table so news_for_brief builds on a fresh warehouse.
@@ -43,7 +40,7 @@ DDL = [
 
 
 def db_path() -> str:
-    return os.getenv("ONS_DUCKDB_PATH", str(ROOT / "data" / "warehouse" / "ons.duckdb"))
+    return str(DB_PATH)   # ONS_DB_PATH, same as the rest of the agent
 
 
 def ensure_table(con: duckdb.DuckDBPyConnection) -> None:
