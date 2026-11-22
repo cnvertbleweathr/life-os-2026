@@ -17,6 +17,7 @@ its stories are not recorded as featured, so they stay fresh for tomorrow.
     uv run python -m agents.morning_brief.run --dry-run       # full loop, prints, writes nothing
     uv run python -m agents.morning_brief.run --fixture       # committed sample; saves under fixture_runs/
     uv run python -m agents.morning_brief.run --force         # redo a day that's already published
+    uv run python -m agents.morning_brief.run --print         # also print it (weekdays, published only)
     uv run python -m agents.morning_brief.run --record-featured 2026-11-22   # retry recording after a lock error
 
 Exit codes: 0 published (or already published), 2 saved as needs_review, 1 error.
@@ -143,6 +144,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true", help="rerun even if today's edition is already published")
     p.add_argument("--record-featured", metavar="DATE", help="retry record_featured for a saved edition and exit")
     p.add_argument("--max-revisions", type=int, default=MAX_REVISIONS)
+    p.add_argument("--print", dest="print_it", action="store_true",
+                   help="print a published live edition (weekdays only; see print_edition.py)")
     args = p.parse_args(argv)
 
     if args.record_featured:
@@ -201,6 +204,13 @@ def main(argv: list[str] | None = None) -> int:
               f"(retry: python -m agents.morning_brief.run --record-featured {today})")
     elif result["status"] == "needs_review":
         print("needs review: not recorded as featured")
+    if args.print_it and not fixture:
+        try:
+            from agents.morning_brief.print_edition import print_edition
+            out = print_edition(path, auto=True)
+            print(f"print: job {out['job']}" if out["printed"] else f"print: skipped ({out['reason']})")
+        except Exception as e:   # a jammed or sleeping printer must not fail the brief
+            print(f"print failed: {type(e).__name__}: {e}", file=sys.stderr)
     return 0 if result["status"] == "published" else 2
 
 
