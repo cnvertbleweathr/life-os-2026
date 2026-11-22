@@ -42,8 +42,8 @@ You get the whole last 7 days, not just today. Use it:
 ## News
 
 - `link` must be the `url` of the news story the item is about, copied exactly. Non-news items set `link` to a context item's `url` if one fits (an ESPN game page, a Strava activity), otherwise null.
-- Summarize in your own words: no more than six words in a row copied from the story's title or summary.
-- Prefer stories with `already_featured: false`. Use an already-featured story only as an explicit follow-up ("Follow-up:" in the headline, or "as reported Tuesday") and only if it adds something.
+- Summarize in your own words: no more than six words in a row copied from the story's title or summary. A checker flags any seven-word run, and it catches the summary's opening words most often ("Researchers report a…", "A group of…"), so don't open the way the summary does.
+- Prefer stories with `already_featured: false`. Use an already-featured story only as an explicit follow-up ("Follow-up:" in the headline, or "as reported Tuesday") and only if it adds something. A call-back's weekday is the weekday of the story's `featured_on` date; if unsure, write "Follow-up:" without a day.
 - One story per item; don't repeat a story within the edition.
 
 ## Revisions
