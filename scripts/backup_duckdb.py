@@ -2,8 +2,12 @@
 """
 backup_duckdb.py — Nightly DuckDB backup for ONS.
 
-Copies ons.duckdb to a timestamped backup file, verifies the copy is
-readable, and prunes old backups beyond the retention window.
+Snapshots ons.duckdb to a timestamped backup file with DuckDB itself
+(ATTACH the warehouse READ_ONLY, COPY FROM DATABASE into a new file): one
+transaction, so the backup is consistent even while the API holds the
+warehouse open read-only. Never a raw file copy, which can catch a file
+mid-write. The backup is verified by per-table row counts against the source,
+then old backups beyond the retention window are pruned.
 
 Backup location: data/backups/duckdb/
 Filename format: ons_YYYY-MM-DD_HHMMSS.duckdb
@@ -13,6 +17,7 @@ Usage:
   python scripts/backup_duckdb.py --retention 14   # keep 14 days (default: 7)
   python scripts/backup_duckdb.py --dry-run        # show what would happen
   python scripts/backup_duckdb.py --restore <file> # restore from a backup
+  python scripts/backup_duckdb.py --restore <file> --target /tmp/x.duckdb  # test restore
 
 Exit codes:
   0 — success
@@ -57,6 +62,46 @@ def verify_readable(path: Path) -> tuple[bool, str]:
         return True, f"{table_count} tables readable"
     except Exception as e:
         return False, str(e)
+
+
+def _sql_path(path: Path) -> str:
+    return str(path).replace("'", "''")
+
+
+def snapshot_copy(src: Path, dest: Path) -> None:
+    """Consistent copy of `src` into a new database file `dest`, in one transaction.
+
+    Writes `<dest>.partial` and renames it when complete, so a crash never
+    leaves a half-written file that looks like a backup."""
+    import duckdb
+    tmp = dest.with_name(dest.name + ".partial")
+    tmp.unlink(missing_ok=True)
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute(f"ATTACH '{_sql_path(src)}' AS src (READ_ONLY)")
+        con.execute(f"ATTACH '{_sql_path(tmp)}' AS bak")
+        con.execute("COPY FROM DATABASE src TO bak")
+        con.execute("DETACH bak")
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
+    finally:
+        con.close()
+    tmp.rename(dest)
+
+
+def table_counts(path: Path) -> dict[str, int]:
+    """{schema.table: row count} for every base table, read-only."""
+    import duckdb
+    con = duckdb.connect(str(path), read_only=True)
+    try:
+        tables = con.execute(
+            "select table_schema, table_name from information_schema.tables "
+            "where table_type = 'BASE TABLE' order by 1, 2").fetchall()
+        return {f"{s}.{t}": con.execute(f'select count(*) from "{s}"."{t}"').fetchone()[0]
+                for s, t in tables}
+    finally:
+        con.close()
 
 
 def human_size(path: Path) -> str:
@@ -109,11 +154,11 @@ def do_backup(retention_days: int, dry_run: bool) -> int:
         print(f"  [dry-run] Would prune backups older than {retention_days} days")
         return 0
 
-    print(f"\n  Copying to {dest.name}...")
+    print(f"\n  Snapshotting to {dest.name} (COPY FROM DATABASE)...")
     try:
-        shutil.copy2(str(DB_PATH), str(dest))
+        snapshot_copy(DB_PATH, dest)
     except Exception as e:
-        msg = f"Copy failed: {e}"
+        msg = f"Snapshot failed: {e}"
         print(f"❌ {msg}")
         log({"ts": ts, "status": "failed", "reason": msg})
         return 1
@@ -122,15 +167,19 @@ def do_backup(retention_days: int, dry_run: bool) -> int:
     print(f"  ✅ Copy complete — {dest_size}")
 
     # ── Verify backup ────────────────────────────────────────────────────────
-    print("  Verifying backup is readable...")
-    ok, detail = verify_readable(dest)
-    if not ok:
-        msg = f"Backup verification failed: {detail}"
+    print("  Verifying row counts against the source...")
+    try:
+        src_counts, bak_counts = table_counts(DB_PATH), table_counts(dest)
+    except Exception as e:
+        src_counts, bak_counts = {"error": str(e)}, {}
+    if src_counts != bak_counts:
+        diff = sorted(k for k in set(src_counts) | set(bak_counts) if src_counts.get(k) != bak_counts.get(k))
+        msg = f"Backup verification failed: row counts differ for {len(diff)} table(s): {diff[:5]}"
         print(f"❌ {msg}")
-        # Remove corrupted backup
-        dest.unlink(missing_ok=True)
+        dest.unlink(missing_ok=True)            # never keep a backup that doesn't match
         log({"ts": ts, "status": "failed", "reason": msg})
         return 1
+    detail = f"{len(bak_counts)} tables, {sum(bak_counts.values())} rows match the source"
     print(f"  ✅ Backup verified — {detail}")
 
     duration = (datetime.now() - started).total_seconds()
@@ -185,7 +234,8 @@ def do_backup(retention_days: int, dry_run: bool) -> int:
 
 # ── Restore ───────────────────────────────────────────────────────────────────
 
-def do_restore(backup_name: str, dry_run: bool) -> int:
+def do_restore(backup_name: str, dry_run: bool, target: Path | None = None) -> int:
+    target = Path(target) if target else DB_PATH
     # Accept either a filename or a full path
     backup_path = Path(backup_name)
     if not backup_path.is_absolute():
@@ -195,7 +245,7 @@ def do_restore(backup_name: str, dry_run: bool) -> int:
 
     print(f"ONS DuckDB Restore")
     print(f"  Backup: {backup_path}")
-    print(f"  Target: {DB_PATH}")
+    print(f"  Target: {target}")
     print()
 
     if not backup_path.exists():
@@ -219,28 +269,32 @@ def do_restore(backup_name: str, dry_run: bool) -> int:
     print(f"  ✅ Backup OK — {detail}")
 
     if dry_run:
-        print(f"\n  [dry-run] Would overwrite {DB_PATH} with {backup_path.name}")
+        print(f"\n  [dry-run] Would overwrite {target} with {backup_path.name}")
         return 0
 
-    # Safety: copy current DB to .bak before overwriting
-    if DB_PATH.exists():
-        bak = DB_PATH.with_suffix(".duckdb.bak")
-        shutil.copy2(str(DB_PATH), str(bak))
+    # Safety: copy the current target to .bak before overwriting.
+    # (Stop the API and any sync first when the target is the live warehouse.)
+    if target.exists():
+        bak = target.with_suffix(".duckdb.bak")
+        shutil.copy2(str(target), str(bak))
         print(f"  Saved current DB as {bak.name} (safety copy)")
 
-    shutil.copy2(str(backup_path), str(DB_PATH))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(str(backup_path), str(target))     # a backup is a closed, finished file
 
-    ok, detail = verify_readable(DB_PATH)
-    if not ok:
-        print(f"❌ Restored DB is not readable: {detail}")
+    counts = table_counts(target)
+    if counts != table_counts(backup_path):
+        print("❌ Restored DB doesn't match the backup's row counts")
         return 2
+    detail = f"{len(counts)} tables, {sum(counts.values())} rows"
 
     print()
-    print(f"✅ Restored successfully — {detail}")
+    print(f"✅ Restored successfully to {target} — {detail}")
     log({
         "ts":           datetime.now().strftime("%Y-%m-%d_%H%M%S"),
         "status":       "restored",
         "from_backup":  backup_path.name,
+        "target":       str(target),
     })
     return 0
 
@@ -278,6 +332,8 @@ def main() -> int:
                    help="Show what would happen without doing it")
     p.add_argument("--restore",  type=str, default=None,
                    help="Restore from a named backup file")
+    p.add_argument("--target",   type=Path, default=None,
+                   help="Restore into this path instead of the live warehouse (test restores)")
     p.add_argument("--list",     action="store_true",
                    help="List available backups")
     args = p.parse_args()
@@ -285,7 +341,7 @@ def main() -> int:
     if args.list:
         return do_list()
     if args.restore:
-        return do_restore(args.restore, args.dry_run)
+        return do_restore(args.restore, args.dry_run, args.target)
     return do_backup(args.retention, args.dry_run)
 
 

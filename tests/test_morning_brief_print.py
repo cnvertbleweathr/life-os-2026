@@ -8,7 +8,7 @@ renders or prints; editions live in a temp ONS_DATA_DIR.
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -24,6 +24,7 @@ SATURDAY, MONDAY = date(2026, 11, 21), date(2026, 11, 23)
 def saved(tmp_path, monkeypatch):
     monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path))
     monkeypatch.setenv("ONS_PRINT_AT", "00:00")         # these tests aren't about the print time
+    monkeypatch.setenv("ONS_PRINT_UNTIL", "23:59")
     calls = {"pdf": [], "lp": []}
 
     def fake_pdf(page, pdf_path):
@@ -79,9 +80,100 @@ def test_auto_waits_for_print_time(saved, monkeypatch):
     assert P.print_edition(path, auto=True, now=datetime(2026, 11, 23, 5, 0))["printed"]
 
 
-def test_late_sync_still_prints_after_print_time(saved, monkeypatch):
+def test_late_sync_prints_inside_the_window_but_not_after_six(saved, monkeypatch):
     monkeypatch.setenv("ONS_PRINT_AT", "05:00")
-    assert P.print_edition(saved(), auto=True, now=datetime(2026, 11, 23, 9, 40))["printed"]
+    monkeypatch.setenv("ONS_PRINT_UNTIL", "06:00")
+    late = P.print_edition(saved(), auto=True, now=datetime(2026, 11, 23, 9, 40))
+    assert not late["printed"] and "06:00" in late["reason"]
+    assert P.print_edition(saved(), auto=True, now=datetime(2026, 11, 23, 5, 40))["printed"]
+
+
+# ── the 5:00 launchd job: --scheduled ────────────────────────────────────────
+
+class Clock:
+    """Fake wall clock; sleep() advances it."""
+    def __init__(self, start):
+        self.t = start
+        self.sleeps = []
+
+    def now(self):
+        return self.t
+
+    def sleep(self, s):
+        self.sleeps.append(s)
+        self.t += timedelta(seconds=s)
+
+
+def write_edition(tmp_path, day, status="published"):
+    folder = tmp_path / "brief"
+    folder.mkdir(exist_ok=True)
+    path = folder / f"{day}.json"
+    path.write_text(json.dumps({"date": str(day), "status": status, "edition": EDITION, "revisions": 2,
+                                "evaluation": {"problems": ["Number 7 isn't in the cited facts."]}}))
+    return path
+
+
+def print_log(tmp_path):
+    f = tmp_path / "brief" / "print_log.jsonl"
+    return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
+
+
+@pytest.fixture
+def window(saved, monkeypatch):
+    monkeypatch.setenv("ONS_PRINT_AT", "05:00")
+    monkeypatch.setenv("ONS_PRINT_UNTIL", "06:00")
+    return saved
+
+
+def test_scheduled_prints_todays_edition_once(window, tmp_path):
+    write_edition(tmp_path, MONDAY)
+    clock = Clock(datetime(2026, 11, 23, 5, 0))
+    out = P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: True)
+    assert out["printed"] and clock.sleeps == []
+    assert window.calls["lp"] == ["ONS Morning Edition 2026-11-23"]
+    assert print_log(tmp_path)[-1]["outcome"] == "printed"
+
+
+def test_scheduled_retries_every_ten_minutes_until_the_edition_appears(window, tmp_path):
+    clock = Clock(datetime(2026, 11, 23, 5, 0))
+
+    def sleep(s):
+        clock.sleep(s)
+        if clock.t >= datetime(2026, 11, 23, 5, 20):
+            write_edition(tmp_path, MONDAY)               # the sync finishes at ~5:20
+    out = P.scheduled_print(MONDAY, now=clock.now, sleep=sleep, notify=lambda t: True)
+    assert out["printed"] and clock.sleeps == [600, 600]
+
+
+def test_scheduled_gives_up_at_six_and_logs_it(window, tmp_path):
+    clock = Clock(datetime(2026, 11, 23, 5, 0))
+    out = P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: True)
+    assert not out["printed"] and clock.t == datetime(2026, 11, 23, 6, 0)
+    assert len(clock.sleeps) == 6 and window.calls["lp"] == []
+    assert print_log(tmp_path)[-1]["outcome"] == "skipped_no_edition"
+
+
+def test_scheduled_never_prints_yesterdays_edition(window, tmp_path):
+    path = write_edition(tmp_path, MONDAY)
+    path.write_text(path.read_text().replace('"2026-11-23"', '"2026-11-22"'))   # stale content
+    clock = Clock(datetime(2026, 11, 23, 5, 55))
+    out = P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: True)
+    assert not out["printed"] and window.calls["lp"] == []
+
+
+def test_needs_review_posts_a_slack_note_instead_of_printing(window, tmp_path):
+    write_edition(tmp_path, MONDAY, status="needs_review")
+    notes = []
+    clock = Clock(datetime(2026, 11, 23, 5, 0))
+    out = P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: notes.append(t) or True)
+    assert not out["printed"] and window.calls["lp"] == []
+    [note] = notes
+    assert note.startswith("ONS MORNING BRIEF — 2026-11-23: needs review, not printed")
+    assert "Number 7" in note
+    assert print_log(tmp_path)[-1]["outcome"] == "needs_review_noted"
+    # a second run the same day doesn't post again
+    P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: notes.append(t) or True)
+    assert len(notes) == 1
 
 
 def test_manual_print_ignores_print_time(saved, monkeypatch):
