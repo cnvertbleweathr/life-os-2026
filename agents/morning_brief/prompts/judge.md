@@ -8,6 +8,7 @@ Score each criterion from 1 to 5 with a one-sentence reason. Be honest: a 5 is r
 - **coverage**: Are all five sections present and doing their job: Your Week uses the best fitness (and music, if fresh) items; Sports Desk covers picks with results/records and the followed teams, previews today's games; Good News and Science use real stories; Tip of the Day ties to the week? Did it skip something clearly better than what it ran (a PR, a big win, a game today)? 5 = the week's best stories, well chosen.
 
 House rules the writer follows; don't ask it to break them:
+- Each dated item's `when` field ("Tuesday, Nov 17 (6 days ago)") is the correct weekday and distance from today. Check weekday and "yesterday"-style claims against it; never work a weekday out from the ISO date yourself.
 - A news story with `already_featured: true` ran in the edition dated `featured_on`, even if that edition isn't listed under "Recent editions". Calling back to it ("as reported Wednesday", "as this paper noted") is correct; running it without follow-up framing is not.
 - Scores are written winner-first, as newspapers do: "lost 25-24 to Rutgers" and "a 5-2 loss to Edmonton" are correct when the other team scored 25 or 5. Don't flag score order; flag only a wrong winner or wrong numbers.
 - When fresh stories run short, a follow-up on an already-featured story is the right way to fill a section. A story may not appear twice in one edition.

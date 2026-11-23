@@ -124,6 +124,17 @@ def _notes(domain: str, items: list[dict], today: date) -> list[str]:
     return notes
 
 
+def _when(iso: str | None, today: date) -> str | None:
+    """'Tuesday, Nov 17 (6 days ago)'. Models given a bare ISO date get the weekday
+    wrong (2026-11-23: the judge called Tuesday the 17th a Monday), so spell it out."""
+    if not iso:
+        return None
+    d = date.fromisoformat(iso)
+    n = (today - d).days
+    rel = {0: "today", 1: "yesterday", -1: "tomorrow"}.get(n) or (f"{n} days ago" if n > 0 else f"in {-n} days")
+    return f"{d:%A}, {d:%b} {d.day} ({rel})"
+
+
 def build_context(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
     """Group brief_context_7d rows (as dicts) into the brief's context."""
     domains: dict[str, dict] = {d: {"items": [], "notes": []} for d in DOMAINS}
@@ -131,7 +142,11 @@ def build_context(rows: list[dict[str, Any]], today: date) -> dict[str, Any]:
     for row in rows:
         built_for = built_for or row.get("built_for")
         d = row["domain"]
-        domains.setdefault(d, {"items": [], "notes": []})["items"].append(_item(row))
+        item = _item(row)
+        if item.get("date"):
+            item = {"ref": item["ref"], "date": item["date"], "when": _when(item["date"], today),
+                    **{k: v for k, v in item.items() if k not in ("ref", "date")}}
+        domains.setdefault(d, {"items": [], "notes": []})["items"].append(item)
 
     domains["news"]["items"] = _cap_news(domains["news"]["items"])
     for d, block in domains.items():
