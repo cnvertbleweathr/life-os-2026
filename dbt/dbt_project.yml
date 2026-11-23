@@ -9,6 +9,20 @@ macro-paths: ["macros"]
 seed-paths: ["seeds"]
 test-paths: ["tests"]
 
+vars:
+  # Where the app's file-based data lives (Spotify exports etc.); brief models read it.
+  data_dir: "{{ env_var('ONS_DATA_DIR', '/Users/kg/life-os-2026/data') }}"
+
+on-run-start:
+  # news_for_brief joins this; the brief agent writes it (agents/morning_brief/featured.py
+  # has the same DDL). Created here so a fresh warehouse still builds.
+  - "create schema if not exists brief"
+  - >-
+    create table if not exists brief.featured_news (
+      article_id varchar not null, url varchar not null, featured_on date not null,
+      section varchar, recorded_at timestamp default current_timestamp,
+      primary key (article_id, featured_on))
+
 seeds:
   ons:
     +schema: seeds

@@ -1,0 +1,114 @@
+{
+  "_comment": "Made-up week for tests and --fixture runs. Same shape as agents/morning_brief/context.py output; no real personal data (the repo is public). Covers: a featured news story, pending picks, a team playing today, stale music, a CrossFit PR.",
+  "date": "2026-11-21",
+  "weekday": "Saturday",
+  "built_for": "2026-11-21",
+  "domains": {
+    "fitness": {
+      "items": [
+        {"ref": "sugarwod:2026-11-16:aaaa0001", "date": "2026-11-16", "kind": "crossfit", "title": "Deadlift 5x2",
+         "facts": {"result": "285", "score_type": "Load", "rx_or_scaled": "RX", "pr": true}},
+        {"ref": "sugarwod:2026-11-16:aaaa0002", "date": "2026-11-16", "kind": "crossfit", "title": "Gym WOD 11/16",
+         "facts": {"result": "11+3", "score_type": "Rounds + Reps", "rx_or_scaled": "RX", "pr": false}},
+        {"ref": "strava:9000000001", "date": "2026-11-17", "kind": "activity", "title": "Lunch Run",
+         "url": "https://www.strava.com/activities/9000000001",
+         "facts": {"activity_type": "Run", "distance_miles": 3.12, "moving_minutes": 28, "elevation_ft": 41}},
+        {"ref": "strava:9000000002", "date": "2026-11-19", "kind": "activity", "title": "Morning Run",
+         "url": "https://www.strava.com/activities/9000000002",
+         "facts": {"activity_type": "Run", "distance_miles": 6.2, "moving_minutes": 55, "elevation_ft": 112}},
+        {"ref": "strava:9000000003", "date": "2026-11-20", "kind": "activity", "title": "Easy Shakeout",
+         "url": "https://www.strava.com/activities/9000000003",
+         "facts": {"activity_type": "Run", "distance_miles": 2.5, "moving_minutes": 24, "elevation_ft": 20}},
+        {"ref": "fitness:training_load", "date": "2026-11-20", "kind": "training_load", "title": "Training load",
+         "facts": {"ctl": 36.4, "atl": 41.0, "tsb": -4.6, "readiness_signal": "yellow"}},
+        {"ref": "fitness:week", "date": "2026-11-21", "kind": "week_summary", "title": "Training week",
+         "facts": {"activities": 3, "runs": 3, "run_miles": 11.8, "longest_run_miles": 6.2, "active_minutes": 107,
+                   "prev_week_run_miles": 9.4, "run_streak_days": 2, "newest_activity_date": "2026-11-20",
+                   "crossfit_days": 1, "crossfit_workouts": 2, "crossfit_prs": 1, "newest_crossfit_date": "2026-11-16"}}
+      ],
+      "notes": []
+    },
+    "music": {
+      "items": [
+        {"ref": "music:daily10:2026-11-16", "date": "2026-11-16", "kind": "playlist", "title": "Daily 10 playlist",
+         "url": "https://open.spotify.com/playlist/sample0000000000000000",
+         "facts": {"discovery_artists": ["Khruangbin", "Alice Coltrane", "Mdou Moctar"]}},
+        {"ref": "music:week", "date": "2026-11-21", "kind": "week_summary", "title": "Listening week",
+         "facts": {"plays": 0, "minutes": 0, "artists": 0, "newest_play_date": "2026-10-28"}}
+      ],
+      "notes": ["No listening data this week (Spotify export is refreshed a few times a year; newest play 2026-10-28). Don't describe this week's listening; the Daily 10 playlist, if present, is fair game."]
+    },
+    "cfb_picks": {
+      "items": [
+        {"ref": "pick:2026:11:bbbb0001", "date": "2026-11-11", "kind": "pick", "title": "Hilltop State @ River College",
+         "facts": {"week": 11, "bet": "River College +6.5 (home dog)", "outcome": "win", "units": 0.91, "home_score": 24, "away_score": 27}},
+        {"ref": "pick:2026:11:bbbb0002", "date": "2026-11-11", "kind": "pick", "title": "Coastal Tech @ Prairie A&M",
+         "facts": {"week": 11, "bet": "Coastal Tech -3.0 (away fav)", "outcome": "loss", "units": -1.0, "home_score": 31, "away_score": 20}},
+        {"ref": "pick:2026:12:bbbb0003", "date": "2026-11-18", "kind": "pick", "title": "Lakeshore @ Mesa State",
+         "facts": {"week": 12, "bet": "Lakeshore +10.0 (away dog)", "outcome": "win", "units": 0.91, "home_score": 30, "away_score": 28}},
+        {"ref": "pick:2026:12:bbbb0004", "date": "2026-11-18", "kind": "pick", "title": "Northern U @ Bayou Tech",
+         "facts": {"week": 12, "bet": "Bayou Tech -7.0 (home fav)", "outcome": "pending"}},
+        {"ref": "picks:week:2026:11", "date": "2026-11-11", "kind": "week_record", "title": "Week 11 record",
+         "facts": {"week": 11, "wins": 1, "losses": 1, "pushes": 0, "pending": 0, "units": -0.09}},
+        {"ref": "picks:week:2026:12", "date": "2026-11-18", "kind": "week_record", "title": "Week 12 record",
+         "facts": {"week": 12, "wins": 1, "losses": 0, "pushes": 0, "pending": 1, "units": 0.91}},
+        {"ref": "picks:season:2026", "date": null, "kind": "season_record", "title": "2026 season record",
+         "facts": {"graded_picks": 30, "wins": 17, "losses": 12, "pushes": 1, "win_rate_pct": 58.6, "units": 3.47, "roi_pct": 11.6, "pending": 1}}
+      ],
+      "notes": ["Some picks are pending: their games haven't been graded. Don't call them wins or losses."]
+    },
+    "cfb_games": {
+      "items": [
+        {"ref": "cfb_game:100000001", "date": "2026-11-14", "kind": "game", "title": "UCF at Arizona State",
+         "facts": {"team": "UCF", "opponent": "Arizona State", "venue": "away", "week": 11, "team_points": 31, "opp_points": 24, "result": "W", "record_after": "7-4"}},
+        {"ref": "cfb_game:100000002", "date": "2026-11-21", "kind": "upcoming_game", "title": "Penn State vs Rutgers",
+         "facts": {"team": "Penn State", "opponent": "Rutgers", "venue": "home", "week": 12}},
+        {"ref": "cfb_game:100000003", "date": "2026-11-28", "kind": "upcoming_game", "title": "UCF at Colorado",
+         "facts": {"team": "UCF", "opponent": "Colorado", "venue": "away", "week": 13}},
+        {"ref": "cfb_record:UCF", "date": null, "kind": "season_record", "title": "UCF season record",
+         "facts": {"team": "UCF", "wins": 7, "losses": 4}},
+        {"ref": "cfb_record:Penn State", "date": null, "kind": "season_record", "title": "Penn State season record",
+         "facts": {"team": "Penn State", "wins": 8, "losses": 2}},
+        {"ref": "draft:penn-state:2026", "date": null, "kind": "draft_class", "title": "Penn State in the 2026 NFL Draft",
+         "facts": {"school": "Penn State", "year": 2026, "players_drafted": 6, "top_pick": "Sample Player", "top_pick_position": "Linebacker", "top_pick_overall": 9, "top_pick_round": 1, "top_pick_nfl_team": "Chicago"}}
+      ],
+      "notes": ["A followed team plays today; preview it, don't report a result."]
+    },
+    "team_games": {
+      "items": [
+        {"ref": "nba:500000001:DEN", "date": "2026-11-19", "kind": "game", "title": "DEN vs LAL",
+         "url": "https://www.espn.com/nba/game/_/gameId/500000001",
+         "facts": {"league": "nba", "team": "DEN", "team_name": "Denver Nuggets", "opponent": "LAL", "venue": "home", "team_score": 121, "opp_score": 110, "result": "W", "season_record": "10-5"}},
+        {"ref": "nhl:500000002:COL", "date": "2026-11-20", "kind": "game", "title": "COL at VGK",
+         "url": "https://www.espn.com/nhl/game/_/gameId/500000002",
+         "facts": {"league": "nhl", "team": "COL", "team_name": "Colorado Avalanche", "opponent": "VGK", "venue": "away", "team_score": 2, "opp_score": 3, "result": "OTL", "season_record": "13-6-3"}},
+        {"ref": "nba:500000003:ORL", "date": "2026-11-21", "kind": "upcoming_game", "title": "ORL vs MIA",
+         "url": "https://www.espn.com/nba/game/_/gameId/500000003",
+         "facts": {"league": "nba", "team": "ORL", "team_name": "Orlando Magic", "opponent": "MIA", "venue": "home", "season_record": "8-7"}}
+      ],
+      "notes": ["A followed team plays today; preview it, don't report a result."]
+    },
+    "news": {
+      "items": [
+        {"ref": "news:0000000000000001", "date": "2026-11-20", "kind": "good_news", "title": "Retirees Rebuild Their Town's Library by Hand",
+         "url": "https://example.org/good/library-rebuild",
+         "facts": {"source": "Sample Good News", "summary": "A group of retirees spent a year restoring a shuttered library; it reopened with 4,000 donated books.", "times_featured": 0},
+         "already_featured": false},
+        {"ref": "news:0000000000000002", "date": "2026-11-18", "kind": "good_news", "title": "River Otters Return After 60 Years",
+         "url": "https://example.org/good/otters",
+         "facts": {"source": "Sample Good News", "summary": "Wildlife cameras confirmed breeding otters in a river cleaned up over two decades.", "times_featured": 1},
+         "already_featured": true, "featured_on": "2026-11-18"},
+        {"ref": "news:0000000000000003", "date": "2026-11-21", "kind": "science", "title": "New Battery Chemistry Survives 10,000 Charge Cycles",
+         "url": "https://example.org/science/battery",
+         "facts": {"source": "Sample Science", "summary": "Researchers report a sodium-based cell that kept 90% of its capacity after 10,000 cycles in lab tests.", "times_featured": 0},
+         "already_featured": false},
+        {"ref": "news:0000000000000004", "date": "2026-11-19", "kind": "science", "title": "Telescope Spots Water Vapor Around a Young Star",
+         "url": "https://example.org/science/water-vapor",
+         "facts": {"source": "Sample Science", "summary": "Astronomers detected water vapor in the disk around a star a few million years old, where planets may be forming.", "times_featured": 0},
+         "already_featured": false}
+      ],
+      "notes": []
+    }
+  },
+  "warnings": []
+}
