@@ -52,6 +52,7 @@ CSS = """
 body { margin: 0; color: #111; font-family: Georgia, "Times New Roman", serif; font-size: 9.6pt; line-height: 1.32; }
 .banner { border: 1.5pt solid #111; padding: 5pt 8pt; margin-bottom: 8pt; font-family: Helvetica, Arial, sans-serif; font-size: 8.5pt; }
 .banner b { letter-spacing: .08em; }
+.notice { border-top: .75pt solid #111; border-bottom: .75pt solid #111; padding: 3pt 0; margin: 4pt 0 6pt; font-family: Helvetica, Arial, sans-serif; font-size: 8pt; }
 .masthead { text-align: center; border-bottom: 3pt double #111; padding-bottom: 4pt; }
 .masthead h1 { font-family: "Baskerville", "Didot", Georgia, serif; font-size: 40pt; font-weight: 700; margin: 0; letter-spacing: .01em; }
 .motto { font-style: italic; font-size: 10pt; margin-top: 1pt; }
@@ -91,6 +92,20 @@ def edition_number(day: str) -> int:
     return sum(1 for p in brief_dir().glob("????-??-??.json") if p.stem <= day) or 1
 
 
+def calendar_notice(day: date) -> str:
+    """'Calendar unavailable today: ...' when the morning's calendar sync didn't succeed."""
+    import sys
+    scripts = str(Path(__file__).resolve().parents[2] / "scripts")
+    if scripts not in sys.path:
+        sys.path.insert(0, scripts)
+    from calendar_export import read_status
+    status = read_status(day)
+    if status.get("ok"):
+        return ""
+    msg = status.get("message") or "Calendar unavailable today."
+    return msg if msg.startswith("Calendar unavailable") else f"Calendar unavailable today: {msg}."
+
+
 def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
     ed = result["edition"]
     d = date.fromisoformat(ed["date"])
@@ -107,6 +122,8 @@ def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
                          + (f'<div class="src">{_e(src)}</div>' if src else "") + "</div>")
         cls = "section tip" if s["name"] == "Tip of the Day" else "section"
         parts.append(f'<div class="{cls}"><div class="kicker">{_e(s["name"])}</div>{"".join(items)}</div>')
+    cal = calendar_notice(d)
+    notice = f'<div class="notice"><b>{_e(cal)}</b></div>' if cal else ""
     scores = (result.get("evaluation", {}).get("judge") or {}).get("scores") or {}
     foot = (f"Written {result.get('generated_at', '')[:16].replace('T', ' ')} · "
             f"{result.get('revisions', 0)} revision(s) · "
@@ -118,6 +135,7 @@ def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
 <header class="masthead"><h1>The ONS Morning Edition</h1><div class="motto">{_e(ed['masthead_tagline'])}</div></header>
 <div class="dateline"><span>Vol. 1 · No. {edition_number(ed['date'])}</span>
 <span>{d.strftime('%A, %B')} {d.day}, {d.year}</span><span>Printed for one</span></div>
+{notice}
 <div class="lead">{_e(ed['lead_headline'])}</div>
 <main class="columns">{''.join(parts)}</main>
 <div class="foot">{_e(foot)}</div>

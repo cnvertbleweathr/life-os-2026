@@ -70,19 +70,24 @@ def test_expired_token_refreshes_silently_and_is_saved(cal, monkeypatch, tmp_pat
 
 def test_revoked_refresh_token_fails_fast(cal, monkeypatch, tmp_path):
     token = use(monkeypatch, cal, FakeCreds(refresh_fails=True), tmp_path)
-    with pytest.raises(cal.AuthRequired, match="--auth"):
+    with pytest.raises(cal.AuthRequired, match="sign-in expired or was revoked"):
         cal.get_credentials("creds.json", token)
 
 
 def test_missing_token_fails_fast(cal, tmp_path):
-    with pytest.raises(cal.AuthRequired, match="no saved token"):
+    with pytest.raises(cal.AuthRequired, match="no saved Google sign-in"):
         cal.get_credentials("creds.json", str(tmp_path / "nope.json"))
 
 
-def test_main_exits_2_and_notifies(cal, monkeypatch, tmp_path, capsys):
-    sent = []
-    monkeypatch.setattr(cal, "_notify_reauth", sent.append)
+def test_main_exits_2_with_the_fix_and_no_phone_push(cal, monkeypatch, tmp_path, capsys):
+    pushed = []
+    monkeypatch.setitem(sys.modules, "notify", type(sys)("notify"))
+    sys.modules["notify"].send = lambda *a, **k: pushed.append(a)
+    monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path / "data"))      # status.json goes here, not data/
+    monkeypatch.setenv("ONS_PHONE_NOTIFICATIONS", "0")
     monkeypatch.setenv("GOOGLE_CALENDAR_TOKEN", str(tmp_path / "nope.json"))
-    monkeypatch.setattr("sys.argv", ["calendar_export.py", "--year", "2026"])
-    assert cal.main() == 2
-    assert "--auth" in capsys.readouterr().err and sent
+    assert cal.main(["--year", "2026"]) == 2
+    err = capsys.readouterr().err
+    assert "Calendar unavailable today" in err and "--auth" in err
+    assert pushed == []
+    assert (tmp_path / "data" / "calendar" / "status.json").exists()

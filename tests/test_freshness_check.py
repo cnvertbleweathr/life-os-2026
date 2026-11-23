@@ -74,14 +74,14 @@ def test_single_failure_is_not_an_alert(fc, con):
 
 def test_twice_weekly_step_learns_its_schedule(fc, con):
     # Mon/Thu step: last ran 3 days ago is normal, 9 days ago is not.
-    add_runs(con, "calendar_export", [(31, "ok"), (28, "ok"), (24, "ok"), (21, "ok"),
+    add_runs(con, "nhl_stats_pipeline", [(31, "ok"), (28, "ok"), (24, "ok"), (21, "ok"),
                                       (17, "ok"), (14, "ok"), (10, "ok"), (7, "ok"), (3, "ok")])
-    assert by_subject(fc.check_steps(con, NOW))["calendar_export"].status == fc.OK
+    assert by_subject(fc.check_steps(con, NOW))["nhl_stats_pipeline"].status == fc.OK
 
     con.execute("DELETE FROM ops.pipeline_runs WHERE started_at > ?",
                 [(NOW - timedelta(days=9)).replace(tzinfo=None).isoformat()])
     add_runs(con, "strava", [(0, "ok")])          # keep the sync itself alive
-    f = by_subject(fc.check_steps(con, NOW))["calendar_export"]
+    f = by_subject(fc.check_steps(con, NOW))["nhl_stats_pipeline"]
     assert f.status == fc.ALERT and "last success" in f.detail
 
 
@@ -147,7 +147,8 @@ def test_cli_records_and_stays_non_blocking(fc, con, tmp_path, monkeypatch, caps
 def test_schedules_read_from_daily_sync(fc):
     s = fc.step_schedules()
     assert s["generate_picks_report"] == [3]          # Thursday
-    assert s["calendar_export"] == [0, 3]             # Mon + Thu
+    assert s["nhl_stats_pipeline"] == [0, 3]          # Mon + Thu
+    assert s["calendar_export"] is None               # daily since the secretary
     assert s["strava"] is None                        # daily
     assert fc.allowed_gap([3]) == timedelta(days=8)
     assert fc.allowed_gap([0, 3]) == timedelta(days=5)

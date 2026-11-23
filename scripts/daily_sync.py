@@ -364,7 +364,8 @@ def build_steps(year: int) -> List[Step]:
             name="calendar_export",
             cmd=["python3", "scripts/calendar_export.py", "--year", str(year)],
             run_if_exists=ROOT / "scripts/calendar_export.py",
-            run_on_days=[0, 3],  # Monday + Thursday
+            # daily: the secretary's heads-ups need today's calendar, and a daily
+            # refresh shows a dead sign-in the same morning ("Calendar unavailable today")
             tags=["calendar"],
         ),
         Step(

@@ -320,7 +320,7 @@ def shows(ctx: Ctx) -> ToolResult:
 
 
 def calendar(ctx: Ctx) -> ToolResult:
-    r = ToolResult("calendar", freshness_days=5)   # exported Mon and Thu only
+    r = ToolResult("calendar", freshness_days=2)   # exported daily
     folder = data_dir() / "calendar" / "processed"
     files = [folder / f"events_clean_{y}.csv" for y in (ctx.today.year, ctx.today.year + 1)]
     files = [f for f in files if f.exists()]
