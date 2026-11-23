@@ -87,6 +87,15 @@ YEAR = datetime.now().year  # single source — no hardcoded 2026 anywhere
 # Step definition
 # ---------------------------------------------------------------------------
 
+from step_runner import CmdResult, run_cmd   # scripts/ is on sys.path when this runs
+
+
+class _StepTimedOut(Exception):
+    def __init__(self, result: CmdResult):
+        super().__init__("step timed out")
+        self.result = result
+
+
 @dataclass
 class Step:
     name:          str
@@ -97,6 +106,9 @@ class Step:
     tags:          List[str]      = field(default_factory=list)
     run_on_days:   Optional[List[int]] = None
     timeout_s:     int            = 1200   # kill a hung step so it can't stall the sync
+    # Runs even after a required step has aborted the sync (on whatever data
+    # is there). For the outputs you read every morning: the brief and packet.
+    run_after_abort: bool         = False
 
 
 # ---------------------------------------------------------------------------
@@ -187,20 +199,17 @@ def run_step(step: Step, log_dir: Path) -> dict:
             stdout_text = f"OpenClaw {step.name} completed"
             stderr_text = ""
         else:
-            # Handle subprocess commands
-            proc = subprocess.run(
-                step.cmd,
-                cwd=str(ROOT),
-                capture_output=True,
-                text=True,
-                check=False,
-                env=os.environ.copy(),
-                stdin=subprocess.DEVNULL,   # never wait on a prompt
-                timeout=step.timeout_s,
-            )
-            proc_returncode = proc.returncode
-            stdout_text = proc.stdout or ""
-            stderr_text = proc.stderr or ""
+            # Own process group; on timeout the whole group is stopped (after a
+            # stack dump), so no child survives holding the DuckDB lock.
+            cmd_result = run_cmd(step.cmd, cwd=ROOT, timeout_s=step.timeout_s)
+            if cmd_result.timed_out:
+                raise _StepTimedOut(cmd_result)
+            proc_returncode = cmd_result.returncode
+            stdout_text = cmd_result.stdout
+            stderr_text = cmd_result.stderr
+            if cmd_result.killed_leftovers:
+                stderr_text += ("\n[daily_sync] the step exited but left processes running; "
+                                f"they were stopped after {step.timeout_s}s\n")
 
         ended_dt = datetime.now()
         duration = round((ended_dt - started_dt).total_seconds(), 2)
@@ -236,9 +245,11 @@ def run_step(step: Step, log_dir: Path) -> dict:
     except Exception as e:
         ended_dt = datetime.now()
         duration = round((ended_dt - started_dt).total_seconds(), 2)
-        if isinstance(e, subprocess.TimeoutExpired):
-            message = f"timed out after {step.timeout_s}s and was stopped"
-            partial = e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
+        if isinstance(e, _StepTimedOut):
+            message = f"timed out after {step.timeout_s}s; stopped with every process it started"
+            partial = e.result.stdout
+            if e.result.stderr:
+                partial += "\n--- stderr (includes a stack dump for Python steps) ---\n" + e.result.stderr
         else:
             message, partial = repr(e), ""
         with open(log_path, "w", encoding="utf-8") as f:
@@ -730,6 +741,7 @@ def build_steps(year: int) -> List[Step]:
             required=False,
             tags=["brief", "ai"],
             timeout_s=900,   # above run.py's 480s revision deadline + one slow attempt
+            run_after_abort=True,   # a stale-data paper beats no paper; context.py warns when stale
         ),
 
         # ------------------------------------------------------------------
@@ -748,6 +760,7 @@ def build_steps(year: int) -> List[Step]:
             required=False,
             tags=["checkin"],
             timeout_s=120,
+            run_after_abort=True,   # still posts; the failure itself is in health.txt
         ),
     ]
 
@@ -896,7 +909,7 @@ def main() -> int:
 
     for step in steps:
         # If a required step already failed, skip all remaining steps
-        if aborted_at:
+        if aborted_at and not step.run_after_abort:
             results.append({
                 "name":     step.name,
                 "status":   "skipped",

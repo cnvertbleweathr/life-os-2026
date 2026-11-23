@@ -51,3 +51,21 @@ def test_daily_sync_runs_checkin_last_after_the_brief_and_not_required():
     block = block[: block.index(")\n")]
     assert "required=False" in block and "run_on_days=CHECKIN_DAYS" in block
     assert '"checkin.post_slack", "--rebuild"' in block
+
+
+def _step_block(src: str, name: str) -> str:
+    block = src[src.index(f'name="{name}"'):]
+    return block[: block.index("\n        ),")]
+
+
+def test_brief_and_packet_still_run_after_an_abort():
+    src = (ROOT / "scripts" / "daily_sync.py").read_text()
+    assert "if aborted_at and not step.run_after_abort:" in src
+    for name in ("morning_brief", "checkin_packet"):
+        assert "run_after_abort=True" in _step_block(src, name)
+    assert "run_after_abort=True" not in _step_block(src, "dbt")
+
+
+def test_steps_run_through_the_process_group_runner():
+    src = (ROOT / "scripts" / "daily_sync.py").read_text()
+    assert "run_cmd(step.cmd" in src and "subprocess.run(\n                step.cmd" not in src
