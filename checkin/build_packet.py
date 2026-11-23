@@ -334,14 +334,25 @@ def brief_lines(inp: Inputs) -> tuple[list[str], list[str]]:
 
 
 def roadmap_items(text: str | None) -> list[tuple[str, str]]:
-    """(emoji, item name) for ROADMAP table rows marked 🔴 Blocked or 🟡 In Progress, blocked first."""
+    """(emoji, item name) for ROADMAP table rows marked 🔴 Blocked or 🟡 In Progress, blocked first.
+
+    Skips data-source tables (first header cell "Source"): a dead upstream
+    feed is a permanent fact, not work to talk through.
+    """
     if not text:
         return []
     items: list[tuple[str, str]] = []
+    header: list[str] = []
     for line in text.splitlines():
         if not line.lstrip().startswith("|"):
+            header = []                                   # a blank or prose line ends the table
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if not header:
+            header = cells                                # first row of a table is its header
+            continue
+        if header[0].lower() == "source":
+            continue
         mark = "🔴" if any(c.startswith("🔴") for c in cells) else "🟡" if any(c.startswith("🟡") for c in cells) else None
         if not mark:
             continue

@@ -47,8 +47,20 @@ ROADMAP = """
 |---|---|---|
 | 🟡 | Token health checks | Detect expired auth |
 | 🟢 | Done thing | shipped |
-| Sample source | 🔴 | Upstream is down |
+| 🔴 | Server outage | Unreachable |
 | 1 | Some course (Author) | 8h | 🟡 20% |
+
+## Data Ingestion
+
+| Source | Status | Notes |
+|--------|--------|-------|
+| Good feed | 🟢 | fine |
+| Dead feed | 🔴 | Upstream returns errors |
+| Half feed | 🟡 | partial |
+
+| Item | Status |
+|---|---|
+| After the sources | 🟡 |
 """
 
 
@@ -155,8 +167,13 @@ def test_build_status_and_roadmap():
     assert "- 1 commit in 7 days\n  - Check-in packet step 2" in text
     assert "- Merged: #7 Add check-in packet" in text
     assert "Opened this week, still open: #8 New thing (1 older Dependabot PRs open)" in text
-    assert bp.roadmap_items(ROADMAP) == [("🔴", "Sample source"), ("🟡", "Token health checks"),
-                                         ("🟡", "Some course (Author)")]
+    assert bp.roadmap_items(ROADMAP) == [("🔴", "Server outage"), ("🟡", "Token health checks"),
+                                         ("🟡", "Some course (Author)"), ("🟡", "After the sources")]
+
+
+def test_roadmap_skips_data_source_tables():
+    names = [n for _, n in bp.roadmap_items(ROADMAP)]
+    assert "Dead feed" not in names and "Half feed" not in names
 
 
 def test_git_unavailable_is_shown_not_fatal():
