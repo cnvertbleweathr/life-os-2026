@@ -664,6 +664,15 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Secretary: critical people + template dates from data/secretary/*.yaml
+        # → secretary.* tables, read by dbt's int_events_tiered.
+        Step(
+            name="secretary_config",
+            cmd=["python3", "-m", "secretary.config", "--publish"],
+            run_if_exists=ROOT / "secretary/config.py",
+            required=False,
+            tags=["secretary"],
+        ),
         # Seeds (NBA / NHL team crosswalks, odds provider priorities) are small
         # CSVs in dbt/seeds; reload them so a seed edit reaches the staging views.
         Step(
