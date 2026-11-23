@@ -1,142 +1,167 @@
-"""Stage 3 tests: grounding, style and the tone judge.
+"""
+The evaluator: code checks against the sample context, and the judge with a
+fake client. No API calls; ONS_DATA_DIR is a temp dir.
 
-The fixture is the real brief from the first working run (Nov 15, 2026). By
-hand it looked clean; the grounding check finds the two things it got wrong.
+The sample edition is clean; each test breaks it one way and checks that the
+right check catches it with a fix the writer can act on.
+
+  uv run --with pytest pytest tests/test_morning_brief_evaluators.py -q
 """
 
 from __future__ import annotations
 
-from dataclasses import replace
+import copy
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
-from agents.morning_brief.evaluators import (
-    THRESHOLDS, check_grounding, check_style, evaluate, extract_tokens)
-from agents.morning_brief.writer import Claim, Draft
+import pytest
 
-FACTS = {
-    "shows.tonight": ["Sun Nov 15: The Living Tombstone at Mission Ballroom (7:00 PM)",
-                      "Sun Nov 15: The Black Angels at Gothic Theatre (8:00 PM)",
-                      "Sun Nov 15: Arcángel - La 8va Maravilla World Tour at Paramount Theatre (8:00 PM)"],
-    "film.films_7d": 5, "film.films_ytd": 45,
-    "film.last_film_title": "One Flew Over the Cuckoo's Nest", "film.last_film_date": "Thu Nov 12",
-    "running.runs_7d": 1, "running.miles_7d": 5.1, "running.last_run_date": "Tue Nov 10",
-    "running.last_run_miles": 5.1,
-    "goals.running_miles_target": 350.0, "goals.running_miles_current": 282.5,
-    "goals.running_miles_pace": "at_risk",
-    "reading.last_finished_title": "Empire of the Vampire", "reading.last_finished_date": "Sat Sep 5",
-    "reading.days_since_last_finished": 71, "reading.books_finished_ytd": 7,
-    "habits.logged_yesterday": False, "habits.days_logged_7d": 0, "habits.newest_data": "Fri Nov 6",
-}
+from agents.morning_brief import context as C
+from agents.morning_brief import evaluators as E
 
-BRIEF = (
-    "Tonight Denver offers The Living Tombstone at Mission Ballroom at 7:00 PM, plus The Black Angels "
-    "at Gothic Theatre and Arcángel at Paramount Theatre, both at 8:00 PM. These are matched from your "
-    "playlists, not tickets you hold, so the couch remains a legitimate option.\n\n"
-    "You watched five films this past week, the latest being One Flew Over the Cuckoo's Nest on "
-    "Thursday, which brings the year to 45. Your running shoes have had a quieter time: one 5.1-mile "
-    "run, last Tuesday. Your 350-mile goal sits at 282.5 miles and is flagged at risk, and the clock "
-    "is not on your side.\n\n"
-    "Meanwhile, the last book you finished was Empire of the Vampire on Sep 5, 71 days ago, with 7 "
-    "books finished this year. The habit tracker hasn't heard from you since Nov 6, so I'll assume "
-    "you've been busy and not simply avoiding it."
-)
-
-C = Claim
-REAL = Draft(
-    headline="Three concerts tonight, zero tickets, and a very busy couch",
-    brief=BRIEF,
-    claims=[
-        C("Tonight Denver offers The Living Tombstone at Mission Ballroom at 7:00 PM, plus The Black "
-          "Angels at Gothic Theatre and Arcángel at Paramount Theatre, both at 8:00 PM.", ["shows.tonight"]),
-        C("These are matched from your playlists, not tickets you hold", ["shows.tonight"]),
-        C("You watched five films this past week", ["film.films_7d"]),
-        C("the latest being One Flew Over the Cuckoo's Nest on Thursday",
-          ["film.last_film_title", "film.last_film_date"]),
-        C("which brings the year to 45", ["film.films_ytd"]),
-        C("one 5.1-mile run, last Tuesday",
-          ["running.runs_7d", "running.miles_7d", "running.last_run_date", "running.last_run_miles"]),
-        C("Your 350-mile goal sits at 282.5 miles and is flagged at risk",
-          ["goals.running_miles_target", "goals.running_miles_current", "goals.running_miles_pace"]),
-        C("the last book you finished was Empire of the Vampire on Sep 5, 71 days ago",
-          ["reading.last_finished_title", "reading.last_finished_date", "reading.days_since_last_finished"]),
-        C("with 7 books finished this year", ["reading.books_finished_ytd"]),
-        C("The habit tracker hasn't heard from you since Nov 6",
-          ["habits.logged_yesterday", "habits.days_logged_7d"]),
-    ],
-)
+EDITION = json.loads((Path(__file__).parent / "fixtures" / "morning_brief" / "edition_sample.json").read_text())
+EDITION.pop("_comment")
+CTX = C.load_fixture()
+RECENT = [{"date": "2026-11-18", "weekday": "Wednesday", "lead_headline": "Otters!", "stories": []}]
 
 
-def test_tokens_cover_times_dates_weekdays_and_number_words():
-    toks = extract_tokens("five films by Sep 5, 71 days ago, at 7:00 PM on Thursday")
-    assert [(t.kind, t.value) for t in toks] == [
-        ("number", 5.0), ("date", "Sep 5"), ("number", 71.0), ("time", "7:00 PM"), ("weekday", "Thu")]
+@pytest.fixture(autouse=True)
+def _tmp_data(tmp_path, monkeypatch):
+    monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path))
+    return tmp_path
 
 
-def test_real_brief_has_two_grounding_problems():
-    problems = check_grounding(REAL, FACTS)
-    assert len(problems) == 2, problems
-    assert any('"Three" appears in the brief without a claim' in p for p in problems)
-    assert any('"Nov 6"' in p and "habits.logged_yesterday" in p for p in problems)
+def edited(section: str, i: int, **changes):
+    ed = copy.deepcopy(EDITION)
+    item = next(s for s in ed["sections"] if s["name"] == section)["items"][i]
+    item.update(changes)
+    return ed
 
 
-def test_fixed_brief_is_grounded():
-    claims = [c if "Nov 6" not in c.text else C(c.text, ["habits.newest_data"]) for c in REAL.claims]
-    claims.append(C("Three concerts tonight", ["shows.tonight"]))   # a list's length counts
-    assert check_grounding(replace(REAL, claims=claims), FACTS) == []
+def problems(ed, recent=RECENT):
+    return [p for ps in E.deterministic_checks(ed, CTX, recent).values() for p in ps]
 
 
-def test_invented_numbers_and_bad_ids_are_caught():
-    d = Draft(headline="Big week", brief="You ran 50 miles this week.",
-              claims=[C("You ran 50 miles this week.", ["running.miles_7d", "running.vibes"])])
-    problems = check_grounding(d, FACTS)
-    assert any("running.vibes" in p for p in problems)
-    assert any('"50"' in p for p in problems)
+def test_sample_edition_is_clean():
+    assert problems(EDITION) == []
 
 
-def test_style_flags_first_person():
-    problems = check_style(REAL)
-    assert any("I'll" in p for p in problems)
-    assert not any("paragraphs" in p or "headline" in p for p in problems)
+def test_unknown_ref_and_link():
+    ps = problems(edited("Sports Desk", 0, source_refs=["pick:2026:12:nope"], link="https://made.up/x"))
+    assert any("aren't in the context" in p for p in ps)
+    assert any("isn't a url in the context" in p for p in ps)
 
+
+def test_news_link_must_match_cited_story():
+    ps = problems(edited("Science", 0, link="https://example.org/good/library-rebuild"))
+    assert any("set link to the cited story's url (https://example.org/science/battery)" in p for p in ps)
+
+
+def test_wrong_number_is_caught_and_exact_copy_required():
+    body = EDITION["sections"][0]["items"][1]["body"].replace("11.8 miles", "12 miles")
+    ps = problems(edited("Your Week", 1, body=body))
+    assert any("12 not found in the cited facts" in p for p in ps)
+    body = EDITION["sections"][0]["items"][1]["body"].replace("6.2 miles", "6 miles")   # rounding
+    assert any("6 not found" in p for p in problems(edited("Your Week", 1, body=body)))
+
+
+def test_number_must_come_from_a_cited_ref():
+    # 285 is real, but this item doesn't cite the deadlift
+    body = EDITION["sections"][0]["items"][1]["body"] + " Plus that 285 deadlift."
+    assert any("285 not found" in p for p in problems(edited("Your Week", 1, body=body)))
+
+
+def test_records_and_scores_with_hyphens_match_facts():
+    body = EDITION["sections"][1]["items"][1]["body"].replace("7-4", "9-4")
+    assert any("9 not found" in p for p in problems(edited("Sports Desk", 1, body=body)))
+
+
+def test_weekday_must_match_a_cited_date():
+    body = EDITION["sections"][0]["items"][0]["body"].replace("Monday's", "Thursday's")
+    assert any("Thursday doesn't match" in p for p in problems(edited("Your Week", 0, body=body)))
+
+
+def test_featured_story_needs_follow_up_framing():
+    ps = problems(edited("Good News", 1, headline="The Otters Are Staying",
+                         body="Otters are back in a river that took two decades to clean. Cameras have now caught "
+                              "them breeding, which is the river's way of leaving a five-star review for everyone."))
+    assert any("frame it as a follow-up" in p for p in ps)
+
+
+def test_call_back_needs_a_real_edition():
+    assert any("points at an edition that doesn't exist" in p
+               for p in problems(EDITION, recent=[]) + problems(
+                   edited("Good News", 1, body=EDITION["sections"][2]["items"][1]["body"].replace("Wednesday", "Tuesday"))))
+
+
+def test_same_story_twice():
+    ed = copy.deepcopy(EDITION)
+    ed["sections"][2]["items"][1] = copy.deepcopy(ed["sections"][2]["items"][0])
+    assert any("already ran in Good News item 1" in p for p in problems(ed))
+
+
+def test_copying_from_the_story_is_caught():
+    body = ("A group of retirees spent a year restoring a shuttered library, and the town is delighted "
+            "with the result, which now has thousands of donated books for every reader in town.")
+    assert any("is copied from the story" in p for p in problems(edited("Good News", 0, body=body)))
+
+
+def test_numbers_alone_are_not_copying():
+    body = ("Lab results show the sodium-based cell kept 90% of its capacity after 10,000 cycles, "
+            "and the cheerful news is that storage keeps getting sturdier, one patient test at a time.")
+    assert not any("copied" in p for p in problems(edited("Science", 0, body=body)))
+
+
+def test_field_names_and_refs_in_prose():
+    body = EDITION["sections"][0]["items"][1]["body"].replace("11.8 miles", "11.8 run_miles (fitness:week)")
+    ps = problems(edited("Your Week", 1, body=body))
+    assert any("run_miles" in p and "fitness:week" in p for p in ps)
+
+
+def test_schema_failure_short_circuits_and_skips_judge():
+    ev = E.evaluate({"date": "2026-11-21"}, CTX, RECENT, client=None)
+    assert list(ev.checks) == ["structure"] and ev.judgement is None and not ev.passed
+
+
+# ── judge ────────────────────────────────────────────────────────────────────
 
 class FakeJudge:
-    def __init__(self, scores):
-        self.calls = 0
-        review = {k: {"score": s, "reason": f"{k} reason"} for k, s in scores.items()}
-        review |= {"best_line": "the couch remains a legitimate option",
-                   "suggestions": ["Make the habit line a real joke."]}
-        self._review = review
+    def __init__(self, scores, fixes=()):
+        self.requests = []
         self.messages = SimpleNamespace(create=self._create)
+        self.reply = {k: {"score": v, "reason": f"{k} reason"} for k, v in scores.items()}
+        self.reply["fix_instructions"] = list(fixes)
 
-    def _create(self, **kwargs):
-        self.calls += 1
-        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._review)],
-                               usage=SimpleNamespace(input_tokens=400, output_tokens=200),
-                               stop_reason="tool_use")
-
-
-def test_judge_scores_and_code_decides():
-    clean = replace(REAL, brief=BRIEF.replace(", so I'll assume you've been busy and not simply avoiding it",
-                                              ", a silence you can interpret however you like"),
-                    claims=[c if "Nov 6" not in c.text else C(c.text, ["habits.newest_data"]) for c in REAL.claims]
-                    + [C("Three concerts tonight", ["shows.tonight"])])
-    judge = FakeJudge({"funny": 2, "kind": 5, "light": 4, "voice": 5})
-    # evaluate() takes a snapshot, so rebuild a minimal one from FACTS.
-    snapshot = {"sections": {}}
-    for fid, v in FACTS.items():
-        sec, key = fid.split(".", 1)
-        snapshot["sections"].setdefault(sec, {"facts": {}})["facts"][key] = v
-    result = evaluate(clean, snapshot, client=judge)
-
-    assert result.grounding == [] and result.style == []
-    assert judge.calls == 1
-    assert not result.passed
-    assert result.problems[0].startswith("Tone: funny scored 2/5 (needs 3)")
-    assert "Suggestion: Make the habit line a real joke." in result.problems
+    def _create(self, **kw):
+        self.requests.append(kw)
+        return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self.reply)],
+                               usage=SimpleNamespace(input_tokens=10000, output_tokens=800), stop_reason="tool_use")
 
 
-def test_judge_is_skipped_when_grounding_fails():
-    judge = FakeJudge({k: 5 for k in THRESHOLDS})
-    snapshot = {"sections": {"film": {"facts": {"films_7d": 5}}}}
-    result = evaluate(REAL, snapshot, client=judge)
-    assert result.grounding and result.tone is None and judge.calls == 0
+def test_judge_pass_and_cost(_tmp_data):
+    client = FakeJudge({"accuracy": 5, "positive_tone": 4, "humor": 3, "coverage": 4})
+    ev = E.evaluate(EDITION, CTX, RECENT, client=client)
+    assert ev.passed
+    req = client.requests[0]
+    assert req["model"] == "claude-haiku-5-5" and req["tools"][0]["strict"] is True
+    assert "## Draft edition" in req["messages"][0]["content"]
+    assert ev.cost_usd == pytest.approx(0.0014)          # 10K in * $0.10 + 800 out * $0.50 per M
+    log = (_tmp_data / "ai" / "generations.jsonl").read_text().splitlines()
+    assert json.loads(log[-1])["analyzer_name"] == "morning_brief_judge"
+
+
+def test_low_scores_fail_with_fix_instructions():
+    client = FakeJudge({"accuracy": 5, "positive_tone": 4, "humor": 2, "coverage": 4},
+                       fixes=["Sports Desk item 1: add a joke about the pending pick."])
+    ev = E.evaluate(EDITION, CTX, RECENT, client=client)
+    assert not ev.passed
+    assert ev.problems[0].startswith("Judge: humor scored 2/5 (needs 3)")
+    assert "Judge fix: Sports Desk item 1" in ev.problems[1]
+
+
+def test_code_problems_and_judge_feedback_combine():
+    ed = edited("Science", 0, link=None)
+    ev = E.evaluate(ed, CTX, RECENT, client=FakeJudge({k: 5 for k in E.THRESHOLDS}))
+    assert not ev.passed and ev.judgement is not None
+    assert any("news items need the story's url" in p for p in ev.problems)

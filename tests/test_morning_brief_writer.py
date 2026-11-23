@@ -1,97 +1,157 @@
-"""Stage 2 tests: the writer's prompt and parsing, with a fake Anthropic client."""
+"""
+The writer: prompt, validation, logging and cost. A fake Anthropic client, so no
+API calls; ONS_DATA_DIR is a temp dir, so generations.jsonl and saved editions
+are never the real ones.
+
+  uv run --with pytest pytest tests/test_morning_brief_writer.py -q
+"""
 
 from __future__ import annotations
 
+import copy
+import json
 from types import SimpleNamespace
 
 import pytest
 
-from agents.morning_brief.writer import Draft, build_messages, render_snapshot, write
+from agents.morning_brief import context as C
+from agents.morning_brief import llm
+from agents.morning_brief import writer as W
 
-SNAPSHOT = {
-    "date": "2026-11-15",
-    "weekday": "Sunday",
-    "sections": {
-        "running": {"facts": {"miles_7d": 5.1, "runs_7d": 1}, "as_of": "2026-11-10",
-                    "stale": False, "notes": [], "error": None},
-        "crossfit": {"facts": {"last_workout_date": "Fri Jun 26"}, "as_of": "2026-06-26",
-                     "stale": True, "notes": ["CSV import is behind."], "error": None},
-        "music": {"facts": {}, "as_of": None, "stale": False, "notes": [], "error": "no files"},
-    },
-}
+
+@pytest.fixture(autouse=True)
+def _tmp_data(tmp_path, monkeypatch):
+    monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path))
+    return tmp_path
 
 
 class FakeClient:
-    """Stands in for anthropic.Anthropic(): records requests, returns canned replies.
-
-    With prose_first=True the first reply is plain text, to exercise the nudge."""
+    """Stands in for anthropic.Anthropic(): records requests, returns canned replies."""
 
     def __init__(self, tool_input, prose_first=False, stop_reason="tool_use"):
         self.requests = []
         self.messages = SimpleNamespace(create=self._create)
-        self._input = tool_input
-        self._prose_first = prose_first
-        self._stop = stop_reason
-
-    @property
-    def request(self):
-        return self.requests[-1]
+        self._input, self._prose_first, self._stop = tool_input, prose_first, stop_reason
 
     def _create(self, **kwargs):
         self.requests.append(kwargs)
-        usage = SimpleNamespace(input_tokens=900, output_tokens=250)
+        usage = SimpleNamespace(input_tokens=9000, output_tokens=2000)
         if self._prose_first and len(self.requests) == 1:
-            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Good morning!")],
+            return SimpleNamespace(content=[SimpleNamespace(type="text", text="Extra! Extra!")],
                                    usage=usage, stop_reason="end_turn")
         return SimpleNamespace(content=[SimpleNamespace(type="tool_use", input=self._input)],
                                usage=usage, stop_reason=self._stop)
 
 
-def test_render_marks_stale_and_error_sections():
-    text = render_snapshot(SNAPSHOT)
-    assert "- running.miles_7d: 5.1" in text
-    assert "## crossfit (STALE, newest data 2026-06-26)" in text
-    assert "Note: CSV import is behind." in text
-    assert "## music: ERROR (no data)" in text
+BODY = ("Your correspondent can confirm a deadlift of 285 on Monday, a personal record, "
+        "followed by three runs that added up to 11.8 miles for the week. The training "
+        "ledger is in the black and the shoes are asking for a raise.")
 
-
-TOOL_INPUT = {
-    "headline": " One run, many films ",
-    "brief": "You ran 5.1 miles this week.",
-    "claims": [{"text": "You ran 5.1 miles this week.", "fact_ids": ["running.miles_7d"]}],
+GOOD = {
+    "date": "2026-11-21",
+    "masthead_tagline": "All the miles that are fit to print",
+    "lead_headline": "Deadlift PR Rocks the Week",
+    "sections": [
+        {"name": "Your Week", "items": [
+            {"headline": "Barbell Bends, Records Break", "body": BODY,
+             "source_refs": ["sugarwod:2026-11-16:aaaa0001", "fitness:week"], "link": None}]},
+        {"name": "Sports Desk", "items": [
+            {"headline": "UCF Wins in the Desert", "body": BODY, "source_refs": ["cfb_game:100000001"], "link": None},
+            {"headline": "Penn State Hosts Rutgers Today", "body": BODY, "source_refs": ["cfb_game:100000002"], "link": None}]},
+        {"name": "Good News", "items": [
+            {"headline": "Retirees Reopen a Library", "body": BODY, "source_refs": ["news:0000000000000001"],
+             "link": "https://example.org/good/library-rebuild"},
+            {"headline": "Follow-up: Otters Settle In", "body": BODY, "source_refs": ["news:0000000000000002"],
+             "link": "https://example.org/good/otters"}]},
+        {"name": "Science", "items": [
+            {"headline": "A Battery That Will Not Quit", "body": BODY, "source_refs": ["news:0000000000000003"],
+             "link": "https://example.org/science/battery"}]},
+        {"name": "Tip of the Day", "items": [
+            {"headline": "Rest Is Training Too", "body": BODY, "source_refs": ["fitness:training_load"], "link": None}]},
+    ],
 }
 
 
-def test_write_offers_the_tool_and_parses_claims():
-    client = FakeClient(TOOL_INPUT)
-    draft = write(SNAPSHOT, client=client, model="test-model")
-
-    assert client.request["tools"][0]["name"] == "submit_brief"
-    assert "running.miles_7d" in client.request["messages"][0]["content"]
-    assert draft.headline == "One run, many films"
-    assert draft.claims[0].fact_ids == ["running.miles_7d"]
-    assert draft.usage == {"input_tokens": 900, "output_tokens": 250}
+def test_valid_edition_has_no_problems():
+    assert W.validate_edition(GOOD, "2026-11-21") == []
 
 
-def test_write_nudges_once_when_the_model_answers_in_prose():
-    client = FakeClient(TOOL_INPUT, prose_first=True)
-    draft = write(SNAPSHOT, client=client, model="test-model")
+def test_structural_problems_are_phrased_as_fixes():
+    bad = copy.deepcopy(GOOD)
+    bad["sections"] = bad["sections"][:4]                     # no Tip of the Day
+    bad["sections"][2]["items"][0]["link"] = None             # news without link
+    bad["sections"][0]["items"][0]["body"] = "Too short."
+    bad["lead_headline"] = "word " * 20
+    probs = W.validate_edition(bad, "2026-11-22")
+    text = "\n".join(probs)
+    assert "Set date to 2026-11-22" in text
+    assert "Shorten the lead headline" in text
+    assert "Sections must be exactly" in text
+    assert "news items need the story's url" in text
+    assert "body is 2 words" in text
 
+
+def test_schema_violations_are_reported_not_raised():
+    probs = W.validate_edition({"date": "2026-11-21", "sections": []})
+    assert any("masthead_tagline" in p for p in probs)
+
+
+def test_write_sends_context_and_logs_cost(_tmp_data):
+    client = FakeClient(GOOD)
+    ed = W.write(C.load_fixture(), client=client, recent=[])
+    req = client.requests[0]
+    assert req["model"] == W.MODEL
+    assert req["tools"][0]["strict"] is True
+    assert req["tool_choice"] == {"type": "auto"}            # forced tool_choice 400s on 5.5 models
+    assert req["output_config"] == {"effort": W.EFFORT}
+    prompt = req["messages"][0]["content"]
+    assert '"ref":"fitness:week"' in prompt and "## news" in prompt
+    assert "(none saved yet" in prompt
+    assert ed.problems == []
+    # 9000 in / 2000 out on Sonnet 5.5 = 0.018 + 0.020
+    assert ed.cost_usd == pytest.approx(0.038)
+    log = [json.loads(l) for l in (_tmp_data / "ai" / "generations.jsonl").read_text().splitlines()]
+    assert log[-1]["analyzer_name"] == "morning_brief_writer"
+    assert log[-1]["cost_usd"] == pytest.approx(0.038)
+    assert log[-1]["status"] == "success"
+
+
+def test_revision_includes_previous_draft_and_fixes():
+    ed = W.Edition(data=GOOD)
+    msgs = W.build_messages(C.load_fixture(), [], feedback=["Science: use a science story."], previous=ed)
+    text = msgs[0]["content"]
+    assert "Your previous draft failed review" in text
+    assert "- Science: use a science story." in text
+    assert "Deadlift PR Rocks the Week" in text
+
+
+def test_recent_editions_read_saved_briefs(_tmp_data):
+    (_tmp_data / "brief").mkdir()
+    (_tmp_data / "brief" / "2026-11-18.json").write_text(json.dumps({"edition": GOOD}))
+    recent = W.recent_editions(__import__("datetime").date(2026, 11, 21))
+    assert recent[0]["weekday"] == "Wednesday"
+    assert recent[0]["lead_headline"] == GOOD["lead_headline"]
+    assert "https://example.org/good/otters" in [s["link"] for s in recent[0]["stories"]]
+
+
+def test_prose_reply_gets_one_nudge_and_failures_are_logged(_tmp_data):
+    client = FakeClient(GOOD, prose_first=True)
+    W.write(C.load_fixture(), client=client, recent=[])
     assert len(client.requests) == 2
-    assert "submit_brief" in client.requests[1]["messages"][-1]["content"]
-    assert draft.brief == "You ran 5.1 miles this week."
-    assert draft.usage == {"input_tokens": 1800, "output_tokens": 500}   # both calls counted
-
-
-def test_revision_prompt_includes_previous_draft_and_feedback():
-    prev = Draft(headline="h", brief="You ran 50 miles.", claims=[])
-    content = build_messages(SNAPSHOT, ["50 miles isn't in the facts; it's 5.1."], prev)[0]["content"]
-    assert "You ran 50 miles." in content
-    assert "- 50 miles isn't in the facts; it's 5.1." in content
-
-
-def test_write_fails_loudly_when_cut_off():
-    # Real failure from Nov 15: the brief arrived, the claims list didn't.
-    client = FakeClient({**TOOL_INPUT, "claims": []}, stop_reason="max_tokens")
     with pytest.raises(RuntimeError, match="max_tokens"):
-        write(SNAPSHOT, client=client, model="test-model")
+        W.write(C.load_fixture(), client=FakeClient(GOOD, stop_reason="max_tokens"), recent=[])
+    last = json.loads((_tmp_data / "ai" / "generations.jsonl").read_text().splitlines()[-1])
+    assert last["status"] == "failed" and "max_tokens" in last["error_message"]
+
+
+def test_budget_guard_refuses_when_month_is_spent(_tmp_data):
+    llm.GENERATIONS_LOG.append({"timestamp": llm.now_local().isoformat(), "cost_usd": llm.MONTHLY_BUDGET_USD})
+    with pytest.raises(llm.BudgetExceeded):
+        W.write(C.load_fixture(), client=FakeClient(GOOD), recent=[])
+
+
+def test_markdown_preview():
+    md = W.to_markdown(GOOD)
+    assert "Saturday, November 21, 2026" in md
+    assert "[Read more](https://example.org/good/otters)" in md
+    assert md.index("### Your Week") < md.index("### Tip of the Day")

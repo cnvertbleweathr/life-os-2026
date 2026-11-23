@@ -1,28 +1,29 @@
 """
-Stage 3 of the morning-brief agent: the evaluators.
+The evaluator: is this edition fit to print?
 
-Three checks, cheapest first. Each returns a list of problems written as
-instructions the writer can act on, because in stage 4 these problems become
-the writer's feedback.
+Two layers, and every problem from either is phrased as an instruction the
+writer can act on, because the revise loop (run.py) sends them back verbatim.
 
-1. grounding (code): every claim quotes the brief, cites real fact ids, and
-   every number, date, weekday and time in it appears in the facts it cites.
-   Numbers, dates and times outside any claim are flagged as uncited.
-2. style (code): length, shape, and the voice rules that a regex can check.
-3. tone (LLM judge): funny, kind, light, voice, scored 1-5 against
-   prompts/judge.md. The judge scores; code decides pass/fail, using the
-   thresholds below. Tune them in stage 5 once you've rated briefs yourself.
+a) Deterministic checks (code, free, run first):
+   - structure  the writer's schema + section/length rules (writer.validate_edition)
+   - refs       every source_ref is a context ref; every link is a context url;
+                a news item's link is the url of a story it cites
+   - numbers    every number in an item appears in the facts (or titles/dates)
+                of the refs it cites: 5.03 must be 5.03, 6-5 must be 6-5.
+                Weekdays must match a cited item's date, today, or an earlier edition.
+   - news       no story twice in one edition; an already-featured story must be
+                framed as a follow-up; "as reported Tuesday" needs a real
+                Tuesday edition; no 7+ word runs copied from a story's text
+   - hygiene    no field names or refs leaking into the prose
+b) The judge (Haiku 5.5, prompts/judge.md): scores accuracy, positive_tone,
+   humor and coverage 1-5 with fix instructions. The judge scores; code decides
+   pass/fail with THRESHOLDS.
 
-The code checks catch "wrong", which a model judge is unreliable at. The judge
-catches "accurate but not funny", which code can't see. What none of them
-catch: a claim that cites the right numbers but says something untrue about
-them ("5.1 miles yesterday" when the run was Tuesday is caught by the weekday
-check, but "your best week ever" is not). That's what your own ratings in
-stage 5 are for.
+An edition passes when (a) finds nothing and every score meets its threshold.
 
-    uv run python -m agents.morning_brief.evaluators              # write today's brief, then evaluate it
-    uv run python -m agents.morning_brief.evaluators --no-tone    # skip the judge's API call
-    uv run python -m agents.morning_brief.evaluators --draft d.json --snapshot s.json
+    uv run python -m agents.morning_brief.evaluators --fixture                   # write + evaluate the sample
+    uv run python -m agents.morning_brief.evaluators --fixture --edition e.json  # evaluate a saved edition
+    uv run python -m agents.morning_brief.evaluators --fixture --no-judge        # code checks only, no API call
 """
 
 from __future__ import annotations
@@ -36,304 +37,350 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from agents.morning_brief.llm import call_tool, default_client
-from agents.morning_brief.snapshot import build_snapshot, facts as flat_facts
-from agents.morning_brief.writer import Claim, Draft
+from agents.morning_brief import context as C
+from agents.morning_brief.llm import call_tool, cost_usd, default_client
+from agents.morning_brief.writer import Edition, render_context, validate_edition
 
 JUDGE_PROMPT = Path(__file__).parent / "prompts" / "judge.md"
 JUDGE_MODEL = os.getenv("ONS_JUDGE_MODEL", "claude-haiku-5-5")
-THRESHOLDS = {"funny": 3, "kind": 4, "light": 3, "voice": 4}
-WORDS = (120, 200)
+JUDGE_EFFORT = os.getenv("ONS_JUDGE_EFFORT", "medium")
+THRESHOLDS = {"accuracy": 4, "positive_tone": 4, "humor": 3, "coverage": 4}
+COPY_RUN = 7          # this many words in a row from a story's title/summary = copying
+ANALYZER = "morning_brief_judge"
+
+WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+NUMBER_RE = re.compile(r"(?<![\w.])\d+(?:,\d{3})*(?:\.\d+)?")
+# "Monday" and "Monday's" name a day; plural "Mondays" is a figure of speech, not a date.
+WEEKDAY_RE = re.compile(r"\b(" + "|".join(WEEKDAYS) + r")(?:'s)?\b")
+CALLBACK_RE = re.compile(r"\bas (?:reported|noted|covered|featured)(?: here)?(?: on| last)? (" + "|".join(WEEKDAYS) + r")\b", re.I)
+FOLLOWUP_RE = re.compile(r"\b(follow-?up|update|as (?:reported|noted|covered|featured)|earlier this week|returns? to)\b", re.I)
+FIELD_RE = re.compile(r"\b[a-z]+_[a-z0-9_]+\b|\b(?:news|strava|pick|picks|cfb_game|nba|nhl|sugarwod|music|fitness|draft):[\w:.-]+")
 
 
-# ── 1. Grounding ─────────────────────────────────────────────────────────────
+# ── helpers ──────────────────────────────────────────────────────────────────
 
-NUMBER_WORDS = {w: i for i, w in enumerate(
-    "zero one two three four five six seven eight nine ten eleven twelve thirteen "
-    "fourteen fifteen sixteen seventeen eighteen nineteen twenty".split())}
-MONTHS = "jan feb mar apr may jun jul aug sep oct nov dec".split()
-WEEKDAYS = "monday tuesday wednesday thursday friday saturday sunday".split()
-
-TIME_RE = re.compile(r"\b(\d{1,2}:\d{2})\s?([ap])\.?m\.?\b", re.I)
-DATE_RE = re.compile(r"\b(" + "|".join(MONTHS) + r")[a-z]*\.?\s+(\d{1,2})\b(?!:)", re.I)
-WEEKDAY_RE = re.compile(r"\b(" + "|".join(WEEKDAYS) + r")s?\b", re.I)
-NUMBER_RE = re.compile(r"(?<![\w.])(\d+(?:,\d{3})*(?:\.\d+)?)(?![\w])")
-WORD_RE = re.compile(r"\b(" + "|".join(NUMBER_WORDS) + r")\b", re.I)
+def _numbers(text: str) -> list[float]:
+    return [float(m.group(0).replace(",", "")) for m in NUMBER_RE.finditer(text or "")]
 
 
-@dataclass
-class Token:
-    kind: str      # "time" | "date" | "weekday" | "number"
-    text: str      # as written in the brief
-    value: Any     # normalized: "7:00 PM", "Nov 6", "Thu", 5.1
-    start: int
-    end: int
+def _values(obj: Any) -> list[Any]:
+    if isinstance(obj, dict):
+        return [v for x in obj.values() for v in _values(x)]
+    if isinstance(obj, list):
+        return [v for x in obj for v in _values(x)]
+    return [obj]
 
 
-def extract_tokens(text: str, number_words: bool = True) -> list[Token]:
-    """Find everything checkable in a piece of text. Times and dates are taken
-    first so their digits aren't double-counted as bare numbers."""
-    tokens: list[Token] = []
-    taken: list[tuple[int, int]] = []
-
-    def free(m: re.Match) -> bool:
-        return not any(a < m.end() and m.start() < b for a, b in taken)
-
-    def add(kind: str, m: re.Match, value: Any) -> None:
-        tokens.append(Token(kind, m.group(0), value, m.start(), m.end()))
-        taken.append((m.start(), m.end()))
-
-    for m in TIME_RE.finditer(text):
-        add("time", m, f"{m.group(1)} {m.group(2).upper()}M")
-    for m in DATE_RE.finditer(text):
-        if free(m):
-            add("date", m, f"{m.group(1).title()} {int(m.group(2))}")
-    for m in WEEKDAY_RE.finditer(text):
-        if free(m):
-            add("weekday", m, m.group(1)[:3].title())
-    for m in NUMBER_RE.finditer(text):
-        if free(m):
-            add("number", m, float(m.group(1).replace(",", "")))
-    if number_words:
-        for m in WORD_RE.finditer(text):
-            if free(m) and m.group(1).lower() != "zero":   # "zero tickets" is usually a joke
-                add("number", m, float(NUMBER_WORDS[m.group(1).lower()]))
-    return sorted(tokens, key=lambda t: t.start)
+def allowed_numbers(items: list[dict[str, Any]]) -> set[float]:
+    """Every number a writer may quote from these items: numeric facts, numbers
+    inside string facts ("6-5", "+10.0 (away fav)"), titles and dates, and list lengths."""
+    out: set[float] = set()
+    for it in items:
+        for v in _values(it.get("facts", {})):
+            if isinstance(v, bool) or v is None:
+                continue
+            if isinstance(v, (int, float)):
+                out.add(float(v))
+                out.add(abs(float(v)))
+            elif isinstance(v, str):
+                out.update(_numbers(v))
+        for lst in it.get("facts", {}).values():
+            if isinstance(lst, list):
+                out.add(float(len(lst)))
+        out.update(_numbers(it.get("title", "")))
+        if it.get("date"):
+            d = date.fromisoformat(it["date"])
+            out.update({float(d.day), float(d.year), float(d.month)})
+    return out
 
 
-def _supported(token: Token, values: list[Any]) -> bool:
-    strings = [str(v) for v in values if isinstance(v, str)]
-    if token.kind == "time":
-        return any(token.value.replace(" ", "").lower() in s.replace(" ", "").lower() for s in strings)
-    if token.kind == "date":
-        return any(re.search(rf"\b{re.escape(token.value)}\b", s) for s in strings)
-    if token.kind == "weekday":
-        return any(re.search(rf"\b{token.value}\b", s) for s in strings)
-
-    # A number word inside a cited title ("One Flew Over the Cuckoo's Nest") is
-    # part of the name, not a count.
-    if token.text.isalpha() and any(re.search(rf"\b{token.text}\b", s, re.I) for s in strings):
-        return True
-
-    # number: match a numeric fact, a number inside a string fact, or a list's length
-    candidates: list[float] = []
-    for v in values:
-        if isinstance(v, bool):
-            continue
-        if isinstance(v, (int, float)):
-            candidates.append(float(v))
-        elif isinstance(v, str):
-            candidates += [float(x.replace(",", "")) for x in NUMBER_RE.findall(v)]
-    places = len(token.text.split(".")[1]) if "." in token.text else 0
-    return any(abs(c - token.value) < 1e-9 or round(c, places) == token.value for c in candidates)
+def _weekday(iso: str | None) -> str | None:
+    return WEEKDAYS[date.fromisoformat(iso).weekday()] if iso else None
 
 
-def _cited_values(fact_ids: list[str], facts: dict[str, Any]) -> list[Any]:
-    values: list[Any] = []
-    for fid in fact_ids:
-        v = facts.get(fid)
-        if isinstance(v, list):
-            values.append(len(v))
-            values += v
-        elif v is not None:
-            values.append(v)
-    return values
+def _copied_run(text: str, source: str, n: int = COPY_RUN) -> str | None:
+    # Numbers are left out: the writer must copy them exactly, so they aren't evidence of copying.
+    words = [w for w in re.findall(r"[a-z0-9']+", (text or "").lower()) if not w.isdigit()]
+    src = " " + " ".join(w for w in re.findall(r"[a-z0-9']+", (source or "").lower()) if not w.isdigit()) + " "
+    for i in range(len(words) - n + 1):
+        run = " ".join(words[i:i + n])
+        if f" {run} " in src:
+            return run
+    return None
 
 
-def check_grounding(draft: Draft, facts: dict[str, Any]) -> list[str]:
-    problems: list[str] = []
-    full = f"{draft.headline}\n{draft.brief}"
-    norm = lambda s: re.sub(r"\s+", " ", s.replace("’", "'")).strip()
-    covered: list[tuple[int, int]] = []
+def _items(edition: dict[str, Any]):
+    for s in edition.get("sections", []):
+        for i, it in enumerate(s.get("items", []), 1):
+            yield s["name"], i, it
 
-    for c in draft.claims:
-        where = norm(full).find(norm(c.text))
-        if where < 0:
-            problems.append(f'The claim "{c.text}" isn\'t in the brief word for word. Quote claims exactly.')
-        else:
-            covered.append((where, where + len(norm(c.text))))
-        unknown = [f for f in c.fact_ids if f not in facts]
+
+def _where(section: str, i: int, it: dict) -> str:
+    return f"{section} item {i} (\"{it.get('headline', '')[:45]}\")"
+
+
+# ── a) deterministic checks ──────────────────────────────────────────────────
+
+def check_refs(edition: dict[str, Any], ctx: dict[str, Any]) -> list[str]:
+    refs, urls = C.refs(ctx), C.urls(ctx)
+    problems = []
+    for section, i, it in _items(edition):
+        where = _where(section, i, it)
+        unknown = [r for r in it["source_refs"] if r not in refs]
         if unknown:
-            problems.append(f'The claim "{c.text}" cites fact ids that don\'t exist: {", ".join(unknown)}.')
-        values = _cited_values(c.fact_ids, facts)
-        for t in extract_tokens(c.text):
-            if not _supported(t, values):
-                problems.append(
-                    f'"{t.text}" in "{c.text}" isn\'t in the facts it cites '
-                    f'({", ".join(c.fact_ids) or "none"}). Cite the fact it comes from, or remove it.'
-                )
-
-    # Anything checkable in the headline or brief that no claim covers. Bare
-    # "one" is skipped here ("no one", "this one") but still checked in claims.
-    for t in extract_tokens(norm(full)):
-        if t.text.lower() == "one":
-            continue
-        if not any(a <= t.start and t.end <= b for a, b in covered):
-            problems.append(f'"{t.text}" appears in the brief without a claim backing it. Add a claim or cut it.')
+            problems.append(f"{where}: source_refs {unknown} aren't in the context; cite only refs that exist.")
+        if not it["source_refs"] and section != "Tip of the Day":
+            problems.append(f"{where}: cite the refs this item's facts come from in source_refs.")
+        link = it.get("link")
+        if link and link not in urls:
+            problems.append(f"{where}: link {link} isn't a url in the context; use a context url or null.")
+        if section in ("Good News", "Science"):
+            cited = [refs[r] for r in it["source_refs"] if r in refs]
+            news = [c for c in cited if c["ref"].startswith("news:")]
+            want = "good_news" if section == "Good News" else "science"
+            if not news:
+                problems.append(f"{where}: base it on a {want} story from the news context and cite its ref.")
+            elif link not in {c.get("url") for c in news}:
+                problems.append(f"{where}: set link to the cited story's url ({news[0].get('url')}).")
+            if any(c["kind"] != want for c in news):
+                problems.append(f"{where}: {section} needs a {want} story, not a {news[0]['kind']} one.")
     return problems
 
 
-# ── 2. Style ─────────────────────────────────────────────────────────────────
+def check_numbers(edition: dict[str, Any], ctx: dict[str, Any], recent: list[dict] | None = None) -> list[str]:
+    refs = C.refs(ctx)
+    everything = allowed_numbers(list(refs.values()))
+    today = ctx["date"]
+    recent_days = {r["weekday"] for r in (recent or [])}
+    problems = []
 
-CLICHES = ["you've got this", "you got this", "every step counts", "keep it up", "crush it",
-           "rise and shine", "seize the day", "one step at a time"]
-FIRST_PERSON = re.compile(r"\b(I'm|I'll|I've|I'd|I|me|my|we're|we'll|we|us|our)\b")   # longest first
-EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
+    def check(where: str, text: str, items: list[dict], numbers_ok: set[float]) -> None:
+        bad = sorted({n for n in _numbers(text) if n not in numbers_ok})
+        if bad:
+            shown = ", ".join(f"{n:g}" for n in bad)
+            problems.append(f"{where}: {shown} not found in the cited facts; copy numbers exactly from "
+                            "the facts of the refs you cite (or cite the ref they come from).")
+        days_ok = {_weekday(it.get("date")) for it in items} | {_weekday(it.get("featured_on")) for it in items}
+        tomorrow = WEEKDAYS[(date.fromisoformat(today).weekday() + 1) % 7]
+        days_ok |= {_weekday(today), tomorrow} | recent_days
+        bad_days = sorted({m.group(1) for m in WEEKDAY_RE.finditer(text)} - days_ok)
+        if bad_days:
+            problems.append(f"{where}: {', '.join(bad_days)} doesn't match the date of anything it cites; "
+                            "fix the day or cite the item it refers to.")
 
-
-def check_style(draft: Draft) -> list[str]:
-    problems: list[str] = []
-    n = len(draft.brief.split())
-    if not WORDS[0] <= n <= WORDS[1]:
-        problems.append(f"The brief is {n} words; keep it between {WORDS[0]} and {WORDS[1]}.")
-    if len(draft.headline.split()) >= 12:
-        problems.append("The headline is 12 words or more; keep it under 12.")
-    paragraphs = [p for p in draft.brief.split("\n\n") if p.strip()]
-    if not 2 <= len(paragraphs) <= 3:
-        problems.append(f"The brief has {len(paragraphs)} paragraphs; use two or three.")
-    if re.search(r"^\s*(#|[-*•]\s|\d+\.\s)", draft.brief, re.M):
-        problems.append("Drop the headers and bullet points; write plain paragraphs.")
-    full = f"{draft.headline}\n{draft.brief}"
-    for word in sorted({m.group(0) for m in FIRST_PERSON.finditer(full)}):
-        problems.append(f'The writer refers to itself ("{word}"). Talk to her as "you" only.')
-    for phrase in CLICHES:
-        if phrase in full.lower():
-            problems.append(f'Cut the motivational cliché "{phrase}".')
-    if EMOJI.search(full):
-        problems.append("Remove the emoji.")
-    if full.count("!") > 1:
-        problems.append("Use at most one exclamation mark.")
+    for section, i, it in _items(edition):
+        cited = [refs[r] for r in it["source_refs"] if r in refs]
+        pool = allowed_numbers(cited) if cited else everything
+        check(_where(section, i, it), f"{it['headline']} {it['body']}", cited or list(refs.values()), pool)
+    check("Lead headline", edition.get("lead_headline", ""), list(refs.values()), everything)
+    check("Masthead tagline", edition.get("masthead_tagline", ""), list(refs.values()), everything)
     return problems
 
 
-# ── 3. Tone (LLM judge) ──────────────────────────────────────────────────────
+def check_news(edition: dict[str, Any], ctx: dict[str, Any], recent: list[dict] | None = None) -> list[str]:
+    refs = C.refs(ctx)
+    recent_by_day = {r["weekday"]: r for r in (recent or [])}
+    seen: dict[str, str] = {}
+    problems = []
+    for section, i, it in _items(edition):
+        where = _where(section, i, it)
+        text = f"{it['headline']} {it['body']}"
+        for r in it["source_refs"]:
+            item = refs.get(r)
+            if not item or not r.startswith("news:"):
+                continue
+            if r in seen:
+                problems.append(f"{where}: this story already ran in {seen[r]}; pick a different one.")
+            seen.setdefault(r, where)
+            if item.get("already_featured") and not FOLLOWUP_RE.search(text):
+                problems.append(f"{where}: this story ran on {item.get('featured_on')}; frame it as a follow-up "
+                                "(\"Follow-up:\" or \"as reported …\") or pick a fresh story.")
+            for source_text in (item.get("title", ""), item["facts"].get("summary", "")):
+                run = _copied_run(it["body"], source_text)
+                if run:
+                    problems.append(f"{where}: \"{run}\" is copied from the story; summarize in your own words.")
+                    break
+        for m in CALLBACK_RE.finditer(text):
+            day = m.group(1).title()
+            featured_days = {_weekday(refs[r].get("featured_on")) for r in it["source_refs"] if r in refs}
+            if day not in recent_by_day and day not in featured_days:
+                problems.append(f"{where}: \"{m.group(0)}\" points at an edition that doesn't exist; "
+                                "drop the call-back or point at a real one.")
+    return problems
+
+
+def check_hygiene(edition: dict[str, Any]) -> list[str]:
+    problems = []
+    texts = [("Lead headline", edition.get("lead_headline", "")),
+             ("Masthead tagline", edition.get("masthead_tagline", ""))]
+    texts += [(_where(s, i, it), f"{it['headline']} {it['body']}") for s, i, it in _items(edition)]
+    for where, text in texts:
+        leaks = sorted(set(FIELD_RE.findall(text)))
+        if leaks:
+            problems.append(f"{where}: field names or refs in the prose ({', '.join(leaks)}); write them as plain words.")
+    return problems
+
+
+def deterministic_checks(edition: dict[str, Any], ctx: dict[str, Any],
+                         recent: list[dict] | None = None) -> dict[str, list[str]]:
+    structure = validate_edition(edition, ctx["date"])
+    if any(p.startswith("Schema:") for p in structure):
+        return {"structure": structure}          # the rest assumes a well-formed edition
+    return {
+        "structure": structure,
+        "refs": check_refs(edition, ctx),
+        "numbers": check_numbers(edition, ctx, recent),
+        "news": check_news(edition, ctx, recent),
+        "hygiene": check_hygiene(edition),
+    }
+
+
+# ── b) the judge ─────────────────────────────────────────────────────────────
+
+def _criterion(desc: str) -> dict:
+    return {"type": "object", "additionalProperties": False, "required": ["score", "reason"],
+            "properties": {"score": {"type": "integer", "enum": [1, 2, 3, 4, 5]},
+                           "reason": {"type": "string"}}, "description": desc}
+
 
 REVIEW_TOOL = {
     "name": "submit_review",
-    "description": "Submit the tone review.",
+    "description": "Submit the scores and fix instructions for this edition.",
+    "strict": True,
     "input_schema": {
         "type": "object",
+        "additionalProperties": False,
+        "required": [*THRESHOLDS, "fix_instructions"],
         "properties": {
-            **{k: {"type": "object",
-                   "properties": {"score": {"type": "integer", "minimum": 1, "maximum": 5},
-                                  "reason": {"type": "string"}},
-                   "required": ["score", "reason"]} for k in THRESHOLDS},
-            "best_line": {"type": "string"},
-            "suggestions": {"type": "array", "items": {"type": "string"}, "maxItems": 3},
+            "accuracy": _criterion("Says only what the cited context supports."),
+            "positive_tone": _criterion("Solutions-focused, upbeat, never saccharine or mean."),
+            "humor": _criterion("Would the reader smile or laugh?"),
+            "coverage": _criterion("All sections present and using the week's best stories."),
+            "fix_instructions": {"type": "array", "items": {"type": "string"}},
         },
-        "required": [*THRESHOLDS, "best_line", "suggestions"],
     },
 }
 
 
 @dataclass
-class ToneReview:
+class Judgement:
     scores: dict[str, int]
     reasons: dict[str, str]
-    best_line: str
-    suggestions: list[str]
+    fix_instructions: list[str]
+    model: str = JUDGE_MODEL
     usage: dict[str, int] = field(default_factory=dict)
 
+    @property
+    def failing(self) -> list[str]:
+        return [k for k, floor in THRESHOLDS.items() if self.scores.get(k, 0) < floor]
+
     def problems(self) -> list[str]:
-        failing = [k for k, floor in THRESHOLDS.items() if self.scores.get(k, 0) < floor]
-        if not failing:
+        if not self.failing:
             return []
-        out = [f"Tone: {k} scored {self.scores[k]}/5 (needs {THRESHOLDS[k]}): {self.reasons[k]}" for k in failing]
-        return out + [f"Suggestion: {s}" for s in self.suggestions]
+        out = [f"Judge: {k} scored {self.scores[k]}/5 (needs {THRESHOLDS[k]}): {self.reasons[k]}" for k in self.failing]
+        return out + [f"Judge fix: {f}" for f in self.fix_instructions]
 
 
-def review_tone(draft: Draft, client: Any = None, model: str = JUDGE_MODEL) -> ToneReview:
+def judge(edition: dict[str, Any], ctx: dict[str, Any], recent: list[dict] | None = None, *,
+          client: Any = None, model: str = JUDGE_MODEL) -> Judgement:
+    content = ("## The week's context\n\n" + render_context(ctx, recent or [])
+               + "\n\n## Draft edition\n\n" + json.dumps(edition, ensure_ascii=False, indent=1)
+               + "\n\nReview it and submit with submit_review.")
     data, usage = call_tool(
-        client or default_client(),
-        model=model,
-        system=JUDGE_PROMPT.read_text(),
-        messages=[{"role": "user", "content": f"# {draft.headline}\n\n{draft.brief}"}],
-        tool=REVIEW_TOOL,
-        max_tokens=1500,
+        client or default_client(), model=model, system=JUDGE_PROMPT.read_text(),
+        messages=[{"role": "user", "content": content}], tool=REVIEW_TOOL, max_tokens=4000,
+        effort=JUDGE_EFFORT, analyzer=ANALYZER, tables_read=["main_marts.brief_context_7d"],
     )
-    return ToneReview(
-        scores={k: int(data[k]["score"]) for k in THRESHOLDS},
-        reasons={k: data[k]["reason"] for k in THRESHOLDS},
-        best_line=data.get("best_line", ""),
-        suggestions=list(data.get("suggestions", [])),
-        usage=usage,
-    )
+    return Judgement(scores={k: int(data[k]["score"]) for k in THRESHOLDS},
+                     reasons={k: data[k]["reason"] for k in THRESHOLDS},
+                     fix_instructions=list(data.get("fix_instructions", [])),
+                     model=model, usage=usage)
 
 
-# ── All together ─────────────────────────────────────────────────────────────
+# ── together ─────────────────────────────────────────────────────────────────
 
 @dataclass
 class Evaluation:
-    grounding: list[str]
-    style: list[str]
-    tone: ToneReview | None
+    checks: dict[str, list[str]]
+    judgement: Judgement | None
+
+    @property
+    def check_problems(self) -> list[str]:
+        return [p for probs in self.checks.values() for p in probs]
 
     @property
     def problems(self) -> list[str]:
-        """Everything that failed, phrased as feedback for the writer."""
-        return self.grounding + self.style + (self.tone.problems() if self.tone else [])
+        """Everything that failed, phrased as fixes: the writer's next feedback."""
+        return self.check_problems + (self.judgement.problems() if self.judgement else [])
 
     @property
     def passed(self) -> bool:
-        return not self.problems
+        return not self.problems and self.judgement is not None
+
+    @property
+    def cost_usd(self) -> float:
+        return self.judgement and cost_usd(self.judgement.model, self.judgement.usage) or 0.0
 
     def to_dict(self) -> dict[str, Any]:
-        return {"passed": self.passed, "grounding": self.grounding, "style": self.style,
-                "tone": asdict(self.tone) if self.tone else None}
+        return {"passed": self.passed, "checks": self.checks,
+                "judge": asdict(self.judgement) if self.judgement else None,
+                "problems": self.problems}
 
 
-def evaluate(draft: Draft, snapshot: dict[str, Any], *, client: Any = None, tone: bool = True) -> Evaluation:
-    grounding = check_grounding(draft, flat_facts(snapshot))
-    style = check_style(draft)
-    # Skip the paid judge when the draft already has to be rewritten for facts.
-    judged = review_tone(draft, client) if tone and not grounding else None
-    return Evaluation(grounding, style, judged)
+def evaluate(edition: dict[str, Any], ctx: dict[str, Any], recent: list[dict] | None = None, *,
+             client: Any = None, use_judge: bool = True) -> Evaluation:
+    """Code checks always; the judge too (it's ~$0.001), so one revision can fix both kinds of problem.
+    A schema failure skips the judge: there's nothing well-formed to grade."""
+    checks = deterministic_checks(edition, ctx, recent)
+    schema_broken = any(p.startswith("Schema:") for p in checks.get("structure", []))
+    graded = judge(edition, ctx, recent, client=client) if use_judge and not schema_broken else None
+    return Evaluation(checks, graded)
 
 
-def _draft_from_json(d: dict) -> Draft:
-    return Draft(headline=d["headline"], brief=d["brief"],
-                 claims=[Claim(c["text"], c["fact_ids"]) for c in d["claims"]],
-                 model=d.get("model", "?"), usage=d.get("usage", {}))
+def report(ev: Evaluation) -> str:
+    lines = []
+    for name, probs in ev.checks.items():
+        lines.append(f"{name:<10} {'ok' if not probs else f'{len(probs)} problem(s)'}")
+        lines += [f"   ✗ {p}" for p in probs]
+    if ev.judgement:
+        j = ev.judgement
+        lines.append("judge      " + "  ".join(f"{k} {j.scores[k]}/5" for k in THRESHOLDS)
+                     + f"   (${cost_usd(j.model, j.usage):.4f})")
+        lines += [f"   {k}: {j.reasons[k]}" for k in THRESHOLDS]
+        lines += [f"   → {f}" for f in j.fix_instructions]
+    else:
+        lines.append("judge      skipped")
+    lines.append("PASS" if ev.passed else "FAIL")
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--date", type=date.fromisoformat)
-    p.add_argument("--snapshot", type=Path, help="saved snapshot JSON (default: build one now)")
-    p.add_argument("--draft", type=Path, help="saved draft JSON from `writer --json` (default: write one now)")
-    p.add_argument("--no-tone", action="store_true", help="skip the LLM judge")
+    p.add_argument("--fixture", nargs="?", const="", default=None, help="context fixture (no value: committed sample)")
+    p.add_argument("--edition", type=Path, help="evaluate this saved edition JSON instead of writing one")
+    p.add_argument("--no-judge", action="store_true", help="code checks only (no API call)")
     args = p.parse_args(argv)
 
     from dotenv import load_dotenv
     load_dotenv()
-    snapshot = json.loads(args.snapshot.read_text()) if args.snapshot else build_snapshot(args.date)
-    if args.draft:
-        draft = _draft_from_json(json.loads(args.draft.read_text()))
+    ctx = C.load_fixture(args.fixture) if args.fixture is not None else C.load_context()
+    recent: list[dict] = []
+    if args.fixture is None:
+        from agents.morning_brief.writer import recent_editions
+        recent = recent_editions(date.fromisoformat(ctx["date"]))
+    if args.edition:
+        saved = json.loads(args.edition.read_text())
+        edition = {k: v for k, v in saved.get("edition", saved).items()
+                   if not k.startswith("_")}   # fixture notes like "_comment"
     else:
-        from agents.morning_brief.writer import write
-        draft = write(snapshot)
-
-    result = evaluate(draft, snapshot, tone=not args.no_tone)
-    print(f"# {draft.headline}\n\n{draft.brief}\n")
-    print(f"grounding: {'ok' if not result.grounding else ''}")
-    for x in result.grounding:
-        print(f"  ✗ {x}")
-    print(f"style: {'ok' if not result.style else ''}")
-    for x in result.style:
-        print(f"  ✗ {x}")
-    if result.tone:
-        t = result.tone
-        print("tone: " + "  ".join(f"{k} {t.scores[k]}/5" for k in THRESHOLDS))
-        for k in THRESHOLDS:
-            print(f"  {k}: {t.reasons[k]}")
-        if t.best_line:
-            print(f'  best line: "{t.best_line}"')
-        for s in t.suggestions:
-            print(f"  → {s}")
-    elif not args.no_tone:
-        print("tone: skipped (fix grounding first)")
-    print(f"\n{'PASS' if result.passed else 'FAIL'}")
-    return 0 if result.passed else 1
+        from agents.morning_brief.writer import to_markdown, write
+        ed = write(ctx, recent=recent)
+        edition = ed.data
+        print(to_markdown(edition))
+        print(f"-- writer ${ed.cost_usd:.4f} --\n")
+    ev = evaluate(edition, ctx, recent, use_judge=not args.no_judge)
+    print(report(ev))
+    return 0 if ev.passed else 1
 
 
 if __name__ == "__main__":

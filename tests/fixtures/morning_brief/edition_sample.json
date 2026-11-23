@@ -1,0 +1,42 @@
+{
+  "_comment": "A clean edition written against context_sample.json (made up). Tests break it one way at a time.",
+  "date": "2026-11-21",
+  "masthead_tagline": "All the miles that are fit to print",
+  "lead_headline": "Deadlift PR Rocks the Week as UCF Wins in the Desert",
+  "sections": [
+    {"name": "Your Week", "items": [
+      {"headline": "Monday's Pull Sets the Tone",
+       "body": "Your correspondent reports a personal record on Monday's Deadlift 5x2: 285 pounds, RX. The same day's Gym WOD came in at 11+3, also RX, and the barbell has been informed it was outvoted. A strong opening to the week.",
+       "source_refs": ["sugarwod:2026-11-16:aaaa0001", "sugarwod:2026-11-16:aaaa0002"], "link": null},
+      {"headline": "Three Runs, 11.8 Miles, Two-Day Streak",
+       "body": "The ledger shows 3 runs and 11.8 miles this week, up from 9.4 the week before. The longest went 6.2 miles, and the run streak stands at 2 days. Training load reads yellow, which this paper takes as a polite request for an easy day.",
+       "source_refs": ["fitness:week", "fitness:training_load"], "link": null}
+    ]},
+    {"name": "Sports Desk", "items": [
+      {"headline": "Picks Desk Banks a Week 12 Winner",
+       "body": "Lakeshore +10.0 came through 30-28 for 0.91 units. Bayou Tech -7.0 is still pending, so no verdict yet. Week 12 stands 1-0 with one to grade, and the season record is 17-12-1, a 58.6% win rate.",
+       "source_refs": ["pick:2026:12:bbbb0003", "pick:2026:12:bbbb0004", "picks:week:2026:12", "picks:season:2026"], "link": null},
+      {"headline": "UCF Wins Out West; Penn State Hosts Rutgers Today",
+       "body": "UCF won 31-24 at Arizona State to move to 7-4, and visits Colorado next Saturday. Penn State, 8-2, hosts Rutgers today, so this desk offers a preview, not a score.",
+       "source_refs": ["cfb_game:100000001", "cfb_game:100000003", "cfb_game:100000002", "cfb_record:Penn State"], "link": null}
+    ]},
+    {"name": "Good News", "items": [
+      {"headline": "Retirees Hand-Build a Library Revival",
+       "body": "A year of patient work by a group of retirees has brought a closed library back to life, and its shelves now hold 4,000 books that neighbours donated. Proof that retirement is mostly a scheduling change for people who fix things.",
+       "source_refs": ["news:0000000000000001"], "link": "https://example.org/good/library-rebuild"},
+      {"headline": "Follow-up: The Otters Are Staying",
+       "body": "As reported Wednesday, otters are back in a river that took two decades to clean. Cameras have now caught them breeding, which is the river's way of leaving a five-star review.",
+       "source_refs": ["news:0000000000000002"], "link": "https://example.org/good/otters"}
+    ]},
+    {"name": "Science", "items": [
+      {"headline": "A Battery With More Stamina Than Mondays",
+       "body": "A sodium-based cell held on to 90% of its capacity through 10,000 charge cycles in the lab. Cheaper ingredients and a long life could make storing clean power a lot less fussy.",
+       "source_refs": ["news:0000000000000003"], "link": "https://example.org/science/battery"}
+    ]},
+    {"name": "Tip of the Day", "items": [
+      {"headline": "Let the Yellow Light Pick Your Sunday",
+       "body": "After a PR and a 6.2-mile long run, readiness sits at yellow. Keep tomorrow easy: a walk, some stretching, and the Daily 10 on in the background, starting with Alice Coltrane.",
+       "source_refs": ["fitness:training_load", "fitness:week", "music:daily10:2026-11-16"], "link": null}
+    ]}
+  ]
+}
