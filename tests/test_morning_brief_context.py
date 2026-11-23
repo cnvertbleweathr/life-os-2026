@@ -42,6 +42,30 @@ def test_groups_by_domain_and_drops_null_facts():
     assert ctx["warnings"] == []
 
 
+def test_items_say_which_weekday_they_were():
+    # 2026-11-23: items carried only "2026-11-17". The judge called Tuesday's squats
+    # "Monday's" and marked a correct edition down; the writer called them "yesterday's".
+    # Say the weekday and how long ago, so neither model has to work it out.
+    monday = date(2026, 11, 23)
+    ctx = C.build_context([
+        row("fitness", "sugarwod:a", "crossfit", {}, item_date=date(2026, 11, 17), built_for=monday),
+        row("fitness", "strava:b", "activity", {}, item_date=date(2026, 11, 22), built_for=monday),
+        row("fitness", "fitness:c", "training_load", {}, item_date=monday, built_for=monday),
+        row("team_games", "nba:d", "game", {}, item_date=date(2026, 11, 24), built_for=monday),
+        row("team_games", "nba:e", "game", {}, item_date=date(2026, 11, 26), built_for=monday),
+        row("cfb_picks", "picks:season", "season_record", {}, item_date=None, built_for=monday),
+    ], monday)
+    when = {it["ref"]: it.get("when") for d in ctx["domains"].values() for it in d["items"]}
+    assert when == {
+        "sugarwod:a": "Tuesday, Nov 17 (6 days ago)",
+        "strava:b": "Sunday, Nov 22 (yesterday)",
+        "fitness:c": "Monday, Nov 23 (today)",
+        "nba:d": "Tuesday, Nov 24 (tomorrow)",
+        "nba:e": "Thursday, Nov 26 (in 3 days)",
+        "picks:season": None,
+    }
+
+
 def test_news_cap_prefers_unfeatured_then_newest():
     rows = [
         row("news", f"news:{i}", "science", {"summary": "s"}, item_date=TODAY - timedelta(days=i % 7),
