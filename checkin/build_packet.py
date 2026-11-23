@@ -48,6 +48,7 @@ STOPWORDS = {
     "start", "keep", "each", "every", "daily", "done", "ship", "work", "also", "just",
     "the", "and", "for", "get", "out", "new", "all", "day", "per", "one", "two", "three",
     "four", "five", "time", "once", "twice", "least", "try", "not", "but", "its",
+    "year", "month", "help", "want", "need", "much", "possible", "important", "yet", "set",
 }
 
 
@@ -416,11 +417,15 @@ def activity_corpus(inp: Inputs) -> set[str]:
 
 def talking_points(inp: Inputs, extra: list[str]) -> list[str]:
     points: list[str] = []
+    # Most priorities (family, job search, friends) are invisible to ONS, so
+    # "no activity" isn't news. Ask about one of them a day, rotating by
+    # date, and leave the other slots to points the data can actually support.
     corpus = activity_corpus(inp)
-    for p in priority_items(inp.priorities):
-        kw = _keywords(p)
-        if kw and not kw & corpus:
-            points.append(f"No activity this week on the priority \"{p[:80]}\". Still a priority?")
+    untracked = [p for p in priority_items(inp.priorities) if _keywords(p) and not _keywords(p) & corpus]
+    if untracked:
+        p = untracked[inp.today.toordinal() % len(untracked)]
+        label = p.split(":", 1)[0].strip()[:60]
+        points.append(f"Check in on {label}: nothing in ONS tracks it this week. How's it going?")
     points += extra
     fit = next(iter(_rows(inp, "fitness", "week_summary")), None)
     if fit:

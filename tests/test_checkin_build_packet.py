@@ -183,8 +183,42 @@ def test_git_unavailable_is_shown_not_fatal():
 
 def test_priority_without_activity_becomes_a_talking_point():
     points = bp.build_packet(make_inputs()).split("## Talking points")[1]
-    assert 'No activity this week on the priority "Finish the garden planter"' in points
+    assert "1. Check in on Finish the garden planter: nothing in ONS tracks it this week. How's it going?" in points
     assert "Run three times" not in points                    # a run was logged
+    assert "Still a priority" not in points
+
+
+UNTRACKED = """## This week's priorities
+
+- Holiday: host the family dinner
+- Job hunt: talk to recruiters
+- Guitar practice
+"""
+
+
+def _priority_points(day):
+    text = bp.build_packet(make_inputs(today=day, priorities=UNTRACKED))
+    return [p for p in text.split("## Talking points\n")[1].splitlines() if "Check in on" in p]
+
+
+def test_at_most_one_priority_point_and_data_points_fill_the_rest():
+    text = bp.build_packet(make_inputs(priorities=UNTRACKED))
+    points = text.split("## Talking points\n")[1].strip().splitlines()
+    assert len(points) == 3
+    assert sum("Check in on" in p for p in points) == 1
+    assert "Broken streak" in "\n".join(points)              # a data point got a slot
+
+
+def test_generic_words_dont_count_as_activity():
+    inp = make_inputs(priorities="## This week's priorities\n\n- Goals: set this year's plan\n",
+                      commits=[{"sha": "a", "date": "2026-03-10", "subject": "Fix hardcoded-year audit"}])
+    assert "Check in on Goals" in bp.build_packet(inp)
+
+
+def test_priority_point_rotates_by_day_and_uses_the_label():
+    seen = [_priority_points(date(2026, 3, d))[0] for d in (11, 12, 13, 14)]
+    assert {s.split("Check in on ")[1].split(":")[0] for s in seen} == {"Holiday", "Job hunt", "Guitar practice"}
+    assert seen[0] == seen[3]                                 # 3 priorities → repeats every 3 days
 
 
 def test_exactly_three_talking_points_with_fallback():
