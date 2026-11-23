@@ -266,6 +266,21 @@ def run_step(step: Step, log_dir: Path) -> dict:
 # Step registry
 # ---------------------------------------------------------------------------
 
+def _checkin_days() -> Optional[List[int]]:
+    """ONS_CHECKIN_CADENCE → run_on_days for the checkin_packet step. Never raises."""
+    try:
+        from checkin.cadence import run_on_days
+        days, warning = run_on_days()
+    except Exception as e:                      # a broken checkin module must not stop the sync
+        days, warning = None, f"checkin cadence unavailable ({type(e).__name__}); posting daily"
+    if warning:
+        print(f"  ⚠ {warning}")
+    return days
+
+
+CHECKIN_DAYS = _checkin_days()
+
+
 def build_steps(year: int) -> List[Step]:
     dbt_cmd = [
         "dbt", "run",
@@ -713,6 +728,24 @@ def build_steps(year: int) -> List[Step]:
             required=False,
             tags=["brief", "ai"],
             timeout_s=900,   # above run.py's 480s revision deadline + one slow attempt
+        ),
+
+        # ------------------------------------------------------------------
+        # Check-in packet: rebuild data/checkin/<date>.md (priorities, last
+        # 7 days, habits, today's brief, ONS build status, talking points;
+        # no LLM call, warehouse read-only) and post it to the private Slack
+        # channel. Last, so it sees the brief written just above. Cadence
+        # from ONS_CHECKIN_CADENCE (daily / weekdays / weekly:<day>). Not
+        # required: a failed post shows in health.txt and nothing else.
+        # ------------------------------------------------------------------
+        Step(
+            name="checkin_packet",
+            cmd=["python3", "-u", "-m", "checkin.post_slack", "--rebuild"],
+            run_if_exists=ROOT / "checkin/post_slack.py",
+            run_on_days=CHECKIN_DAYS,
+            required=False,
+            tags=["checkin"],
+            timeout_s=120,
         ),
     ]
 

@@ -125,17 +125,20 @@ def load_packet(day: date) -> str:
     return text
 
 
-def run(day: date, *, dry_run: bool = False, force: bool = False,
+def run(day: date, *, dry_run: bool = False, force: bool = False, rebuild: bool = False,
         url: str | None = None, poster: Poster = _requests_post,
         sleep: Callable[[float], None] = time.sleep) -> int:
     """0 posted / dry run / already posted today, 1 failed or not configured."""
+    if already_posted(day) and not force and not dry_run:
+        print(f"already posted the {day} packet; --force to post again")
+        return 0
+    if rebuild:
+        text = bp.build_packet(bp.gather(day))
+        print(f"built {bp.save(text, day)}")
     message = to_mrkdwn(load_packet(day), day)
     if dry_run:
         print(message)
         print(f"[dry run: {len(message)} chars, not posted]")
-        return 0
-    if already_posted(day) and not force:
-        print(f"already posted the {day} packet; --force to post again")
         return 0
     url = url if url is not None else os.getenv(ENV_VAR, "").strip()
     if not url:
@@ -155,10 +158,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--date", type=date.fromisoformat, help="packet date (default today)")
     ap.add_argument("--dry-run", action="store_true", help="print the Slack message instead of posting")
     ap.add_argument("--force", action="store_true", help="post even if today's packet was already posted")
+    ap.add_argument("--rebuild", action="store_true", help="rebuild the packet from live data before posting")
     args = ap.parse_args(argv)
     from dotenv import load_dotenv
     load_dotenv(bp.ROOT / ".env")
-    return run(args.date or today_local(), dry_run=args.dry_run, force=args.force)
+    return run(args.date or today_local(), dry_run=args.dry_run, force=args.force, rebuild=args.rebuild)
 
 
 if __name__ == "__main__":
