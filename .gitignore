@@ -181,3 +181,6 @@ data/film/gifs/
 # Never commit anything under here. Listed last so no earlier "!" rule (e.g.
 # !data/**/README.md) can re-include a file inside it.
 data/progeny/
+
+# Check-in packet: hand-maintained priorities stay private (public repo)
+checkin/priorities.md
