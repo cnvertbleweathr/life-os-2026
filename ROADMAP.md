@@ -108,7 +108,7 @@ Agent tools can be MCP servers, loaded through LangGraph's MCP adapters. The Cra
 | 🟢 | Daily sync health summary | `health.txt` per run |
 | 🟢 | DuckDB backup script | Timestamped copies, 7-day retention |
 | 🟢 | DuckDB backup launchd | `com.ons.backup-duckdb.plist` at 2am |
-| 🟢 | Daily sync launchd | `com.ons.daily-sync.plist` at 9am |
+| 🟢 | Daily sync launchd | `com.ons.daily-sync.plist` at 4am; `com.ons.print-brief.plist` prints the morning brief at 5am on weekdays |
 | 🟢 | FastAPI + Next.js launchd | `com.ons.fastapi.plist` + `com.ons.nextjs.plist`; FastAPI auto-unloaded/reloaded by daily_sync |
 | 🟢 | DuckDB write-lock management | daily_sync unloads FastAPI before pipelines, reloads after |
 | 🟢 | Timezone hardening | `tz_utils.py` across codebase |

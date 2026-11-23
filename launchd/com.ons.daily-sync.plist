@@ -3,7 +3,8 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   com.ons.daily-sync.plist
-  ONS daily sync — runs at 9:00am every day.
+  ONS daily sync — runs at 4:00am every day. The morning brief it writes
+  prints at 5:00am on weekdays (com.ons.print-brief.plist).
 
   Install:
     cp launchd/com.ons.daily-sync.plist ~/Library/LaunchAgents/
@@ -38,11 +39,11 @@
     <key>WorkingDirectory</key>
     <string>/Users/kg/life-os-2026</string>
 
-    <!-- 9:00am daily -->
+    <!-- 4:00am daily -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>9</integer>
+        <integer>4</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>

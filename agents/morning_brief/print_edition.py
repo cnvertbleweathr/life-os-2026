@@ -28,7 +28,8 @@ import os
 import re
 import subprocess
 import tempfile
-from datetime import date
+from datetime import date, datetime
+from datetime import time as dt_time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -39,6 +40,7 @@ from agents.morning_brief.writer import brief_dir
 CHROME = os.getenv("ONS_CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 PRINTER = os.getenv("ONS_PRINTER")                       # None → system default destination
 COLOR_MODEL = os.getenv("ONS_PRINT_COLOR", "Mono")       # "RGB" for colour
+DEFAULT_PRINT_AT = "05:00"                               # override with ONS_PRINT_AT
 PAPER = "Letter"
 FIT_STEPS = (1.0, 0.94, 0.88, 0.82, 0.76)   # zoom levels tried to fit one page
 
@@ -153,15 +155,32 @@ def send_to_printer(pdf_path: Path, title: str, printer: str | None = PRINTER) -
     return m.group(1) if m else out.strip()
 
 
+def print_at() -> dt_time:
+    """ONS_PRINT_AT (HH:MM, default 05:00): automatic printing waits until then."""
+    try:
+        return dt_time.fromisoformat(os.getenv("ONS_PRINT_AT", DEFAULT_PRINT_AT).strip())
+    except ValueError:
+        return dt_time.fromisoformat(DEFAULT_PRINT_AT)
+
+
 def print_edition(path: Path, *, auto: bool = False, force: bool = False, pdf_only: bool = False,
-                  printer: str | None = PRINTER, today: date | None = None) -> dict[str, Any]:
-    """Make the PDF and (maybe) print it. Returns what happened; records it in the JSON."""
+                  printer: str | None = PRINTER, today: date | None = None,
+                  now: datetime | None = None) -> dict[str, Any]:
+    """Make the PDF and (maybe) print it. Returns what happened; records it in the JSON.
+
+    auto (launchd at 5:00 and the end of daily_sync): weekdays only, published
+    only, and not before ONS_PRINT_AT. Whichever runs first after that time
+    prints; printed_at stops the other.
+    """
     result = json.loads(path.read_text())
     day = date.fromisoformat(result["date"])
     if result.get("status") != "published" and (auto or not force):
         return {"printed": False, "reason": f"edition is {result.get('status')}; not printed"}
-    if auto and (today or today_local()).weekday() >= 5:
+    if auto and (today or (now.date() if now else None) or today_local()).weekday() >= 5:
         return {"printed": False, "reason": "weekend: automatic printing is weekdays only"}
+    if auto and not force and (now or now_local()).time() < print_at():
+        return {"printed": False,
+                "reason": f"before {print_at().strftime('%H:%M')}; the scheduled print job will print it"}
     if result.get("printed_at") and not force and not pdf_only:
         return {"printed": False, "reason": f"already printed {result['printed_at']} (job {result.get('print_job')})"}
 
@@ -191,8 +210,14 @@ def main(argv: list[str] | None = None) -> int:
 
     path = args.file or brief_dir() / f"{(args.date or today_local()).isoformat()}.json"
     if not path.exists():
-        print(f"No edition at {path}")
-        return 1
+        # Not an error at 5:00 if the sync is still running: it prints when it finishes.
+        print(f"No edition at {path} yet")
+        return 0 if args.auto else 1
+    try:
+        json.loads(path.read_text())
+    except json.JSONDecodeError:
+        print(f"Edition at {path} is still being written")
+        return 0 if args.auto else 1
     out = print_edition(path, auto=args.auto, force=args.force, pdf_only=args.pdf_only, printer=args.printer)
     if out.get("pdf"):
         print(f"PDF: {out['pdf']} ({out['pages']} page{'s' if out['pages'] != 1 else ''})")
