@@ -68,6 +68,24 @@ def test_timeout_kills_grandchildren_that_would_hold_the_lock(tmp_path):
     assert not alive(child)
 
 
+def test_stop_active_kills_the_running_step(tmp_path):
+    # daily_sync calls this when it is itself stopped (SIGTERM), so the step
+    # doesn't keep holding the warehouse after the API is restarted.
+    import threading
+    out = {}
+    t = threading.Thread(target=lambda: out.setdefault(
+        "r", step_runner.run_cmd([PY, "-c", "import time; time.sleep(60)"], cwd=tmp_path, timeout_s=60)))
+    t.start()
+    for _ in range(50):
+        if step_runner.ACTIVE:
+            break
+        time.sleep(0.1)
+    assert step_runner.ACTIVE
+    step_runner.stop_active()
+    t.join(timeout=10)
+    assert not t.is_alive() and not step_runner.ACTIVE
+
+
 def test_a_child_left_running_after_a_normal_exit_is_not_waited_on_forever(tmp_path):
     # A step that exits but leaves a background child holding stdout open must not hang the sync.
     code = ("import subprocess, sys\n"

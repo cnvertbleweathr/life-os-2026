@@ -71,6 +71,23 @@ def _wait_for_db_lock(timeout_s: int = 120) -> None:
             _time.sleep(2)
 
 
+def _exit_on_signal(signum, _frame) -> None:
+    """SIGTERM/SIGHUP skip atexit by default, which would leave the API unloaded.
+    Stop the running step's process group (it may hold the warehouse), then exit
+    normally so _reload_api runs. SIGKILL can't be caught: the next sync, or
+    `launchctl load ~/Library/LaunchAgents/com.ons.fastapi.plist`, brings it back."""
+    try:
+        from step_runner import stop_active
+        stop_active()
+    finally:
+        raise SystemExit(128 + signum)
+
+
+import signal as _signal
+for _sig in (_signal.SIGTERM, _signal.SIGHUP):
+    _signal.signal(_sig, _exit_on_signal)
+
+# unload, not kill: KeepAlive would respawn a killed uvicorn within seconds
 _atexit.register(_reload_api)
 _sp.run(["launchctl", "unload", _API_PLIST], check=False)
 _wait_for_db_lock()

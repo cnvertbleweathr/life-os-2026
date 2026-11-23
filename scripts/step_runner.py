@@ -22,6 +22,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GRACE_S = 10
+ACTIVE: set[int] = set()            # process groups of steps running right now
+
+
+def stop_active() -> None:
+    """Kill every running step's process group (daily_sync's signal handler)."""
+    for pgid in list(ACTIVE):
+        _signal_group(pgid, signal.SIGKILL)
 
 
 @dataclass
@@ -56,6 +63,14 @@ def run_cmd(cmd: list[str], *, cwd: Path | str, timeout_s: float, env: dict | No
     proc = subprocess.Popen(cmd, cwd=str(cwd), env=env, text=True,
                             stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             start_new_session=True)  # own process group (pgid == pid)
+    ACTIVE.add(proc.pid)
+    try:
+        return _finish(proc, timeout_s, grace_s)
+    finally:
+        ACTIVE.discard(proc.pid)
+
+
+def _finish(proc: subprocess.Popen, timeout_s: float, grace_s: float) -> CmdResult:
     try:
         out, err = proc.communicate(timeout=timeout_s)
         return CmdResult(proc.returncode, out or "", err or "")

@@ -3,13 +3,15 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   com.ons.print-brief.plist
-  Prints the morning brief at 5:00am Monday to Friday. The 4:00am daily sync
-  writes it; this only prints it (print_edition.py in auto mode):
-  published editions only, once each (printed_at in the JSON).
-
-  If the sync hasn't finished by 5:00, this does nothing and the sync's own
-  morning_brief step prints when it ends (automatic printing waits until
-  ONS_PRINT_AT, default 05:00, so an on-time sync leaves printing to this job).
+  Prints the morning brief from 5:00am Monday to Friday. The 4:00am daily sync
+  writes it; this only prints it (print_edition.py in scheduled mode):
+  - today's edition only, published only, once (printed_at in the JSON);
+  - not there yet: looks again every 10 minutes until 6:00 (ONS_PRINT_UNTIL),
+    then skips and logs it;
+  - needs_review: not printed; one short note goes to the check-in Slack
+    channel instead.
+  Every outcome is logged to data/brief/print_log.jsonl. A late sync can still
+  print from its own brief step, but only inside the 5:00 to 6:00 window.
 
   Install:
     cp launchd/com.ons.print-brief.plist ~/Library/LaunchAgents/
@@ -33,7 +35,7 @@
         <string>python</string>
         <string>-m</string>
         <string>agents.morning_brief.print_edition</string>
-        <string>--auto</string>
+        <string>--scheduled</string>
     </array>
 
     <key>WorkingDirectory</key>

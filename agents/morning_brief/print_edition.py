@@ -34,13 +34,15 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from api.store import now_local, today_local
+from api.store import JsonlLog, now_local, timestamp, today_local
 from agents.morning_brief.writer import brief_dir
 
 CHROME = os.getenv("ONS_CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
 PRINTER = os.getenv("ONS_PRINTER")                       # None → system default destination
 COLOR_MODEL = os.getenv("ONS_PRINT_COLOR", "Mono")       # "RGB" for colour
 DEFAULT_PRINT_AT = "05:00"                               # override with ONS_PRINT_AT
+DEFAULT_PRINT_UNTIL = "06:00"                            # override with ONS_PRINT_UNTIL
+RETRY_EVERY_S = 600                                      # --scheduled: look again every 10 minutes
 PAPER = "Letter"
 FIT_STEPS = (1.0, 0.94, 0.88, 0.82, 0.76)   # zoom levels tried to fit one page
 
@@ -155,12 +157,21 @@ def send_to_printer(pdf_path: Path, title: str, printer: str | None = PRINTER) -
     return m.group(1) if m else out.strip()
 
 
+def _env_time(var: str, default: str) -> dt_time:
+    try:
+        return dt_time.fromisoformat(os.getenv(var, default).strip())
+    except ValueError:
+        return dt_time.fromisoformat(default)
+
+
 def print_at() -> dt_time:
     """ONS_PRINT_AT (HH:MM, default 05:00): automatic printing waits until then."""
-    try:
-        return dt_time.fromisoformat(os.getenv("ONS_PRINT_AT", DEFAULT_PRINT_AT).strip())
-    except ValueError:
-        return dt_time.fromisoformat(DEFAULT_PRINT_AT)
+    return _env_time("ONS_PRINT_AT", DEFAULT_PRINT_AT)
+
+
+def print_until() -> dt_time:
+    """ONS_PRINT_UNTIL (HH:MM, default 06:00): no automatic printing after this."""
+    return _env_time("ONS_PRINT_UNTIL", DEFAULT_PRINT_UNTIL)
 
 
 def print_edition(path: Path, *, auto: bool = False, force: bool = False, pdf_only: bool = False,
@@ -181,6 +192,9 @@ def print_edition(path: Path, *, auto: bool = False, force: bool = False, pdf_on
     if auto and not force and (now or now_local()).time() < print_at():
         return {"printed": False,
                 "reason": f"before {print_at().strftime('%H:%M')}; the scheduled print job will print it"}
+    if auto and not force and (now or now_local()).time() > print_until():
+        return {"printed": False,
+                "reason": f"after {print_until().strftime('%H:%M')}; automatic printing window is closed"}
     if result.get("printed_at") and not force and not pdf_only:
         return {"printed": False, "reason": f"already printed {result['printed_at']} (job {result.get('print_job')})"}
 
@@ -198,6 +212,81 @@ def print_edition(path: Path, *, auto: bool = False, force: bool = False, pdf_on
     return {**outcome, "printed": True, "job": job}
 
 
+# ── the 5:00 launchd job ─────────────────────────────────────────────────────
+
+def print_log() -> JsonlLog:
+    return JsonlLog("brief", "print_log.jsonl")
+
+
+def _load_today(day: date) -> dict[str, Any] | None:
+    """Today's edition if it exists, is complete JSON, and really is today's."""
+    path = brief_dir() / f"{day.isoformat()}.json"
+    try:
+        result = json.loads(path.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None                                   # not there yet, or still being written
+    return result if result.get("date") == day.isoformat() else None
+
+
+def review_note(day: date, result: dict[str, Any]) -> str:
+    lead = (result.get("edition") or {}).get("lead_headline", "(no headline)")
+    problems = (result.get("evaluation") or {}).get("problems") or []
+    lines = [f"ONS MORNING BRIEF — {day.isoformat()}: needs review, not printed.",
+             f"Lead: \"{lead}\" ({result.get('revisions', '?')} revisions)."]
+    if problems:
+        lines.append(f"Still flagged: {problems[0][:200]}" + (f" (+{len(problems) - 1} more)" if len(problems) > 1 else ""))
+    lines.append(f"Read it in data/brief/{day.isoformat()}.md; print with "
+                 f"`python -m agents.morning_brief.print_edition --date {day.isoformat()} --force`.")
+    return "\n".join(lines)
+
+
+def _slack_note(text: str) -> bool:
+    from dotenv import load_dotenv
+    from checkin.post_slack import ENV_VAR, post
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+    url = os.getenv(ENV_VAR, "").strip()
+    return bool(url) and post(text, url).ok
+
+
+def scheduled_print(day: date | None = None, *, now=now_local, sleep=None,
+                    notify=_slack_note, every_s: int = RETRY_EVERY_S) -> dict[str, Any]:
+    """Print today's edition between ONS_PRINT_AT and ONS_PRINT_UNTIL (5:00–6:00).
+
+    Missing: look again every 10 minutes; at the cutoff, skip and log it.
+    needs_review: never printed; one short note to the check-in Slack channel.
+    Every outcome is logged to data/brief/print_log.jsonl.
+    """
+    import time
+    sleep = sleep or time.sleep
+    day = day or now().date()
+    cutoff = datetime.combine(day, print_until(), tzinfo=now().tzinfo)
+
+    def done(outcome: str, **extra) -> dict[str, Any]:
+        rec = {"date": day.isoformat(), "at": timestamp(), "outcome": outcome, **extra}
+        print_log().append(rec)
+        print(f"{day}: {outcome} {extra or ''}".rstrip())
+        return {"printed": outcome == "printed", **rec}
+
+    while True:
+        result = _load_today(day)
+        if result is not None:
+            status = result.get("status")
+            if status == "needs_review":
+                already = any(r.get("date") == day.isoformat() and r.get("outcome") == "needs_review_noted"
+                              for r in print_log().rows())
+                if already:
+                    return done("needs_review_already_noted")
+                sent = notify(review_note(day, result))
+                return done("needs_review_noted" if sent else "needs_review_note_failed")
+            if status != "published":
+                return done("skipped_status", status=status)
+            out = print_edition(brief_dir() / f"{day.isoformat()}.json", auto=True, today=day, now=now())
+            return done("printed" if out["printed"] else "not_printed", job=out.get("job"), reason=out.get("reason"))
+        if now() >= cutoff:
+            return done("skipped_no_edition", reason=f"no edition for {day} by {print_until().strftime('%H:%M')}")
+        sleep(min(every_s, max(1.0, (cutoff - now()).total_seconds())))
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--date", type=date.fromisoformat, help="edition date (default: today)")
@@ -206,7 +295,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--force", action="store_true", help="print again, or print a needs_review edition")
     p.add_argument("--pdf-only", action="store_true", help="make the PDF next to the JSON; don't print")
     p.add_argument("--printer", default=PRINTER, help="CUPS queue (default: ONS_PRINTER or system default)")
+    p.add_argument("--scheduled", action="store_true",
+                   help="the 5:00 launchd job: today's edition only, retry every 10 min until 06:00, "
+                        "needs_review → Slack note instead of printing")
     args = p.parse_args(argv)
+    if args.scheduled:
+        scheduled_print()
+        return 0
 
     path = args.file or brief_dir() / f"{(args.date or today_local()).isoformat()}.json"
     if not path.exists():
