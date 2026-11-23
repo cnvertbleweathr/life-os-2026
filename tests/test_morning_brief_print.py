@@ -8,7 +8,7 @@ renders or prints; editions live in a temp ONS_DATA_DIR.
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -23,6 +23,7 @@ SATURDAY, MONDAY = date(2026, 11, 21), date(2026, 11, 23)
 @pytest.fixture
 def saved(tmp_path, monkeypatch):
     monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("ONS_PRINT_AT", "00:00")         # these tests aren't about the print time
     calls = {"pdf": [], "lp": []}
 
     def fake_pdf(page, pdf_path):
@@ -67,6 +68,35 @@ def test_auto_skips_weekends(saved):
     out = P.print_edition(saved(), auto=True, today=SATURDAY)
     assert not out["printed"] and "weekdays only" in out["reason"]
     assert saved.calls["lp"] == []
+
+
+def test_auto_waits_for_print_time(saved, monkeypatch):
+    monkeypatch.setenv("ONS_PRINT_AT", "05:00")
+    path = saved()
+    early = P.print_edition(path, auto=True, now=datetime(2026, 11, 23, 4, 25))
+    assert not early["printed"] and "05:00" in early["reason"]
+    assert saved.calls["lp"] == [] and "printed_at" not in json.loads(path.read_text())
+    assert P.print_edition(path, auto=True, now=datetime(2026, 11, 23, 5, 0))["printed"]
+
+
+def test_late_sync_still_prints_after_print_time(saved, monkeypatch):
+    monkeypatch.setenv("ONS_PRINT_AT", "05:00")
+    assert P.print_edition(saved(), auto=True, now=datetime(2026, 11, 23, 9, 40))["printed"]
+
+
+def test_manual_print_ignores_print_time(saved, monkeypatch):
+    monkeypatch.setenv("ONS_PRINT_AT", "05:00")
+    assert P.print_edition(saved(), now=datetime(2026, 11, 23, 3, 0))["printed"]
+
+
+def test_bad_print_time_falls_back_to_five(saved, monkeypatch):
+    monkeypatch.setenv("ONS_PRINT_AT", "five-ish")
+    assert not P.print_edition(saved(), auto=True, now=datetime(2026, 11, 23, 4, 59))["printed"]
+
+
+def test_cli_reports_missing_edition_without_failing(saved, capsys):
+    assert P.main(["--auto", "--date", "2026-11-23"]) == 0
+    assert "No edition" in capsys.readouterr().out
 
 
 def test_needs_review_prints_only_when_forced(saved):

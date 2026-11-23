@@ -715,7 +715,9 @@ def build_steps(year: int) -> List[Step]:
         # (up to 2 revisions, shared $5/month AI budget), saves
         # data/brief/<date>.json + .md, records featured news in
         # brief.featured_news (the API is still stopped, so the write lock is
-        # free), and prints it on weekdays. Not required: exit 2
+        # free). Printing is the 5:00am com.ons.print-brief job on weekdays;
+        # --print here only prints if this sync ends after 5:00 (a late or
+        # rerun sync), and never twice. Not required: exit 2
         # (needs_review) or any failure shows in health.txt and nothing else
         # is affected. Skips itself if today's edition is already published.
         # ------------------------------------------------------------------
@@ -835,7 +837,7 @@ def write_health_summary(
 
 def _hc_ping(suffix: str = "", body: str = "") -> None:
     """
-    Ping HEALTHCHECK_SYNC_URL (+ "/start" or "/fail"). If the 9am sync never
+    Ping HEALTHCHECK_SYNC_URL (+ "/start" or "/fail"). If the 4am sync never
     runs — Mac asleep, launchd job broken — no ping arrives and healthchecks.io
     alerts. Never raises.
     """

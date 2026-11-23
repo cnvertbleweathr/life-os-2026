@@ -40,7 +40,7 @@
     <key>WorkingDirectory</key>
     <string>/Users/kg/life-os-2026</string>
 
-    <!-- 2:00am nightly — well after the 9am daily sync writes -->
+    <!-- 2:00am nightly — before the 4am daily sync writes (the sync also backs up at its end) -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>

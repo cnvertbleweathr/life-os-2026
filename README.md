@@ -180,7 +180,8 @@ life-os-2026/
 ├── .github/workflows/                 # ci.yml (syntax, Python tests, ShellCheck, hardcode audit,
 │                                      #   dbt parse, TypeScript), picks-validation.yml (Thu)
 ├── launchd/
-│   ├── com.ons.daily-sync.plist       # 9am daily sync
+│   ├── com.ons.daily-sync.plist       # 4am daily sync
+│   ├── com.ons.print-brief.plist      # 5am weekday print of the morning brief
 │   ├── com.ons.backup-duckdb.plist    # 2am nightly backup
 │   └── com.ons.offsite-backup.plist   # 2:30am copy to plex-server (30 days)
 │   # com.ons.fastapi / com.ons.nextjs live only in ~/Library/LaunchAgents on the Mac mini
@@ -191,7 +192,7 @@ life-os-2026/
 
 ## Daily Workflow
 
-Runs automatically at 9am via launchd (`com.ons.daily-sync.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`), and at 2:30am `ops/macmini/offsite_backup.sh` copies the backups to plex-server over Tailscale and keeps 30 days there (`com.ons.offsite-backup.plist`). The sync runs 39 steps in order. Some steps only run on certain days:
+Runs automatically at 4am via launchd (`com.ons.daily-sync.plist`), and the morning brief it writes prints at 5am on weekdays (`com.ons.print-brief.plist`); a separate nightly backup runs at 2am (`com.ons.backup-duckdb.plist`), and at 2:30am `ops/macmini/offsite_backup.sh` copies the backups to plex-server over Tailscale and keeps 30 days there (`com.ons.offsite-backup.plist`). The sync runs 39 steps in order. Some steps only run on certain days:
 
 | Stage | Steps | When |
 |---|---|---|
@@ -287,7 +288,7 @@ The Mac mini is the single host for the warehouse, API, UI and tunnel, so it has
 | Layer | What | Alerts via |
 |---|---|---|
 | Machine | `ops/macmini/heartbeat.sh` every 5 min from boot: Tailscale, cloudflared, FastAPI, Next.js | healthchecks.io (`/fail` with reason; silence = Mac down) |
-| Daily sync | `daily_sync.py` pings start/end; red only if a required step aborts | healthchecks.io (missed 9am run) |
+| Daily sync | `daily_sync.py` pings start/end; red only if a required step aborts | healthchecks.io (missed 4am run) |
 | Data | `freshness_check` step: steps failing 2+ runs, last success overdue (learned per step), stale CFB scores in season, backups > 36h, Daily 10 and show listings | ntfy |
 | Config | `bash ops/macmini/harden.sh check` — power, updates, FileVault, Remote Login, Tailscale variant, cloudflared mode, services, env | (run by hand) |
 
@@ -454,7 +455,7 @@ Disabled (July 2026): spread range (anti-predictive), away efficiency beats tale
 
 **Separation of concerns** — Intent (`goals/2026.yaml`), facts (`data/`), and logic (`scripts/`, `dbt/`) are explicitly separated.
 
-**Automation over willpower** — Runs at 9am daily. Willpower is finite. Cron jobs are not.
+**Automation over willpower** — Runs at 4am daily. Willpower is finite. Cron jobs are not.
 
 **DuckDB as the hub** — All sources land in DuckDB. dbt builds clean marts. FastAPI queries read-only; user input goes to append-only logs that the sync loads. No spaghetti.
 

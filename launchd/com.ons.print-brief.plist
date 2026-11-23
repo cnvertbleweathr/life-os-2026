@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.ons.print-brief.plist
+  Prints the morning brief at 5:00am Monday to Friday. The 4:00am daily sync
+  writes it; this only prints it (print_edition.py in auto mode):
+  published editions only, once each (printed_at in the JSON).
+
+  If the sync hasn't finished by 5:00, this does nothing and the sync's own
+  morning_brief step prints when it ends (automatic printing waits until
+  ONS_PRINT_AT, default 05:00, so an on-time sync leaves printing to this job).
+
+  Install:
+    cp launchd/com.ons.print-brief.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.ons.print-brief.plist
+
+  Run manually:
+    launchctl start com.ons.print-brief
+
+  View logs:
+    cat ~/Library/Logs/ons/print_brief.log
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ons.print-brief</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/uv</string>
+        <string>run</string>
+        <string>python</string>
+        <string>-m</string>
+        <string>agents.morning_brief.print_edition</string>
+        <string>--auto</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/kg/life-os-2026</string>
+
+    <!-- 5:00am, Monday (1) to Friday (5) -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>5</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/kg/Library/Logs/ons/print_brief.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/kg/Library/Logs/ons/print_brief.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/Users/kg/.local/bin</string>
+    </dict>
+</dict>
+</plist>
