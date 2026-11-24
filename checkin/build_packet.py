@@ -13,6 +13,8 @@ Sources, all read-only:
   - git log / gh pr list, and the ROADMAP.md 🟡 In Progress and 🔴 Blocked rows
   - data/checkin/packet_posts.jsonl (written by post_slack.py) for "days since
     last check-in"; the app's data/checkin/checkin_log.jsonl is shown separately
+  - data/secretary/days/<date>.json (the secretary's day sheet, written by the
+    sync's secretary_headsups step) and data/calendar/status.json: "Coming up"
 
 Saved to data/checkin/<date>.md. Kept under MAX_CHARS by shortening lists
 ("+N more") before anything else.
@@ -80,6 +82,8 @@ class Inputs:
     roadmap: str | None = None
     last_post: date | None = None
     last_app_checkin: date | None = None
+    secretary: dict[str, Any] | None = None             # the secretary's day sheet (secretary/sheet.py)
+    calendar: dict[str, Any] | None = None              # data/calendar/status.json, via read_status
     warnings: list[str] = field(default_factory=list)
 
 
@@ -169,7 +173,26 @@ def gather(today: date | None = None, db_path: Path | str | None = None) -> Inpu
     inp.last_post = max((d for d in posts if d and d < inp.today), default=None)
     checkins = [_date(r.get("date")) for r in app_checkin_log().rows()]
     inp.last_app_checkin = max((d for d in checkins if d), default=None)
+    load_secretary(inp)
     return inp
+
+
+def load_secretary(inp: Inputs) -> None:
+    """The day sheet and the calendar status. Never raises: a missing sheet is shown in the packet."""
+    try:
+        from secretary import sheet
+        inp.secretary = sheet.load(inp.today)
+    except Exception as e:
+        inp.warnings.append(f"secretary sheet unreadable ({e})")
+    try:
+        import sys
+        scripts = str(ROOT / "scripts")
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        from calendar_export import read_status
+        inp.calendar = read_status(inp.today)
+    except Exception as e:
+        inp.calendar = {"ok": False, "message": f"calendar status unreadable ({e})"}
 
 
 # ── sections ─────────────────────────────────────────────────────────────────
@@ -445,6 +468,38 @@ def talking_points(inp: Inputs, extra: list[str]) -> list[str]:
     return points[:3]
 
 
+def coming_up_lines(inp: Inputs, limit: int) -> list[str]:
+    """Secretary: today's check-in heads-ups, then critical and important dates in the next 30 days.
+    Critical first (the sheet's order), so the "+N more" cap trims important dates before critical ones."""
+    out: list[str] = []
+    cal = inp.calendar or {}
+    if inp.calendar is not None and not cal.get("ok"):
+        msg = (cal.get("message") or "the calendar sync didn't run").rstrip(".")
+        out.append(f"_Calendar unavailable today: {msg}. Template dates still count; calendar events may be missing._")
+    s = inp.secretary
+    if s is None:
+        out.append("_No secretary sheet for today: the sync's secretary_headsups step didn't run._")
+        return out
+    asks = [h["text"] for h in s.get("checkin_today", [])]
+    if asks:
+        out.append("Heads-ups for today:")
+        out += [f"- {t}" for t in cap(asks, limit)]
+    already = {(h["title"], h["date"]) for h in s.get("checkin_today", [])}
+    dates = []
+    for e in s.get("checkin_coming_up", []):
+        if (e["title"], e["date"]) in already:
+            continue
+        when = f"{e['label']}{' ' + e['time'] if e.get('time') else ''}"
+        dates.append(f"- **{when} · {e['title']}** (critical, {e['rel']})" if e["tier"] == "critical"
+                     else f"- {when} · {e['title']} ({e['rel']})")
+    if dates:
+        out.append("Next 30 days, critical and important:")
+        out += cap(dates, limit)
+    if not asks and not dates:
+        out.append("Nothing critical or important in the next 30 days.")
+    return out
+
+
 # ── assemble ─────────────────────────────────────────────────────────────────
 
 def render(inp: Inputs, limit: int, priorities_max_lines: int | None = None) -> str:
@@ -465,6 +520,7 @@ def render(inp: Inputs, limit: int, priorities_max_lines: int | None = None) -> 
            f"Days since last check-in: {since}",
            f"App check-in log: last entry {_ago(inp.last_app_checkin, t)}",
            "", "## My priorities", pri,
+           "", "## Coming up", *coming_up_lines(inp, limit),
            "", "## Last 7 days", *tracking_lines(inp, limit),
            "", "## Habits", *habits,
            "", "## Today's brief", *brief,
