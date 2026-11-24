@@ -500,6 +500,28 @@ def coming_up_lines(inp: Inputs, limit: int) -> list[str]:
     return out
 
 
+LOOK_AHEAD = ("Look ahead: what's coming up in the next few weeks that isn't on the list yet: a deadline, "
+              "a trip, a birthday, something to plan or buy? New ones go in the RECAP as `New project:` or "
+              "`New critical person:` lines.")
+
+
+def ask_lines(inp: Inputs) -> list[str]:
+    """The questions the protocol asks first (docs/context/checkin-protocol.md): "Has it happened?" for each
+    life-project milestone due today or overdue, with the exact RECAP `Done:` line, then the look-ahead.
+    Never capped: the list is short and it's the point of the check-in."""
+    out: list[str] = []
+    s = inp.secretary or {}
+    for p in s.get("projects", []):
+        due_now = p["overdue"] + [m for m in p["due"] if m["date"] == inp.today.isoformat()]
+        for m in due_now:
+            when = "due today" if m["date"] == inp.today.isoformat() else f"due {m['label']}, {m['rel']}"
+            out.append(f"- Has *{m['title']}* for *{p['name']}* happened? ({when}) "
+                       f"If yes, RECAP: `Done: {p['name']} — {m['title']}`")
+    out.append(f"- {LOOK_AHEAD}")
+    out.append("_End with the RECAP block (docs/context/checkin-protocol.md), then paste it on the website: Check-in → Paste RECAP._")
+    return out
+
+
 def project_lines(inp: Inputs, limit: int) -> list[str]:
     """Secretary step 6: each active life project with its overdue, due (7 days), recently done and next milestone."""
     s = inp.secretary
@@ -545,6 +567,7 @@ def render(inp: Inputs, limit: int, priorities_max_lines: int | None = None) -> 
     out = [f"# Check-in — {t.strftime('%A, %b')} {t.day}, {t.year}",
            f"Days since last check-in: {since}",
            f"App check-in log: last entry {_ago(inp.last_app_checkin, t)}",
+           "", "## Ask first", *ask_lines(inp),
            "", "## My priorities", pri,
            "", "## Coming up", *coming_up_lines(inp, limit),
            "", "## Life projects", *project_lines(inp, limit),
