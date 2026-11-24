@@ -46,6 +46,8 @@ def _label(d: date) -> str:
 
 def _rel(d: date, today: date) -> str:
     n = (d - today).days
+    if n < 0:
+        return "yesterday" if n == -1 else f"{-n} days ago"
     return "today" if n == 0 else "tomorrow" if n == 1 else f"in {n} days"
 
 
@@ -136,7 +138,7 @@ def projects_summary(con, today: date) -> dict[str, Any]:
         item = {"key": r["key"], "title": r["title"], "deadline": bool(r["deadline"]),
                 "date": r["due"].isoformat(), "label": _label(r["due"]) + (" " + _time(r["due_at"], False)
                                                                        if r["due_at"] else ""),
-                "rel": _rel(r["due"], today) if r["due"] >= today else f"{(today - r['due']).days} days ago"}
+                "rel": _rel(r["due"], today)}
         if r["status"] == "done":
             p["done_count"] += 1
             if r["done_on"] and r["done_on"] >= today - timedelta(days=PROJECT_DUE_DAYS):

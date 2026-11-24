@@ -86,6 +86,58 @@ def test_cap_trims_important_dates_before_critical():
     assert sum("Imp" in l for l in dates) == 1
 
 
+# ── step 7: Ask first ─────────────────────────────────────────────────────────
+
+PROJECT = {"key": "swim", "name": "Robin's swim school", "tier": "critical", "notes": "", "open_count": 4, "done_count": 0,
+           "overdue": [{"key": "signup", "title": "Sign-up opens", "deadline": False, "date": "2026-11-26",
+                        "label": "Thu Nov 26", "rel": "3 days ago"}],
+           "due": [{"key": "slot", "title": "Pick a time slot", "deadline": False, "date": "2026-11-29",
+                    "label": "Sun Nov 29", "rel": "today"},
+                   {"key": "forms", "title": "Forms due", "deadline": True, "date": "2026-12-02",
+                    "label": "Wed Dec 2 4pm", "rel": "in 3 days"}],
+           "done": [], "next": None}
+
+
+def test_ask_first_has_it_happened_for_due_and_overdue_then_look_ahead():
+    lines = bp.ask_lines(inputs(secretary=SHEET | {"projects": [PROJECT]}))
+    assert lines[:2] == [
+        "- Has *Sign-up opens* for *Robin's swim school* happened? (due Thu Nov 26, 3 days ago) "
+        "If yes, RECAP: `Done: Robin's swim school — Sign-up opens`",
+        "- Has *Pick a time slot* for *Robin's swim school* happened? (due today) "
+        "If yes, RECAP: `Done: Robin's swim school — Pick a time slot`",
+    ]                                                                 # Forms due is 3 days out: not asked yet
+    assert lines[2].startswith("- Look ahead: what's coming up in the next few weeks")
+    assert "`New project:`" in lines[2] and "`New critical person:`" in lines[2]
+    assert "Paste RECAP" in lines[3] and len(lines) == 4
+
+
+def test_overdue_by_one_day_reads_yesterday():
+    assert S._rel(date(2026, 11, 28), TODAY) == "yesterday" and S._rel(date(2026, 11, 26), TODAY) == "3 days ago"
+
+
+def test_look_ahead_is_asked_even_with_no_projects_or_sheet():
+    for sheet in (None, SHEET):
+        lines = bp.ask_lines(inputs(secretary=sheet))
+        assert len(lines) == 2 and lines[0].startswith("- Look ahead:")
+
+
+def test_ask_first_opens_the_packet_and_survives_the_size_cap():
+    text = bp.build_packet(inputs(secretary=SHEET | {"projects": [PROJECT]}, priorities="# P\n" + "- a long priority line\n" * 200))
+    assert len(text) <= bp.MAX_CHARS
+    assert text.index("## Ask first") < text.index("## My priorities")
+    ask = text.split("## Ask first\n")[1].split("\n## ")[0]
+    assert ask.count("Has *") == 2 and "Look ahead" in ask
+
+
+def test_protocol_doc_lists_every_recap_line_and_the_done_line_matches_the_packet():
+    doc = (bp.ROOT / "docs" / "context" / "checkin-protocol.md").read_text()
+    for key in ("RECAP <YYYY-MM-DD>", "Wins:", "Top 3 next week:", "Decisions:", "Parking lot:", "Commitments:",
+                "Done: <project> — <milestone>", "New project: <name> | deadline <YYYY-MM-DD> | tier",
+                "New critical person: <name>"):
+        assert key in doc, key
+    assert bp.LOOK_AHEAD.split(":")[1].strip()[:40].lower() in doc.lower()   # the same look-ahead question
+
+
 def test_end_to_end_from_the_engine_to_the_packet(tmp_path, monkeypatch):
     """The sync's refresh writes the sheet; gather() picks it up from ONS_DATA_DIR."""
     monkeypatch.setenv("ONS_DATA_DIR", str(tmp_path / "data"))
