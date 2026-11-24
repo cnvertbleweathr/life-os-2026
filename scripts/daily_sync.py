@@ -687,6 +687,17 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Secretary heads-ups: apply website done/dismiss clicks, add each event's
+        # current milestone from int_events_tiered (just rebuilt), pick today's
+        # (nag limit) → secretary.headsups. Before the brief and the packet, which
+        # read today's picks. Idempotent, so a rerun doesn't double-count.
+        Step(
+            name="secretary_headsups",
+            cmd=["python3", "-m", "secretary.headsups", "--refresh"],
+            run_if_exists=ROOT / "secretary/headsups.py",
+            required=False,
+            tags=["secretary"],
+        ),
         # Film scene catalog: suggest a scene for each newly watched film
         # (one Claude call per film, within the shared AI budget), render the
         # GIF of every approved film that has none, then mirror
