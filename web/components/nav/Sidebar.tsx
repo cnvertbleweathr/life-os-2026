@@ -15,6 +15,7 @@ export const NAV: NavItem[] = [
   { kind: "link", href: "/habits",  label: "Habits",           icon: "habits",  area: "habit" },
   { kind: "link", href: "/checkin", label: "Check-in",         icon: "checkin", area: "check" },
   { kind: "link", href: "/capture", label: "Capture",          icon: "inbox",   area: "check" },
+  { kind: "link", href: "/secretary", label: "Secretary",      icon: "secretary", area: "plan" },
   { kind: "section", label: "Track" },
   { kind: "link", href: "/goals",   label: "Goals",            icon: "goals" },
   { kind: "link", href: "/fitness", label: "Fitness",          icon: "fitness", area: "run" },

@@ -204,7 +204,7 @@ The *tint* fills lane labels, marks and tinted cards. The *ink* is text on that 
 | Reading (`read`) | `#d4f2ea` / `#0b4840` / `#17907c` | `#0e302a` / `#a2e6d6` / `#33b89f` |
 | Habits (`habit`) | `#e0f3d5` / `#1f4a12` / `#3f8f2a` | `#182c12` / `#c2e8ae` / `#63b549` |
 | Things you write: check-in, capture (`check`) | `#ebe5fc` / `#37217a` / `#6d4fd1` | `#251c42` / `#d2c6ff` / `#9479f2` |
-| Plans (`plan`) | `#fbe3ea` / `#6b1631` / `#c2456b` | `#371722` / `#ffc2d2` / `#e66b91` |
+| Plans (`plan`): the Plans lane and the Secretary page | `#fbe3ea` / `#6b1631` / `#c2456b` | `#371722` / `#ffc2d2` / `#e66b91` |
 | CFB / Degenerates Corner (`edge`) | `#fde3cf` / `#6a2b06` / `#d9661c` | `#3a1f0c` / `#ffcca4` / `#f08a45` |
 | Weather (`wx`) | `#e6ebf2` / `#263247` / `#5b6f8f` | `#1d2433` / `#c5d0e3` / `#7f95ba` |
 | Film (`film`) | `#fae5fd` / `#4e1d56` / `#a044ae` | `#301834` / `#f4cafb` / `#d280df` |
@@ -214,6 +214,8 @@ On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6
 
 ### Named Rules
 **The One Lane, One Colour Rule.** An area's colour means that area, everywhere: lane label, marks, goal bar, tinted card, nav icon. Don't reuse an area hue for something unrelated. Violet means only "things you write" (check-in and capture); favourite picks on the slate use plain ink, so no hue has two meanings. Film is the ninth area: the owner chose magenta (322°, Option A in `play-hue-options.html`) in November 2026. Adding a tenth reuses a hue or gets an explicit decision; it never gets a new hue invented on the spot.
+
+**The Secretary Is Plans Rule.** The Secretary page (heads-ups for birthdays, holidays and deadlines) is part of the Plans area: the owner chose Plans rose for it in November 2026. Its importance tiers reuse the week strip's marks in rose: critical is a solid mark, important a tint (a half-strength mark for small dots, since the dark tint sits too close to the sheet), nice to know an outline, trivia neutral.
 
 **The Play Pages Are Neutral Rule.** Music, King Gizzard and Sports have no area colour of their own, and neither does Progeny (the kids) until the owner gives it one: ink, rules, neutral pills and the forest system colour only. An existing area colour appears there only when that area does (college football rows on Sports keep CFB tangerine and link to Degenerates Corner). Giving Play a hue is an owner decision.
 
@@ -247,7 +249,7 @@ On track `#d9f2e2`/`#0d3a22`, at risk `#fff0d6`/`#7a430a`, out of reach `#fde6e6
 
 **The L-frame.** A 228px sidebar and a 48px top bar share the Frame ground. The work sits on a white Sheet inset 8px from the right and bottom, with 16px corners and a 1px border. The top bar holds the breadcrumb, a centred "Ask the system ⌘K" field, the sync status and the theme switch.
 
-**Sidebar groups:** Today (This week, Habits, Check-in, Capture), Track (Goals, Fitness, Reading, Film, Progeny), Degenerates Corner (College Football; NBA and NHL join later), Play (Music, King Gizzard, Sports). Area pages show their area's mark on the nav icon.
+**Sidebar groups:** Today (This week, Habits, Check-in, Capture, Secretary), Track (Goals, Fitness, Reading, Film, Progeny), Degenerates Corner (College Football; NBA and NHL join later), Play (Music, King Gizzard, Sports). Area pages show their area's mark on the nav icon.
 
 **Page anatomy:**
 1. **Intro:** a title, span line and lede on the left; on the right, the page actions above the pixel scene (up to 460px wide). Home adds a row of up to four **next steps** in area colours. A 1px rule closes the intro unless summary tiles follow.
@@ -334,6 +336,7 @@ One small looping pixel-art scene sits beside each page title. Scenes are built 
   - on Music, the date of your artists' next Denver show on the gig poster and the year's listening hours on the amp;
   - on King Gizzard, the number of shows the band has played on the marquee (the lizard in the wizard hat is an original character);
   - on Sports, the score of your most relevant game today on the rink scoreboard;
+  - on Secretary, a desk under a window: the flip calendar shows the days to the next critical date (its top page lifts now and then), the in-tray holds one letter per open heads-up, a wall clock ticks and the brown tabby sleeps by the lamp;
   - on Progeny, a backyard where a kid kicks a ball with the puggle at their heels; the book pile under the tree gains one book per 100 read-alouds (ten is 1,000 Books Before Kindergarten), and while a baby is on the way a pram waits by a sign counting the days to the due date;
   - on Film, a small cinema whose screen plays the latest watch's 5-second loop: its rendered GIF (the light-palette one in light mode, the LED-panel dark-palette one in dark mode), or a motif until one is rendered; velvet curtains (`plate`) fill the rest of the width and the gray cat sleeps on a seat back;
   - the owner's own pets (a black dog, a chihuahua-beagle, a puggle, a brown tabby, a gray striped cat).

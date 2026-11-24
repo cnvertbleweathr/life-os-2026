@@ -252,6 +252,7 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .t-lift { --t: var(--lift); --t-ink: var(--lift-ink); --t-mark: var(--lift-mark); }
 .t-read { --t: var(--read); --t-ink: var(--read-ink); --t-mark: var(--read-mark); }
 .t-film { --t: var(--film); --t-ink: var(--film-ink); --t-mark: var(--film-mark); }
+.t-plan { --t: var(--plan); --t-ink: var(--plan-ink); --t-mark: var(--plan-mark); }
 .dog { --l: var(--edge); --l-ink: var(--edge-ink); --l-mark: var(--edge-mark); }
 .fav { --l: var(--raised); --l-ink: var(--ink); --l-mark: var(--ink-2); }
 
@@ -608,6 +609,46 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .ons-news span { font-size: 12px; color: var(--muted); }
 .ons-quietlink { color: inherit; text-decoration: none; }
 .ons-quietlink:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--muted); }
+
+/* ── Secretary: the Plans area (rose), chosen by the owner Nov 2026. Tiers use the week strip's marks:
+      critical = solid mark, important = tint, nice to know = outlined, trivia = neutral. ── */
+.sc-alert { border: 1px dashed var(--control); border-radius: 8px; padding: 12px 16px; margin: 0 0 24px; font-size: 14px; line-height: 20px; color: var(--ink-2); }
+.sc-alert b { color: var(--ink); font-weight: 600; }
+.sc-alert code, .sc-todo code { font: 12px "IBM Plex Mono", ui-monospace, monospace; background: var(--raised); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.sc-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 12px 0; border-top: 1px solid var(--rule); }
+.sc-row:first-of-type { border-top: 0; padding-top: 0; }
+.sc-when { font: 500 13px/20px "IBM Plex Mono", ui-monospace, monospace; color: var(--ink); }
+.sc-when span { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+.sc-text { font-size: 14px; line-height: 20px; color: var(--ink); margin: 0; }
+.sc-row.closed .sc-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--control); }
+.sc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: 12px; line-height: 20px; color: var(--muted); }
+.sc-meta .on { color: var(--plan-ink); font-weight: 500; }
+.sc-acts { display: flex; gap: 6px; }
+.sc-acts .ons-btn { height: 28px; font-size: 12px; padding: 0 10px; }
+.sc-tier { display: inline-block; font-size: 12px; line-height: 18px; padding: 0 7px; border-radius: 4px; border: 1px solid transparent; white-space: nowrap; font-weight: 500; }
+.sc-tier.critical { background: var(--plan-mark); color: var(--sheet); }
+.sc-tier.important { background: var(--plan); color: var(--plan-ink); }
+.sc-tier.nice_to_know { border-color: var(--plan-mark); color: var(--plan-ink); }
+.sc-tier.trivia { background: var(--raised); color: var(--ink-2); font-weight: 400; }
+.sc-cal { list-style: none; margin: 0; padding: 0; }
+.sc-cal li { display: grid; grid-template-columns: 12px 78px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--rule); font-size: 14px; line-height: 20px; }
+.sc-cal li:first-child { border-top: 0; padding-top: 0; }
+.sc-cal .d { font: 12px "IBM Plex Mono", ui-monospace, monospace; color: var(--muted); white-space: nowrap; }
+.sc-cal .t { min-width: 0; color: var(--ink-2); }
+.sc-cal .t small { font-size: 12px; color: var(--muted); }
+.sc-cal li.critical .t { color: var(--ink); font-weight: 600; }
+.sc-dot { width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--plan-mark); align-self: center; }
+.sc-dot.critical { background: var(--plan-mark); }
+/* half-strength mark: the tint alone is too close to the sheet in dark */
+.sc-dot.important { background: color-mix(in srgb, var(--plan-mark) 45%, transparent); }
+.sc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin: 14px 0 0; }
+.sc-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sc-todo { list-style: disc; margin: 0; padding-left: 18px; font-size: 14px; line-height: 21px; color: var(--ink-2); }
+.sc-todo li + li { margin-top: 4px; }
+@media (max-width: 767px) {
+  .sc-row { grid-template-columns: 56px minmax(0, 1fr); }
+  .sc-acts { grid-column: 2; }
+}
 
 /* ── Progeny: neutral (no area hue; the kids aren't one of the nine areas) ── */
 .l-plain { --l: var(--rule); --l-ink: var(--ink); --l-mark: var(--ink-2); }

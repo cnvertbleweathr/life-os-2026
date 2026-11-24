@@ -798,7 +798,70 @@ const progeny = {
   },
 };
 
-const SCENES = { cfb, week, fitness, reading, music, kglw, sports, film, loop, progeny };
+// ---------------- Secretary ----------------
+// The secretary's desk under a window. Real data: the flip calendar shows the days to the next critical date
+// (data-days; -1 = none in 30 days, a blank page), and the in-tray holds one letter per open heads-up (data-open,
+// up to 6). Motion: the wall clock's hand ticks round (8 steps), the brown tabby asleep on the desk flicks its
+// tail (the LOAF sprite, 2 frames), and every few seconds the calendar's top page lifts and settles (2 frames).
+const CLOCK_HAND = [[0, -3], [2, -2], [3, 0], [2, 2], [0, 3], [-2, 2], [-3, 0], [-2, -2]];
+const secretary = {
+  ms: 180, stride: 0, still: 0,
+  draw(ctx, W, n, P, data) {
+    const days = Number(data.days), open = Math.max(0, Math.min(6, Number(data.open) || 0));
+    // wall, skirting, floor
+    px(ctx, P.wall, 0, 0, W, 26); px(ctx, P['wall-d'], 0, 24, W, 2);
+    px(ctx, P.wood, 0, 26, W, H - 26); px(ctx, P['wood-d'], 0, 29, W, 1);
+    // window on the left: sky by day, stars at night
+    const wx = 4;
+    px(ctx, P.wood, wx - 1, 2, 24, 15); px(ctx, P.sky, wx, 3, 22, 12);
+    if (P.dark) for (let i = 0; i < 6; i++) { if (rnd(i + Math.floor(n / 5) * 7) > 0.2) px(ctx, P.star, wx + 1 + Math.floor(rnd(i * 13) * 20), 4 + Math.floor(rnd(i * 29) * 9)); }
+    else tiles(ctx, CLOUD, wx + 2 + (Math.floor(n / 14) % 13), 5, { C: P.cloud });
+    px(ctx, P.wood, wx + 11, 3, 1, 12); px(ctx, P.wood, wx, 9, 22, 1); px(ctx, P['wood-d'], wx - 2, 16, 26, 1);
+    // wall clock; the hand ticks one step every 4 frames
+    const cx = Math.max(wx + 34, Math.round(W * 0.34)), cy = 7;
+    for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) {
+      const r = x * x + y * y;
+      if (r <= 17) px(ctx, r >= 10 ? P['wood-d'] : P.white, cx + x, cy + y);
+    }
+    px(ctx, P.outline, cx, cy - 3); px(ctx, P.outline, cx + 3, cy); px(ctx, P.outline, cx, cy + 3); px(ctx, P.outline, cx - 3, cy);
+    const [hx, hy] = CLOCK_HAND[Math.floor(n / 4) % 8];
+    line(cx, cy, cx + Math.round(hx * 0.67), cy + Math.round(hy * 0.67), (x, y) => px(ctx, P.navy, x, y));
+    px(ctx, P.outline, cx, cy);
+    // the desk: top, front panel, legs
+    const dx0 = Math.max(2, Math.round(W * 0.2)), dx1 = W - 3;
+    px(ctx, P.wood, dx0, 19, dx1 - dx0, 2); px(ctx, P['wood-d'], dx0, 21, dx1 - dx0, 3);
+    px(ctx, P['wood-d'], dx0 + 1, 24, 2, 6); px(ctx, P['wood-d'], dx1 - 3, 24, 2, 6);
+    // in-tray: one letter per open heads-up, stacked
+    const tx = dx0 + 4;
+    for (let i = 0; i < open; i++) { px(ctx, P.white, tx + 1, 17 - i, 9, 1); px(ctx, P['white-d'], tx + 5, 17 - i, 1, 1); }
+    px(ctx, P['wood-d'], tx, 18, 11, 1); px(ctx, P['wood-d'], tx, 15, 1, 3); px(ctx, P['wood-d'], tx + 10, 15, 1, 3);
+    // flip calendar: rose header, days to the next critical date; the top page lifts every 40 frames
+    const kx = Math.max(tx + 16, Math.round(W * 0.52)), ky = 7, t = n % 40;
+    px(ctx, P['wood-d'], kx + 1, 18, 13, 1); px(ctx, P['wood-d'], kx + 6, 17, 3, 1);           // stand
+    px(ctx, P['white-d'], kx + 1, ky + 1, 13, 10);                                             // pages underneath
+    if (t < 38) {
+      px(ctx, P.white, kx, ky, 13, 10); px(ctx, P.bloom1, kx, ky, 13, 3);
+      px(ctx, P['white-d'], kx + 3, ky + 1, 1, 1); px(ctx, P['white-d'], kx + 9, ky + 1, 1, 1);   // rings
+      if (days >= 0) { const s = String(Math.min(days, 99)); text(ctx, s, kx + (s.length === 1 ? 5 : 3), ky + 4, P.outline); }
+    } else {                                                                                   // the page lifts over the top
+      px(ctx, P.white, kx, ky + 3, 13, 7); px(ctx, P.bloom1, kx, ky + 1, 13, 2);
+      px(ctx, P.white, kx + 1, ky - (t === 38 ? 2 : 1), 11, 2);
+    }
+    // desk lamp with its glow on the right
+    const lx = Math.min(dx1 - 8, Math.max(kx + 22, Math.round(W * 0.86)));
+    for (let y = 8; y < 19; y++) for (let x = lx - 7; x <= lx + 7; x++) {
+      const r = ((x - lx) / 7) ** 2 + ((y - 13) / 6) ** 2;
+      if (r < 0.5 || (r < 1 && (x + y) % 2 === 0)) px(ctx, P.glow, x, y);
+    }
+    px(ctx, P['wood-d'], lx - 2, 18, 5, 1); px(ctx, P['wood-d'], lx, 11, 1, 7);
+    px(ctx, P.lamp, lx - 3, 8, 6, 3); px(ctx, P.lamp, lx - 2, 7, 4, 1);
+    // the brown tabby asleep on the desk between the calendar and the lamp; frame 2 flicks the tail
+    const catX = Math.round((kx + 14 + lx - 3) / 2) - 5;
+    if (lx - kx > 28) drawSprite(ctx, toGrid(LOAF[Math.floor(n / 5) % 3 === 2 ? 1 : 0]), catX, 13, { C: P.tabby, S: P['tabby-s'], e: P.eye, T: P.tabby }, P.outline);
+  },
+};
+
+const SCENES = { cfb, week, fitness, reading, music, kglw, sports, film, loop, progeny, secretary };
 
 function mount(el) {
   if (!el.querySelector('canvas')) return () => {};
