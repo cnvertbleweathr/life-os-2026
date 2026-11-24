@@ -1,0 +1,67 @@
+# Template for data/secretary/templates/critical.yaml (gitignored; the real file never gets committed).
+#
+#   mkdir -p data/secretary/templates
+#   cp secretary/config/templates/critical.example.yaml data/secretary/templates/critical.yaml
+#
+# Each entry:
+#   key         stable id (heads-ups remember what you dismissed by it): never rename
+#   name        how it reads in the paper, the packet and the website
+#   tier        critical | important | nice_to_know | trivia
+#   when        "MM-DD" · easter · {month: 5, weekday: sunday, nth: 2} (nth: -1 = last)
+#   person      for birthdays: the name as it appears in calendar birthday titles
+#   match       calendar titles this template stands for (the holiday calendar's copy is merged in)
+#   milestones  optional; without them the tier's rhythm from secretary.yaml applies
+#               {days_before, surfaces: [paper | paper_lead | checkin], text with {name} {date} {when} {days}}
+# <LIKE THIS> = placeholder; the entry is skipped until you fill it in.
+
+- key: mothers_day
+  name: Mother's Day
+  tier: critical
+  when: {month: 5, weekday: sunday, nth: 2}
+  match: [Mother's Day]
+  milestones:
+    - {days_before: 21, surfaces: [checkin], text: "Mother's Day is {when} ({date}). Ideas for your wife and your mum?"}
+    - {days_before: 10, surfaces: [paper], text: "Mother's Day {when} ({date}): order now if it has to ship."}
+    - {days_before: 3, surfaces: [paper, checkin], text: "Mother's Day {when}: cards, flowers, brunch plans?"}
+    - {days_before: 0, surfaces: [paper_lead], text: "Today is Mother's Day."}
+
+- key: fathers_day
+  name: Father's Day
+  tier: critical
+  when: {month: 6, weekday: sunday, nth: 3}
+  match: [Father's Day]
+  milestones:
+    - {days_before: 21, surfaces: [checkin], text: "Father's Day is {when} ({date}). Anyone to plan for or send something to?"}
+    - {days_before: 10, surfaces: [paper], text: "Father's Day {when} ({date}): order now if it has to ship."}
+    - {days_before: 3, surfaces: [paper, checkin], text: "Father's Day {when}: calls and plans set?"}
+    - {days_before: 0, surfaces: [paper_lead], text: "Today is Father's Day."}
+
+- key: christmas
+  name: Christmas
+  tier: critical
+  when: "12-25"
+  match: [Christmas Day, Christmas]
+  milestones:
+    - {days_before: 21, surfaces: [checkin], text: "Christmas is {when}. Is the gift list done?"}
+    - {days_before: 10, surfaces: [paper, checkin], text: "Christmas {when}: order anything that ships today."}
+    - {days_before: 3, surfaces: [paper, checkin], text: "Christmas {when}: wrapping, cards, food plan."}
+    - {days_before: 0, surfaces: [paper_lead], text: "Merry Christmas."}
+
+# Birthdays use the critical_birthday rhythm from secretary.yaml (21 / 10 / 3 / day of).
+- key: wife_birthday
+  name: <WIFE'S NAME>'s birthday
+  tier: critical
+  person: <WIFE'S NAME>
+  when: <MM-DD>
+
+- key: child_birthday
+  name: <CHILD'S NAME>'s birthday
+  tier: critical
+  person: <CHILD'S NAME>
+  when: <MM-DD>
+
+- key: mum_birthday
+  name: Mum's birthday
+  tier: critical
+  person: <MUM'S NAME>
+  when: <MM-DD>

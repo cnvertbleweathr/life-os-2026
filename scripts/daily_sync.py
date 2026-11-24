@@ -364,7 +364,8 @@ def build_steps(year: int) -> List[Step]:
             name="calendar_export",
             cmd=["python3", "scripts/calendar_export.py", "--year", str(year)],
             run_if_exists=ROOT / "scripts/calendar_export.py",
-            run_on_days=[0, 3],  # Monday + Thursday
+            # daily: the secretary's heads-ups need today's calendar, and a daily
+            # refresh shows a dead sign-in the same morning ("Calendar unavailable today")
             tags=["calendar"],
         ),
         Step(
@@ -663,6 +664,15 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Secretary: critical people + template dates from data/secretary/*.yaml
+        # → secretary.* tables, read by dbt's int_events_tiered.
+        Step(
+            name="secretary_config",
+            cmd=["python3", "-m", "secretary.config", "--publish"],
+            run_if_exists=ROOT / "secretary/config.py",
+            required=False,
+            tags=["secretary"],
+        ),
         # Seeds (NBA / NHL team crosswalks, odds provider priorities) are small
         # CSVs in dbt/seeds; reload them so a seed edit reaches the staging views.
         Step(
@@ -676,6 +686,17 @@ def build_steps(year: int) -> List[Step]:
             cmd=dbt_cmd,
             required=True,
             tags=["dbt"],
+        ),
+        # Secretary heads-ups: apply website done/dismiss clicks, add each event's
+        # current milestone from int_events_tiered (just rebuilt), pick today's
+        # (nag limit) → secretary.headsups. Before the brief and the packet, which
+        # read today's picks. Idempotent, so a rerun doesn't double-count.
+        Step(
+            name="secretary_headsups",
+            cmd=["python3", "-m", "secretary.headsups", "--refresh"],
+            run_if_exists=ROOT / "secretary/headsups.py",
+            required=False,
+            tags=["secretary"],
         ),
         # Film scene catalog: suggest a scene for each newly watched film
         # (one Claude call per film, within the shared AI budget), render the

@@ -96,3 +96,17 @@ models:
       - unique:
           arguments:
             column_name: "nhl_game_id || team_code"
+
+  - name: int_events_tiered
+    description: Calendar events and secretary template dates with an importance tier (critical, important, nice_to_know, trivia). Rules in the model header; the secretary's heads-up engine reads it.
+    columns:
+      - name: event_key
+        data_tests: [unique, not_null]
+      - name: event_date
+        data_tests: [not_null]
+      - name: tier
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [critical, important, nice_to_know, trivia]

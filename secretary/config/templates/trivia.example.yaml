@@ -1,0 +1,68 @@
+# Template for data/secretary/templates/trivia.yaml (gitignored; the real file never gets committed).
+#   cp secretary/config/templates/trivia.example.yaml data/secretary/templates/trivia.yaml
+# Trivia shows once, on the day, as one line in the paper. For a laugh; add your own.
+
+- key: groundhog_day
+  name: Groundhog Day
+  tier: trivia
+  when: "02-02"
+  match: [Groundhog Day]
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Groundhog Day. If this line feels familiar, that's the point."}
+
+- key: pi_day
+  name: Pi Day
+  tier: trivia
+  when: "03-14"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Pi Day: 3.14. Pie is the only correct observance."}
+
+- key: ides_of_march
+  name: The Ides of March
+  tier: trivia
+  when: "03-15"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "The Ides of March. Beware, mildly."}
+
+- key: star_wars_day
+  name: Star Wars Day
+  tier: trivia
+  when: "05-04"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "May the Fourth be with you."}
+
+- key: towel_day
+  name: Towel Day
+  tier: trivia
+  when: "05-25"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Towel Day. Know where yours is."}
+
+- key: donut_day
+  name: National Donut Day
+  tier: trivia
+  when: {month: 6, weekday: friday, nth: 1}
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "National Donut Day. Act accordingly."}
+
+- key: flag_day
+  name: Flag Day
+  tier: trivia
+  when: "06-14"
+  match: [Flag Day]
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Flag Day. Fold responsibly."}
+
+- key: pirate_day
+  name: Talk Like a Pirate Day
+  tier: trivia
+  when: "09-19"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Talk Like a Pirate Day. Arr."}
+
+- key: winter_solstice
+  name: The winter solstice
+  tier: trivia
+  when: "12-21"
+  milestones:
+    - {days_before: 0, surfaces: [paper], text: "Shortest day of the year. It's all uphill from here."}
