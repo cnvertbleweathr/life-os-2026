@@ -1484,3 +1484,60 @@ export const progenyApi = {
   log: (kind: ProgenyKind, fields: Record<string, unknown>, entry_id?: string) =>
     post<Record<string, unknown>>(`/progeny/${kind}`, { fields, entry_id }),
 };
+
+// ── Secretary (owner-only, reads included) ───────────────────────────────────
+// Birthdays and family names: never over the public tunnel without the write key (api/routers/secretary.py).
+
+export type SecretaryTier = "critical" | "important" | "nice_to_know" | "trivia";
+export type HeadsupStatus = "open" | "done" | "dismissed";
+
+export interface Headsup {
+  headsup_id: string;
+  event_key: string;
+  source: "calendar" | "template" | "project";
+  title: string;
+  tier: SecretaryTier;
+  event_date: string;
+  days_before: number;
+  due_date: string;
+  surfaces: ("paper" | "paper_lead" | "checkin")[];
+  text: string;
+  status: HeadsupStatus;
+  /** Clicked on the site; the 4am sync hasn't written it to the warehouse yet. */
+  queued: boolean;
+  shown_count: number;
+  first_shown_on: string | null;
+  last_shown_on: string | null;
+  shown_today: boolean;
+  days_to_go: number;
+}
+
+export interface SecretaryEvent {
+  event_key: string;
+  title: string;
+  tier: SecretaryTier;
+  event_date: string;
+  start_at: string | null;
+  all_day: boolean;
+  is_birthday: boolean;
+  time: string | null;
+  days_to_go: number;
+}
+
+export interface SecretaryOverview {
+  today: string;
+  nag_limit: number;
+  configured: boolean;
+  placeholders: string[];
+  problems: string[];
+  calendar: { ok: boolean; message: string | null; last_ok_at: string | null };
+  headsups: Headsup[];
+  upcoming: SecretaryEvent[];
+}
+
+export const secretaryApi = {
+  /** First read of the page: never prompts; throws LockedError when the key is needed. */
+  overview: (prompt = false) => ownerGet<SecretaryOverview>("/secretary/overview", prompt),
+  act: (headsup_id: string, action: "done" | "dismiss" | "reopen") =>
+    post<{ headsup_id: string; status: HeadsupStatus; queued: boolean }>("/secretary/headsups/action", { headsup_id, action }),
+};

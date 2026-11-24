@@ -42,6 +42,13 @@ const PATHS: Record<string, React.ReactNode> = {
       <path d="M7.5 20.5h9" />
     </>
   ),
+  secretary: (
+    <>
+      <path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 2h-14z" />
+      <path d="M10.2 20.5a1.9 1.9 0 0 0 3.6 0" />
+      <line x1="12" y1="3.5" x2="12" y2="5.5" />
+    </>
+  ),
   goals: (
     <>
       <circle cx="12" cy="12" r="8.5" />

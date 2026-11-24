@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS secretary.headsups (
     closed_at       TIMESTAMPTZ,
     closed_by       VARCHAR               -- website · cli · recap · sync
 );
+-- `at` of the last queued action the sync has seen for this row: the website compares it
+-- with the log to tell a click the sync hasn't applied yet. (Added after the first release.)
+ALTER TABLE secretary.headsups ADD COLUMN IF NOT EXISTS last_action_at VARCHAR;
 """
 
 
@@ -182,6 +185,9 @@ def refresh(today: date, *, cfg: SC.Config | None = None, path: Path | None = No
                    RETURNING 1""",
                 [status, now, status, now, status, a.get("by") or "website", hid, status]).fetchall()
             counts["actions"] += len(n)
+            con.execute("""UPDATE secretary.headsups SET last_action_at = ?
+                           WHERE headsup_id = ? AND last_action_at IS DISTINCT FROM ?""",
+                        [a.get("at"), hid, a.get("at")])
 
         # 2. add the current milestone of each event; keep open ones' wording up to date
         for m in current:

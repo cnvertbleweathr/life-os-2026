@@ -35,6 +35,7 @@ from api.routers import (
     music,
     nba_nhl,
     reading,
+    secretary,
     shows,
     sports,
 )
@@ -104,6 +105,8 @@ app.include_router(film.router,    prefix="/api/film",    tags=["film"],    depe
 app.include_router(display.router, prefix="/api/display", tags=["display"], dependencies=owner_only)
 # Progeny is owner-only for reads too: kids' names, quotes and milestones stay off the public tunnel.
 app.include_router(progeny.router, prefix="/api/progeny", tags=["progeny"], dependencies=owner_only)
+# Secretary: birthdays and family names, so owner-only for reads too. Done/dismiss append to a JSONL log.
+app.include_router(secretary.router, prefix="/api/secretary", tags=["secretary"], dependencies=owner_only)
 
 @app.get("/api/health")
 async def health():
