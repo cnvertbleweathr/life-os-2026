@@ -109,7 +109,26 @@ def build(con, cfg: SC.Config, today: date) -> dict[str, Any]:
         "checkin_today": [_headsup(h, today) for h in picked if "checkin" in h["surfaces"]],
         "checkin_coming_up": [_listing(e, today) for e in packet],
         **projects_summary(con, today),
+        "proposals": proposals(),
     }
+
+
+def proposals() -> dict[str, list[str]]:
+    """What check-in RECAPs proposed (checkin/ingest_recap.py) and you haven't reviewed yet."""
+    import yaml
+    out: dict[str, list[str]] = {"projects": [], "people": []}
+    folder = SC.secretary_dir()
+    try:
+        projects = yaml.safe_load((folder / "projects.proposed.yaml").read_text()) or []
+        out["projects"] = [str(p.get("name")) for p in projects if isinstance(p, dict)]
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        settings = yaml.safe_load((folder / "secretary.proposed.yaml").read_text()) or {}
+        out["people"] = [str(p.get("name")) for p in settings.get("critical_people") or [] if isinstance(p, dict)]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return out
 
 
 PROJECT_DUE_DAYS = 7

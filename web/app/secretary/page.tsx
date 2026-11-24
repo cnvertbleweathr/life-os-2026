@@ -113,6 +113,10 @@ export default function SecretaryPage() {
   const closed = all.filter((h) => h.status !== "open");
   const onPaper = open.filter((h) => h.shown_today);
   const nextCritical = ov.upcoming.find((e) => e.tier === "critical");
+  const proposed = [
+    ...(ov.proposals?.projects ?? []).map((n) => `Proposed project: ${n}`),
+    ...(ov.proposals?.people ?? []).map((n) => `Proposed critical person: ${n}`),
+  ];
   const end = addDays(ov.today, 30);
 
   // ── Lede: what needs you, then the next critical date ───────────────────────
@@ -183,14 +187,16 @@ export default function SecretaryPage() {
             </div>
           </section>
 
-          {(ov.placeholders.length > 0 || ov.problems.length > 0 || !ov.configured) && (
+          {(ov.placeholders.length > 0 || ov.problems.length > 0 || !ov.configured || proposed.length > 0) && (
             <section className="ons-card" aria-labelledby="sc-todo">
-              <div className="ons-ch"><h2 id="sc-todo">Still to fill in</h2><span className="aside">{ov.placeholders.length + ov.problems.length}</span></div>
+              <div className="ons-ch"><h2 id="sc-todo">To review</h2><span className="aside">{ov.placeholders.length + ov.problems.length + proposed.length}</span></div>
               {!ov.configured && <p className="ons-note m-0" style={{ marginBottom: 10 }}>No settings yet: copy <code>secretary/config/secretary.example.yaml</code> to <code>data/secretary/secretary.yaml</code>.</p>}
               <ul className="sc-todo">
-                {ov.placeholders.map((p) => <li key={p}>{p}</li>)}
+                {proposed.map((p) => <li key={p}>{p}</li>)}
+                {ov.placeholders.map((p) => <li key={p}>Fill in: {p}</li>)}
                 {ov.problems.map((p) => <li key={p} style={{ color: "var(--neg)" }}>{p}</li>)}
               </ul>
+              {proposed.length > 0 && <p className="ons-note">Proposals came from check-in RECAPs and sit in <code>projects.proposed.yaml</code> / <code>secretary.proposed.yaml</code>. Move one into <code>projects.yaml</code> or <code>secretary.yaml</code> to start it.</p>}
               <p className="ons-note">Edit the files in <code>data/secretary/</code> (private, never committed). Changes show after the next sync.</p>
             </section>
           )}

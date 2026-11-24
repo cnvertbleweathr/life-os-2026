@@ -5,6 +5,7 @@ import { checkinApi, hasWriteKey, type CheckinValues } from "@/lib/api";
 import { Card, PageHead, K } from "@/components/ui/primitives";
 import { OnsIcon } from "@/components/ui/icons";
 import { Donut } from "@/components/ui/viz";
+import { RecapCard } from "@/components/checkin/RecapCard";
 
 const FIELDS = [
   { key: "energy", label: "Energy", lo: "Drained", hi: "Energized", invert: false },
@@ -262,6 +263,8 @@ export default function CheckinPage() {
           </Card>
         </div>
       </div>
+
+      <RecapCard />
     </div>
   );
 }
