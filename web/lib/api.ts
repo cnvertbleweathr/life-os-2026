@@ -1569,6 +1569,31 @@ export interface SecretaryOverview {
   calendar: { ok: boolean; message: string | null; last_ok_at: string | null };
   headsups: Headsup[];
   upcoming: SecretaryEvent[];
+  /** Active life projects (data/secretary/projects.yaml), as the packet summarizes them. */
+  projects?: SecretaryProject[];
+}
+
+export interface ProjectMilestone {
+  key: string;
+  title: string;
+  deadline: boolean;
+  date: string;
+  label: string;
+  rel: string;
+  done_on?: string;
+}
+
+export interface SecretaryProject {
+  key: string;
+  name: string;
+  tier: SecretaryTier;
+  notes: string;
+  overdue: ProjectMilestone[];
+  due: ProjectMilestone[];
+  done: ProjectMilestone[];
+  next: ProjectMilestone | null;
+  open_count: number;
+  done_count: number;
 }
 
 export const secretaryApi = {

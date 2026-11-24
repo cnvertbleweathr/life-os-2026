@@ -643,6 +643,14 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
 .sc-dot.important { background: color-mix(in srgb, var(--plan-mark) 45%, transparent); }
 .sc-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin: 14px 0 0; }
 .sc-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sc-proj + .sc-proj { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.sc-proj-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 8px; font-size: 14px; }
+.sc-proj-h b { font-weight: 600; color: var(--ink); }
+.sc-proj-h .n { margin-left: auto; font: 12px "IBM Plex Mono", ui-monospace, monospace; color: var(--muted); }
+.sc-cal li.over .t { color: var(--ink); font-weight: 600; }
+.sc-cal li.over small { color: var(--neg); font-weight: 400; }
+.sc-cal li.done .t { color: var(--muted); }
+.sc-dot.done { border-color: var(--control); background: var(--raised); }
 .sc-todo { list-style: disc; margin: 0; padding-left: 18px; font-size: 14px; line-height: 21px; color: var(--ink-2); }
 .sc-todo li + li { margin-top: 4px; }
 @media (max-width: 767px) {
