@@ -282,12 +282,20 @@ def apply(p: dict[str, Any]) -> None:
         _write(path, SETTINGS_HEADER, current)
 
 
-def submit(text: str, source: str = "web") -> dict[str, Any]:
-    """Queue a pasted RECAP (the website's POST). Parses first so a malformed paste is refused."""
+def submit(text: str, source: str = "web", source_id: str | None = None) -> dict[str, Any]:
+    """Queue a RECAP: pasted on the website (source "web") or read from the Slack check-in thread
+    (source "slack", source_id = the message). Parses first so a malformed one is refused."""
     r = parse(text)
-    row = recaps_log().append({"recap_id": uuid.uuid4().hex, "recap_date": (r.date or today_local()).isoformat(),
-                               "submitted_at": timestamp(), "source": source, "text": text.strip()})
+    row = {"recap_id": uuid.uuid4().hex, "recap_date": (r.date or today_local()).isoformat(),
+           "submitted_at": timestamp(), "source": source, "text": text.strip()}
+    if source_id:
+        row["source_id"] = source_id
+    recaps_log().append(row)
     return {**row, "preview": plan(r, today_local())}
+
+
+def queued_source_ids() -> set[str]:
+    return {r["source_id"] for r in recaps_log().rows() if r.get("source_id")}
 
 
 def ingest(today: date | None = None) -> list[dict[str, Any]]:
