@@ -363,11 +363,16 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
     today = args.date or today_local()
     cfg = load()
+    from secretary import projects as PR
+    ps = PR.load()
     print(report(cfg, today))
+    print(PR.report(ps, today))
     if args.publish:
         counts = publish(cfg, today)
+        pcounts = PR.publish(ps, today)
         print(f"published: {counts['critical_people']} critical-person names, "
-              f"{counts['template_occurrences']} template dates")
+              f"{counts['template_occurrences']} template dates, "
+              f"{pcounts['projects']} projects with {pcounts['milestones']} milestones")
     return 0
 
 

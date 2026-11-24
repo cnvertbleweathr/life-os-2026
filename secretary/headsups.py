@@ -16,7 +16,8 @@ from `days_before` days ahead until the event. One row per (event, milestone):
   2. add the current milestone of each upcoming event; refresh text and tier of open ones.
      Only the latest due milestone counts: a newer one supersedes the older, and after
      a missed sync (or on first install) old milestones aren't replayed.
-  3. expire open heads-ups whose day has passed; mark ones whose event vanished "gone".
+  3. expire open heads-ups whose day has passed; close those of a project milestone marked
+     done as done (closed_by project); mark ones whose event vanished "gone".
   4. pick today's heads-ups and count the showing (once per day, however many reruns).
 
 Nag limit: a heads-up that isn't critical is shown on at most `nag_limit` days
@@ -130,6 +131,16 @@ def event_rows(con, today: date, horizon: int) -> list[dict]:
     return [dict(zip(keys, r)) for r in rows]
 
 
+def project_done_keys(con) -> list[str]:
+    """event_keys of project milestones marked done (secretary.project_milestones; empty before step 6 ran)."""
+    try:
+        return [r[0] for r in con.execute(
+            "SELECT 'prj:' || project_key || ':' || milestone_key FROM secretary.project_milestones "
+            "WHERE status = 'done'").fetchall()]
+    except Exception:
+        return []
+
+
 def current_milestones(cfg: SC.Config, events: list[dict], today: date) -> list[Milestone]:
     """For each event, the latest milestone already due (due_date <= today <= event_date)."""
     out = []
@@ -168,7 +179,8 @@ def refresh(today: date, *, cfg: SC.Config | None = None, path: Path | None = No
         con.execute(DDL)
         events = event_rows(con, today, max_lead(cfg))          # read before the transaction
         current = current_milestones(cfg, events, today)
-        counts = {"actions": 0, "added": 0, "superseded": 0, "expired": 0, "gone": 0, "shown": 0}
+        done_milestones = project_done_keys(con)
+        counts = {"actions": 0, "added": 0, "superseded": 0, "expired": 0, "project_done": 0, "gone": 0, "shown": 0}
         con.execute("BEGIN")
 
         # 1. done / dismiss / reopen queued by the website or the CLI
@@ -214,10 +226,15 @@ def refresh(today: date, *, cfg: SC.Config | None = None, path: Path | None = No
         counts["expired"] = len(con.execute(
             """UPDATE secretary.headsups SET status = 'expired', updated_at = ?, closed_at = ?, closed_by = 'sync'
                WHERE status = 'open' AND event_date < ? RETURNING 1""", [now, now, today]).fetchall())
+        # a project milestone marked done (yaml, CLI, or the check-in RECAP) closes its heads-ups as done
+        counts["project_done"] = len(con.execute(
+            """UPDATE secretary.headsups SET status = 'done', updated_at = ?, closed_at = ?, closed_by = 'project'
+               WHERE status = 'open' AND list_contains(CAST(? AS VARCHAR[]), event_key) RETURNING 1""",
+            [now, now, done_milestones]).fetchall())
         live = [e["event_key"] for e in events]
         counts["gone"] = len(con.execute(
             """UPDATE secretary.headsups SET status = 'gone', updated_at = ?, closed_at = ?, closed_by = 'sync'
-               WHERE status = 'open' AND source <> 'project' AND NOT list_contains(CAST(? AS VARCHAR[]), event_key) RETURNING 1""",
+               WHERE status = 'open' AND NOT list_contains(CAST(? AS VARCHAR[]), event_key) RETURNING 1""",
             [now, now, live]).fetchall())
 
         # 4. today's picks: due, under the nag limit (or critical), on a surface that goes out today

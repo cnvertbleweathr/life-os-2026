@@ -6,12 +6,16 @@
 -- that has a birthday template) is dropped in favour of the template row, which
 -- carries the heads-up milestones. "!" events are never absorbed.
 --
+-- Life-project milestones (stg_secretary__project_milestones) join as a third source:
+-- open milestones of active projects only, titled "<project>: <milestone>".
+--
 -- Tier, first match wins:
 --   1. title starts with "!"                  → critical  ("!" stripped from display_title)
 --   2. birthday of a critical person          → critical
 --   3. any other birthday                     → important
 --   4. template row                           → the template's tier
---   5. everything else                        → nice_to_know
+--   5. project milestone                      → the project's tier
+--   6. everything else                        → nice_to_know
 
 with cal as (
     select *, replace(lower(title), '’', '''') as title_norm
@@ -24,6 +28,11 @@ tpl as (
 
 people as (
     select * from {{ ref('stg_secretary__critical_people') }}
+),
+
+prj as (
+    select * from {{ ref('stg_secretary__project_milestones') }}
+    where project_status = 'active' and status = 'open'
 ),
 
 absorbed as (
@@ -75,6 +84,25 @@ events as (
         t.person,
         cast(null as varchar)
     from tpl t
+
+    union all
+
+    select
+        p.event_key,
+        'project',
+        'project',
+        p.project_name,
+        p.due_date,
+        p.due_at,
+        cast(null as timestamptz),
+        p.due_at is null,
+        p.project_name || ': ' || p.title || case when p.is_deadline then ' (deadline)' else '' end,
+        false,
+        cast(null as varchar),
+        p.tier,                                 -- template_tier carries the declared tier for projects too
+        cast(null as varchar),
+        cast(null as varchar)
+    from prj p
 ),
 
 flagged as (
@@ -107,6 +135,7 @@ select
         when is_birthday and is_critical_person     then 'critical'
         when is_birthday                            then 'important'
         when template_key is not null               then template_tier
+        when source = 'project'                     then template_tier
         else 'nice_to_know'
     end                                         as tier,
     case
@@ -114,6 +143,7 @@ select
         when is_birthday and is_critical_person     then 'critical_person_birthday'
         when is_birthday                            then 'birthday'
         when template_key is not null               then 'template'
+        when source = 'project'                     then 'project'
         else 'default'
     end                                         as tier_rule,
     location
