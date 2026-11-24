@@ -500,6 +500,32 @@ def coming_up_lines(inp: Inputs, limit: int) -> list[str]:
     return out
 
 
+def project_lines(inp: Inputs, limit: int) -> list[str]:
+    """Secretary step 6: each active life project with its overdue, due (7 days), recently done and next milestone."""
+    s = inp.secretary
+    if s is None:
+        return ["_No secretary sheet for today (see Coming up)._"]
+    out: list[str] = []
+    for p in s.get("projects", []):
+        total = p["open_count"] + p["done_count"]
+        out.append(f"**{p['name']}** ({p['tier'].replace('_', ' ')}) · {p['done_count']} of {total} milestones done")
+        name = lambda m: m["title"] + (", deadline" if m.get("deadline") else "")
+        rows = [f"- Overdue: {name(m)} ({m['label']}, {m['rel']})" for m in p["overdue"]]
+        rows += [f"- Due: {name(m)} ({m['label']}, {m['rel']})" for m in p["due"]]
+        rows += [f"- Done: {name(m)} ({m['done_on'][5:].replace('-', '/')})" for m in p["done"]]
+        if p.get("next"):
+            m = p["next"]
+            rows.append(f"- Next: {name(m)} ({m['label']}, {m['rel']})")
+        out += cap(rows, max(limit, 2)) if rows else ["- No open milestones."]
+    if not out:
+        out.append("No active projects.")
+    drafts = s.get("draft_projects", 0)
+    if drafts:
+        out.append(f"_{drafts} draft project{'s' if drafts != 1 else ''} waiting in projects.yaml "
+                   "(set status: active to start follow-ups)._")
+    return out
+
+
 # ── assemble ─────────────────────────────────────────────────────────────────
 
 def render(inp: Inputs, limit: int, priorities_max_lines: int | None = None) -> str:
@@ -521,6 +547,7 @@ def render(inp: Inputs, limit: int, priorities_max_lines: int | None = None) -> 
            f"App check-in log: last entry {_ago(inp.last_app_checkin, t)}",
            "", "## My priorities", pri,
            "", "## Coming up", *coming_up_lines(inp, limit),
+           "", "## Life projects", *project_lines(inp, limit),
            "", "## Last 7 days", *tracking_lines(inp, limit),
            "", "## Habits", *habits,
            "", "## Today's brief", *brief,

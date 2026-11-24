@@ -1,0 +1,37 @@
+# Template for data/secretary/projects.yaml (gitignored; the real file never gets committed).
+#   cp secretary/config/projects.example.yaml data/secretary/projects.yaml
+#
+# Life projects: things with dated milestones the secretary follows up on. Each open
+# milestone of an active project gets heads-ups on the project's tier rhythm (secretary.yaml),
+# shows in the paper's Coming Up, on the website, and in the check-in packet's "Life projects".
+#
+#   key         stable id: never rename (completions refer to it)
+#   name        how it reads everywhere
+#   tier        critical | important | nice_to_know | trivia
+#   status      active | draft | done | dropped. Only active projects get heads-ups. Projects the
+#               check-in RECAP proposes arrive as drafts in projects.proposed.yaml, never active.
+#   milestones  key (optional, else a slug of the title) · title · due ("YYYY-MM-DD" or
+#               "YYYY-MM-DD HH:MM", America/Denver) · deadline: true for a hard deadline ·
+#               done: YYYY-MM-DD to mark one done by hand
+# Done also comes from `python -m secretary.projects --done <project> <milestone>` and the RECAP.
+# <LIKE THIS> = placeholder; the project is skipped until you fill it in.
+
+- key: preschool
+  name: <CHILD'S NAME>'s preschool
+  tier: critical
+  status: active
+  notes: School choice and the state preschool program.
+  milestones:
+    - key: round1_opens
+      title: School choice round 1 opens
+      due: <YYYY-MM-DD>
+    - key: state_registration
+      title: State preschool registration opens (check eligibility)
+      due: <YYYY-MM-DD>
+    - key: school_list
+      title: Finalize the school list together
+      due: <YYYY-MM-DD>
+    - key: round1_closes
+      title: School choice round 1 closes
+      due: <YYYY-MM-DD HH:MM>
+      deadline: true

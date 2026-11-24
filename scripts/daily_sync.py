@@ -664,7 +664,8 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
-        # Secretary: critical people + template dates from data/secretary/*.yaml
+        # Secretary: critical people, template dates and life projects (+ milestone
+        # completions from milestone_log.jsonl) from data/secretary/
         # → secretary.* tables, read by dbt's int_events_tiered.
         Step(
             name="secretary_config",

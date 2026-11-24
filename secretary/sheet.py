@@ -14,6 +14,9 @@ secretary.headsups live instead (it has done/dismiss buttons).
   weekend       Fridays only: critical and important events on Saturday and Sunday
   checkin_today heads-ups picked today for the Slack packet
   checkin_coming_up  next 30 days, critical and important only (the packet)
+  projects      active life projects (secretary/projects.py), each with its milestones
+                overdue (past due, not done), due (within 7 days), done (in the last 7 days),
+                and next (the first open one after that); drafts are counted, not listed
 """
 
 from __future__ import annotations
@@ -103,7 +106,51 @@ def build(con, cfg: SC.Config, today: date) -> dict[str, Any]:
         "weekend": [_listing(e, today) for e in weekend],
         "checkin_today": [_headsup(h, today) for h in picked if "checkin" in h["surfaces"]],
         "checkin_coming_up": [_listing(e, today) for e in packet],
+        **projects_summary(con, today),
     }
+
+
+PROJECT_DUE_DAYS = 7
+
+
+def projects_summary(con, today: date) -> dict[str, Any]:
+    try:
+        rows = con.execute(
+            """SELECT m.project_key, m.project_name, m.tier, m.project_status, m.milestone_key, m.title,
+                      m.due_date, m.due_at, m.is_deadline, m.status, m.done_on, p.notes
+               FROM secretary.project_milestones m
+               LEFT JOIN secretary.projects p USING (project_key)
+               ORDER BY m.due_date, m.due_at NULLS FIRST""").fetchall()
+        drafts = con.execute("SELECT count(*) FROM secretary.projects WHERE status = 'draft'").fetchone()[0]
+    except Exception:                                      # step 6 hasn't published yet
+        return {"projects": [], "draft_projects": 0}
+    keys = ("project_key", "name", "tier", "project_status", "key", "title", "due", "due_at", "deadline",
+            "status", "done_on", "notes")
+    by_project: dict[str, dict[str, Any]] = {}
+    for r in (dict(zip(keys, row)) for row in rows):
+        if r["project_status"] != "active":
+            continue
+        p = by_project.setdefault(r["project_key"], {"key": r["project_key"], "name": r["name"], "tier": r["tier"],
+                                                     "notes": r["notes"] or "", "overdue": [], "due": [], "done": [],
+                                                     "next": None, "open_count": 0, "done_count": 0})
+        item = {"key": r["key"], "title": r["title"], "deadline": bool(r["deadline"]),
+                "date": r["due"].isoformat(), "label": _label(r["due"]) + (" " + _time(r["due_at"], False)
+                                                                       if r["due_at"] else ""),
+                "rel": _rel(r["due"], today) if r["due"] >= today else f"{(today - r['due']).days} days ago"}
+        if r["status"] == "done":
+            p["done_count"] += 1
+            if r["done_on"] and r["done_on"] >= today - timedelta(days=PROJECT_DUE_DAYS):
+                p["done"].append({**item, "done_on": r["done_on"].isoformat()})
+            continue
+        p["open_count"] += 1
+        if r["due"] < today:
+            p["overdue"].append(item)
+        elif r["due"] <= today + timedelta(days=PROJECT_DUE_DAYS):
+            p["due"].append(item)
+        elif p["next"] is None:
+            p["next"] = item
+    projects = sorted(by_project.values(), key=lambda p: (H.TIER_RANK.get(p["tier"], 9), p["name"]))
+    return {"projects": projects, "draft_projects": drafts}
 
 
 def write(sheet: dict[str, Any]) -> Path:

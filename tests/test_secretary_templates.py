@@ -57,12 +57,16 @@ def private_values() -> set[str]:
     values = {m for p in cfg.critical_people for m in p["match"]}
     values |= {t.person for t in cfg.templates if t.person}
     values |= {t.when for t in cfg.templates if t.person and isinstance(t.when, str)}
+    from secretary import projects as PR
+    for p in PR.load(real).projects:                       # life projects: names, notes, milestone titles
+        values |= {p.name, p.notes} | {m.title for m in p.milestones}
     return {v for v in values if v and len(v) > 2}
 
 
 def test_committed_files_hold_no_private_details():
     committed = list(EXAMPLES.rglob("*.yaml")) + list((ROOT / "secretary").glob("*.py")) + \
-        list((ROOT / "tests").glob("test_secretary*.py"))
+        list((ROOT / "tests").glob("test_secretary*.py")) + [ROOT / "checkin" / "build_packet.py"] + \
+        list((ROOT / "dbt" / "models").rglob("*secretary*.sql")) + [ROOT / "dbt/models/intermediate/int_events_tiered.sql"]
     text = "\n".join(p.read_text() for p in committed)
     for private in private_values():
         assert private not in text, "a name or date from data/secretary/ is in a committed file"
