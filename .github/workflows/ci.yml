@@ -26,7 +26,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install test dependencies
-        run: pip install "fastapi>=0.137" httpx "dlt[duckdb]>=1.4" "duckdb>=1.5" pandas pyarrow python-dotenv requests pyyaml spotipy google-auth google-auth-oauthlib google-api-python-client pillow pytest
+        run: pip install "fastapi>=0.137" httpx "dlt[duckdb]>=1.4" "duckdb>=1.5" pandas pyarrow python-dotenv requests pyyaml spotipy google-auth google-auth-oauthlib google-api-python-client pillow pytest jsonschema anthropic dbt-duckdb
+      # jsonschema + anthropic: the morning brief (missing since #52, so main's CI has been red).
+      # dbt-duckdb: tests/test_secretary_tiers.py builds int_events_tiered for real against a temp DuckDB.
       - name: Run tests (temp data dir + temp DuckDB, no real data)
         run: python -m pytest -q
 
