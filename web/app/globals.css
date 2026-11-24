@@ -650,6 +650,27 @@ a.ons-ticker-item:focus-visible { outline: 2px solid var(--hue); outline-offset:
   .sc-acts { grid-column: 2; }
 }
 
+/* ── Check-in: Paste RECAP (secretary step 8) ── */
+.rc-card { margin-top: 22px; }
+.rc-card code { font: 12px "IBM Plex Mono", ui-monospace, monospace; background: var(--raised); padding: 1px 5px; border-radius: 4px; }
+.rc-text { width: 100%; resize: vertical; font: 13px/20px "IBM Plex Mono", ui-monospace, monospace; min-height: 180px; }
+.rc-preview { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 14px; line-height: 20px; color: var(--ink-2); }
+.rc-preview .rc-lead { margin: 0 0 6px; color: var(--ink); font-weight: 500; }
+.rc-preview ul { list-style: disc; margin: 0; padding-left: 18px; }
+.rc-preview li + li { margin-top: 3px; }
+.rc-preview .rc-problems { margin-top: 8px; color: var(--neg); }
+.rc-recent { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.rc-recent h3 { font: 500 13px/18px "IBM Plex Sans", system-ui, sans-serif; color: var(--muted); margin: 0 0 6px; }
+.rc-recent ul { list-style: none; margin: 0; padding: 0; }
+.rc-recent li { display: grid; grid-template-columns: 128px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--rule); font-size: 14px; line-height: 20px; }
+.rc-recent li:first-child { border-top: 0; }
+.rc-recent .d { font: 12px "IBM Plex Mono", ui-monospace, monospace; color: var(--ink); }
+.rc-recent .t { color: var(--ink-2); min-width: 0; }
+.rc-recent .w { font-size: 12px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 767px) {
+  .rc-recent li { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+
 /* ── Progeny: neutral (no area hue; the kids aren't one of the nine areas) ── */
 .l-plain { --l: var(--rule); --l-ink: var(--ink); --l-mark: var(--ink-2); }
 .pg-form { display: grid; gap: 12px; }

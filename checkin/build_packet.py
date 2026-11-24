@@ -541,6 +541,11 @@ def project_lines(inp: Inputs, limit: int) -> list[str]:
         out += cap(rows, max(limit, 2)) if rows else ["- No open milestones."]
     if not out:
         out.append("No active projects.")
+    prop = s.get("proposals") or {}
+    if prop.get("projects") or prop.get("people"):
+        bits = ([f"projects: {', '.join(prop['projects'])}"] if prop.get("projects") else []) + \
+               ([f"critical people: {', '.join(prop['people'])}"] if prop.get("people") else [])
+        out.append(f"_Proposed by RECAPs, waiting for review in data/secretary/*.proposed.yaml: {'; '.join(bits)}._")
     drafts = s.get("draft_projects", 0)
     if drafts:
         out.append(f"_{drafts} draft project{'s' if drafts != 1 else ''} waiting in projects.yaml "

@@ -242,7 +242,41 @@ export const checkinApi = {
   history: (days = 30) => ownerGet<Checkin[]>(`/checkin/history?days=${days}`),
   log: (values: CheckinValues & { note?: string; date?: string }) =>
     post<Checkin>("/checkin/log", values),
+  /** Queue a pasted RECAP for the 4am sync; returns what it will do (docs/context/checkin-protocol.md). */
+  recap: (text: string) => post<RecapQueued>("/checkin/recap", { text }),
+  /** Recent RECAPs with what the sync did. Never prompts for the key (empty without one). */
+  recaps: (limit = 5) => ownerGet<RecapRow[]>(`/checkin/recaps?limit=${limit}`, false),
 };
+
+export interface RecapPreview {
+  done: { project: string; milestone: string; label: string; on: string; already: boolean; note: string | null }[];
+  projects: { key: string; name: string; tier: string; milestones: { title: string; due: string }[] }[];
+  people: { name: string }[];
+  skipped: string[];
+  problems: string[];
+}
+
+export interface RecapQueued {
+  recap_id: string;
+  recap_date: string;
+  submitted_at: string;
+  preview: RecapPreview;
+}
+
+export interface RecapRow {
+  recap_id: string;
+  recap_date: string;
+  submitted_at: string;
+  /** null until the 4am sync's ingest_recap step has applied it. */
+  result: null | {
+    ok: boolean;
+    done?: string[];
+    proposed_projects?: string[];
+    proposed_people?: string[];
+    skipped?: string[];
+    problems?: string[];
+  };
+}
 
 // ── Capture inbox ────────────────────────────────────────────────────────────
 
@@ -1530,6 +1564,8 @@ export interface SecretaryOverview {
   configured: boolean;
   placeholders: string[];
   problems: string[];
+  /** Proposed by check-in RECAPs, not yet reviewed (data/secretary/*.proposed.yaml). */
+  proposals?: { projects: string[]; people: string[] };
   calendar: { ok: boolean; message: string | null; last_ok_at: string | null };
   headsups: Headsup[];
   upcoming: SecretaryEvent[];

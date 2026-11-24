@@ -664,6 +664,16 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Check-in RECAPs pasted on the website (data/checkin/recaps.jsonl): Done lines
+        # → milestone_log.jsonl, New project / New critical person → *.proposed.yaml
+        # (never active on their own). Files only; first, so secretary_config publishes them.
+        Step(
+            name="ingest_recap",
+            cmd=["python3", "-m", "checkin.ingest_recap"],
+            run_if_exists=ROOT / "checkin/ingest_recap.py",
+            required=False,
+            tags=["secretary", "checkin"],
+        ),
         # Secretary: critical people, template dates and life projects (+ milestone
         # completions from milestone_log.jsonl) from data/secretary/
         # → secretary.* tables, read by dbt's int_events_tiered.

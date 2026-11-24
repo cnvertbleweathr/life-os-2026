@@ -112,6 +112,11 @@ def upcoming(db, today: date) -> list[dict]:
     return rows
 
 
+def sheet_proposals() -> dict[str, list[str]]:
+    from secretary.sheet import proposals
+    return proposals()
+
+
 @router.get("/overview")
 async def overview(request: Request):
     db = get_db(request)
@@ -122,6 +127,7 @@ async def overview(request: Request):
         "nag_limit": cfg.settings["nag_limit"],
         "configured": cfg.settings_path is not None,
         "placeholders": cfg.placeholders,
+        "proposals": sheet_proposals(),
         "problems": cfg.problems,
         "calendar": calendar_status(today),
         "headsups": headsups(db, today),
