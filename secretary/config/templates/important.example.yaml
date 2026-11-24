@@ -8,10 +8,10 @@
   when: {month: 11, weekday: thursday, nth: 4}
   match: [Thanksgiving Day]
   milestones:                      # prep starts 3 weeks out
-    - {days_before: 21, surfaces: [checkin], text: "Thanksgiving is in 3 weeks ({date}). Who's coming, and what's the menu?"}
-    - {days_before: 14, surfaces: [paper, checkin], text: "Thanksgiving in 2 weeks: order the turkey, split up the dishes."}
-    - {days_before: 7, surfaces: [paper, checkin], text: "Thanksgiving in a week: shopping list and prep schedule."}
-    - {days_before: 2, surfaces: [paper], text: "Thanksgiving in 2 days: thaw, shop, prep ahead."}
+    - {days_before: 21, surfaces: [checkin], text: "Thanksgiving is {when} ({date}). Who's coming, and what's the menu?"}
+    - {days_before: 14, surfaces: [paper, checkin], text: "Thanksgiving {when}: order the turkey, split up the dishes."}
+    - {days_before: 7, surfaces: [paper, checkin], text: "Thanksgiving {when}: shopping list and prep schedule."}
+    - {days_before: 2, surfaces: [paper], text: "Thanksgiving {when}: thaw, shop, prep ahead."}
     - {days_before: 0, surfaces: [paper], text: "Happy Thanksgiving."}
 
 - key: halloween
@@ -20,9 +20,9 @@
   when: "10-31"
   match: [Halloween]
   milestones:                      # costume starts 3 weeks out
-    - {days_before: 21, surfaces: [checkin], text: "Halloween is in 3 weeks. Costume ideas?"}
-    - {days_before: 10, surfaces: [paper], text: "Halloween in 10 days: order the costume now if it ships."}
-    - {days_before: 3, surfaces: [paper], text: "Halloween in 3 days: costume ready? Candy bought?"}
+    - {days_before: 21, surfaces: [checkin], text: "Halloween is {when}. Costume ideas?"}
+    - {days_before: 10, surfaces: [paper], text: "Halloween {when}: order the costume now if it ships."}
+    - {days_before: 3, surfaces: [paper], text: "Halloween {when}: costume ready? Candy bought?"}
     - {days_before: 0, surfaces: [paper], text: "Happy Halloween."}
 
 - key: valentines_day
@@ -31,7 +31,7 @@
   when: "02-14"
   match: [Valentine's Day]
   milestones:
-    - {days_before: 7, surfaces: [paper, checkin], text: "Valentine's Day is a week out ({date}): reservation, card, gift?"}
+    - {days_before: 7, surfaces: [paper, checkin], text: "Valentine's Day is {when} ({date}): reservation, card, gift?"}
     - {days_before: 0, surfaces: [paper], text: "Valentine's Day today."}
 
 - key: anniversary
@@ -39,8 +39,8 @@
   tier: important
   when: <MM-DD>
   milestones:
-    - {days_before: 14, surfaces: [checkin], text: "Your anniversary is in 2 weeks ({date}). Plans?"}
-    - {days_before: 7, surfaces: [paper, checkin], text: "Anniversary in a week: booked?"}
+    - {days_before: 14, surfaces: [checkin], text: "Your anniversary is {when} ({date}). Plans?"}
+    - {days_before: 7, surfaces: [paper, checkin], text: "Anniversary {when}: booked?"}
     - {days_before: 0, surfaces: [paper_lead], text: "Happy anniversary."}
 
 - key: easter

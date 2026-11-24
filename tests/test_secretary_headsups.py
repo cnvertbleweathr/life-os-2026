@@ -111,11 +111,13 @@ def test_critical_birthday_walks_its_rhythm_and_reruns_change_nothing(env):
     assert again["added"] == again["shown"] == 0 and again["showing_today"] == 1
     h = env.rows()[f"{ROBIN[0]}@21"]
     assert h["shown_count"] == 1 and h["surfaces"] == ["checkin"]
-    assert h["text"] == "Robin's birthday is in 3 weeks (Sat Dec 12). Gift ideas?"
+    assert h["text"] == "Robin's birthday is in 21 days (Sat Dec 12). Gift ideas?"
 
     for d in days(date(2026, 11, 22), 10):                             # critical: daily, no nag limit
         env.run(d)
-    assert env.rows()[f"{ROBIN[0]}@21"]["shown_count"] == 11
+    h = env.rows()[f"{ROBIN[0]}@21"]
+    assert h["shown_count"] == 11
+    assert h["text"] == "Robin's birthday is in 11 days (Sat Dec 12). Gift ideas?"     # stays true daily
 
     out = env.run(date(2026, 12, 2))                                   # 10 days: next milestone
     assert out["superseded"] == 1

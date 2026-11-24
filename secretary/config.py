@@ -42,19 +42,19 @@ SURFACES = ("paper", "paper_lead", "checkin")
 
 DEFAULT_RHYTHMS: dict[str, list[dict]] = {
     "critical_birthday": [
-        {"days_before": 21, "surfaces": ["checkin"], "text": "{name} is in 3 weeks ({date}). Gift ideas?"},
-        {"days_before": 10, "surfaces": ["paper"], "text": "{name} in 10 days ({date}): order now if it has to ship."},
-        {"days_before": 3, "surfaces": ["paper", "checkin"], "text": "{name} in 3 days: card and plans sorted?"},
+        {"days_before": 21, "surfaces": ["checkin"], "text": "{name} is {when} ({date}). Gift ideas?"},
+        {"days_before": 10, "surfaces": ["paper"], "text": "{name} {when} ({date}): order now if it has to ship."},
+        {"days_before": 3, "surfaces": ["paper", "checkin"], "text": "{name} {when}: card and plans sorted?"},
         {"days_before": 0, "surfaces": ["paper_lead"], "text": "Today: {name}."},
     ],
     "critical": [
-        {"days_before": 21, "surfaces": ["checkin"], "text": "{name} is in 3 weeks ({date}). Anything to prepare?"},
-        {"days_before": 10, "surfaces": ["paper"], "text": "{name} in 10 days ({date})."},
-        {"days_before": 3, "surfaces": ["paper", "checkin"], "text": "{name} in 3 days: all set?"},
+        {"days_before": 21, "surfaces": ["checkin"], "text": "{name} is {when} ({date}). Anything to prepare?"},
+        {"days_before": 10, "surfaces": ["paper"], "text": "{name} {when} ({date})."},
+        {"days_before": 3, "surfaces": ["paper", "checkin"], "text": "{name} {when}: all set?"},
         {"days_before": 0, "surfaces": ["paper_lead"], "text": "Today: {name}."},
     ],
     "important": [
-        {"days_before": 7, "surfaces": ["paper", "checkin"], "text": "{name} is a week out ({date})."},
+        {"days_before": 7, "surfaces": ["paper", "checkin"], "text": "{name} is {when} ({date})."},
         {"days_before": 0, "surfaces": ["paper"], "text": "Today: {name}."},
     ],
     "nice_to_know": [],             # the paper's Coming Up box covers these (coming_up_days)
@@ -197,9 +197,12 @@ def rhythm_for(cfg: "Config", tier: str, *, is_birthday: bool, template_key: str
 
 
 def render_text(text: str, *, name: str, on: date, today: date) -> str:
+    """{name} the event · {date} "Sat Dec 19" · {days} days to go · {when} "in 18 days" / "tomorrow" /
+    "today". Heads-ups re-render daily, so {when} and {days} stay true on every showing."""
     days = (on - today).days
+    when = "today" if days == 0 else "tomorrow" if days == 1 else f"in {days} days"
     try:
-        return text.format(name=name, date=f"{on:%a %b} {on.day}", days=days)
+        return text.format(name=name, date=f"{on:%a %b} {on.day}", days=days, when=when)
     except (KeyError, IndexError, ValueError):
         return text                                     # a stray brace shouldn't drop the heads-up
 

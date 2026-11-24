@@ -150,4 +150,8 @@ def test_text_fills_name_date_and_days():
     out = SC.render_text("{name} in {days} days ({date})", name="Robin's birthday",
                          on=date(2026, 12, 12), today=date(2026, 12, 2))
     assert out == "Robin's birthday in 10 days (Sat Dec 12)"
+    when = lambda d: SC.render_text("{name} {when}", name="Robin's birthday", on=date(2026, 12, 12), today=d)
+    assert when(date(2026, 11, 24)) == "Robin's birthday in 18 days"
+    assert when(date(2026, 12, 11)) == "Robin's birthday tomorrow"
+    assert when(date(2026, 12, 12)) == "Robin's birthday today"
     assert SC.render_text("Stray {brace", name="x", on=date(2026, 1, 1), today=date(2026, 1, 1)) == "Stray {brace"
