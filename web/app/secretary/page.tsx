@@ -111,7 +111,8 @@ export default function SecretaryPage() {
     ? { ...h, status: local[h.headsup_id], queued: true } : h));
   const open = all.filter((h) => h.status === "open");
   const closed = all.filter((h) => h.status !== "open");
-  const onPaper = open.filter((h) => h.shown_today);
+  const onPaper = open.filter((h) => h.shown_today && (h.surfaces.includes("paper") || h.surfaces.includes("paper_lead")));
+  const sentence = (t: string) => (/[.?!]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
   const nextCritical = ov.upcoming.find((e) => e.tier === "critical");
   const proposed = [
     ...(ov.proposals?.projects ?? []).map((n) => `Proposed project: ${n}`),
@@ -125,7 +126,7 @@ export default function SecretaryPage() {
   const lede = (
     <>
       {first
-        ? <><b>{plural(open.length, "heads-up")} {open.length === 1 ? "needs" : "need"} you</b>{onPaper.length ? `, ${onPaper.length} on today's paper` : ""}. Top of the list: {first.text.replace(/\.$/, "")}. </>
+        ? <><b>{plural(open.length, "heads-up")} {open.length === 1 ? "needs" : "need"} you</b>{onPaper.length ? `, ${onPaper.length} on today's paper` : ""}. Top of the list: {sentence(first.text)} </>
         : <><b>Nothing needs you today.</b> </>}
       {nextCritical && !firstIsNext && <>Next critical date: <b>{nextCritical.title}, {wmd(nextCritical.event_date)}</b> ({inRel(nextCritical.days_to_go)}). </>}
       {!nextCritical && <>No critical dates in the next 30 days. </>}
@@ -153,7 +154,8 @@ export default function SecretaryPage() {
       )}
 
       <div className="ons-grid">
-        <section className="ons-card s8" aria-labelledby="sc-h">
+        <div className="s8 ons-col no-stretch">
+        <section className="ons-card" aria-labelledby="sc-h">
           <div className="ons-ch"><h2 id="sc-h">Heads-ups</h2><span className="aside">{open.length} open{closed.length ? ` · ${closed.length} handled` : ""}</span></div>
           {rowError && <p role="alert" style={{ color: "var(--neg)", fontSize: 13, margin: "0 0 12px" }}>{rowError}</p>}
           {open.length === 0 && <p className="ons-note m-0">No open heads-ups. New ones arrive with the 4am sync as dates come into range.</p>}
@@ -165,6 +167,27 @@ export default function SecretaryPage() {
             {showClosed && <div style={{ marginTop: 12 }}>{closed.map((h) => <Row key={h.headsup_id} h={h} nag={ov.nag_limit} busy={busy === h.headsup_id} onAct={act} />)}</div>}
           </>}
         </section>
+
+        {(ov.projects?.length ?? 0) > 0 && (
+          <section className="ons-card" aria-labelledby="sc-pr">
+            <div className="ons-ch"><h2 id="sc-pr">Life projects</h2><span className="aside">Mark milestones done in the check-in RECAP</span></div>
+            {ov.projects!.map((p) => (
+              <div key={p.key} className="sc-proj">
+                <div className="sc-proj-h">
+                  <b>{p.name}</b> <Tier tier={p.tier} />
+                  <span className="n">{p.done_count} of {p.open_count + p.done_count} done</span>
+                </div>
+                <ul className="sc-cal">
+                  {p.overdue.map((m) => <li key={m.key} className="over"><i className="sc-dot critical" aria-hidden="true" /><span className="d">{m.label}</span><span className="t">{m.title}{m.deadline ? " (deadline)" : ""} <small>· overdue, {m.rel}</small></span></li>)}
+                  {p.due.map((m) => <li key={m.key}><i className={`sc-dot ${p.tier}`} aria-hidden="true" /><span className="d">{m.label}</span><span className="t">{m.title}{m.deadline ? " (deadline)" : ""} <small>· {m.rel}</small></span></li>)}
+                  {p.next && <li key={p.next.key}><i className="sc-dot nice_to_know" aria-hidden="true" /><span className="d">{p.next.label}</span><span className="t">Next: {p.next.title}{p.next.deadline ? " (deadline)" : ""} <small>· {p.next.rel}</small></span></li>}
+                  {p.done.map((m) => <li key={m.key} className="done"><i className="sc-dot done" aria-hidden="true" /><span className="d">{m.label}</span><span className="t">{m.title} <small>· done</small></span></li>)}
+                </ul>
+              </div>
+            ))}
+          </section>
+        )}
+        </div>
 
         <div className="s4 ons-col no-stretch">
           <section className="ons-card" aria-labelledby="sc-up">

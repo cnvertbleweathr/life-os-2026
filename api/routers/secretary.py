@@ -112,6 +112,12 @@ def upcoming(db, today: date) -> list[dict]:
     return rows
 
 
+def projects(db, today: date) -> list[dict]:
+    """Active life projects with overdue / due (7 days) / done this week / next: the packet's summary."""
+    from secretary.sheet import projects_summary
+    return projects_summary(db, today)["projects"]
+
+
 def sheet_proposals() -> dict[str, list[str]]:
     from secretary.sheet import proposals
     return proposals()
@@ -132,6 +138,7 @@ async def overview(request: Request):
         "calendar": calendar_status(today),
         "headsups": headsups(db, today),
         "upcoming": upcoming(db, today),
+        "projects": projects(db, today),
     }
 
 
