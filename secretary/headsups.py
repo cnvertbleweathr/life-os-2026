@@ -20,8 +20,10 @@ from `days_before` days ahead until the event. One row per (event, milestone):
      done as done (closed_by project); mark ones whose event vanished "gone".
   4. pick today's heads-ups and count the showing (once per day, however many reruns).
 
-Nag limit: a heads-up that isn't critical is shown on at most `nag_limit` days
-(secretary.yaml, default 2). Critical ones show every day until done or superseded.
+Nag limit: every heads-up is shown on at most `nag_limit` days (secretary.yaml, default 2),
+so a critical item's 21- and 10-day reminders get two days each like any other. From
+`critical_daily_days` (default 3) days out through the day itself, critical heads-ups show
+every day until done or superseded.
 A heads-up counts as shown only on a day one of its surfaces goes out: the paper
 daily, the check-in packet on ONS_CHECKIN_CADENCE days.
 
@@ -174,6 +176,7 @@ def refresh(today: date, *, cfg: SC.Config | None = None, path: Path | None = No
     surfaces_today = surfaces_out_today(today) if surfaces_today is None else surfaces_today
     now = now or datetime.now(SC.TZ)
     nag = int(cfg.settings["nag_limit"])
+    daily_days = int(cfg.settings.get("critical_daily_days", 3))
     con = duckdb.connect(str(path or SC.db_path()))
     try:
         con.execute(DDL)
@@ -237,17 +240,19 @@ def refresh(today: date, *, cfg: SC.Config | None = None, path: Path | None = No
                WHERE status = 'open' AND NOT list_contains(CAST(? AS VARCHAR[]), event_key) RETURNING 1""",
             [now, now, live]).fetchall())
 
-        # 4. today's picks: due, under the nag limit (or critical), on a surface that goes out today
+        # 4. today's picks: due, under the nag limit (or critical and close: daily), on a surface
+        #    that goes out today
         counts["shown"] = len(con.execute(
             """UPDATE secretary.headsups
                SET shown_count = shown_count + 1, first_shown_on = coalesce(first_shown_on, ?),
                    last_shown_on = ?, updated_at = ?
                WHERE status = 'open' AND due_date <= ? AND ? <= event_date
                  AND last_shown_on IS DISTINCT FROM ?
-                 AND (tier = 'critical' OR shown_count < ?)
+                 AND ((tier = 'critical' AND date_diff('day', CAST(? AS DATE), event_date) <= ?)
+                      OR shown_count < ?)
                  AND len(list_intersect(surfaces, CAST(? AS VARCHAR[]))) > 0
                RETURNING 1""",
-            [today, today, now, today, today, today, nag, sorted(surfaces_today)]).fetchall())
+            [today, today, now, today, today, today, today, daily_days, nag, sorted(surfaces_today)]).fetchall())
         con.execute("COMMIT")
         counts["showing_today"] = con.execute(
             "SELECT count(*) FROM secretary.headsups WHERE status = 'open' AND last_shown_on = ?", [today]

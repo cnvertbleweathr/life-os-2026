@@ -115,10 +115,10 @@ def test_critical_birthday_walks_its_rhythm_and_reruns_change_nothing(env):
     assert h["shown_count"] == 1 and h["surfaces"] == ["checkin"]
     assert h["text"] == "Robin's birthday is in 21 days (Sat Dec 12). Gift ideas?"
 
-    for d in days(date(2026, 11, 22), 10):                             # critical: daily, no nag limit
+    for d in days(date(2026, 11, 22), 10):                             # 21-day reminder: the 2-day limit
         env.run(d)
     h = env.rows()[f"{ROBIN[0]}@21"]
-    assert h["shown_count"] == 11
+    assert h["shown_count"] == 2 and h["last_shown_on"] == date(2026, 11, 22)
     assert h["text"] == "Robin's birthday is in 11 days (Sat Dec 12). Gift ideas?"     # stays true daily
 
     out = env.run(date(2026, 12, 2))                                   # 10 days: next milestone
@@ -163,7 +163,41 @@ def test_nag_limit_stops_non_critical_after_two_days(env):
     assert env.picked(date(2026, 12, 5)) == [f"{SAM[0]}@0"]
 
 
-def test_critical_ignores_the_nag_limit(env):
+def test_critical_cadence_two_days_each_far_out_then_daily_from_three_days(env):
+    env.events(ROBIN)                                                  # critical birthday Sat Dec 12: 21/10/3/0
+    shown = []
+    for d in days(date(2026, 11, 21), 22):                             # Nov 21 … Dec 12
+        env.run(d)
+        shown += [(d.day, hid.split("@")[1]) for hid in env.picked(d)]
+    assert shown == [
+        (21, "21"), (22, "21"),                                        # 21 days out: two days
+        (2, "10"), (3, "10"),                                          # 10 days out: two days
+        (9, "3"), (10, "3"), (11, "3"),                                # 3 days out: daily
+        (12, "0"),                                                     # the day: daily (paper lead)
+    ]
+
+
+def test_late_bang_event_is_daily_inside_three_days_but_limited_before(env):
+    env.events(TOUR)                                                   # "!" event Fri Dec 4, added late
+    for d in days(date(2026, 11, 27), 4):                              # 7 … 4 days out: the 10-day reminder
+        env.run(d)
+    assert env.rows()[f"{TOUR[0]}@10"]["shown_count"] == 2
+    assert env.picked(date(2026, 11, 30)) == []
+    for d in days(date(2026, 12, 1), 3):                               # 3, 2, 1 days out
+        env.run(d)
+        assert env.picked(d) == [f"{TOUR[0]}@3"]
+
+
+def test_critical_daily_days_is_a_setting(env, tmp_path):
+    (tmp_path / "secretary" / "secretary.yaml").write_text("nag_limit: 2\ncritical_daily_days: 10\n")
+    env.cfg.settings.update(SC.load(tmp_path / "secretary").settings)
+    env.events(ROBIN)
+    for d in days(date(2026, 12, 2), 5):                               # 10 … 6 days out: daily now
+        env.run(d)
+    assert env.rows()[f"{ROBIN[0]}@10"]["shown_count"] == 5
+
+
+def test_critical_within_three_days_ignores_the_nag_limit(env):
     env.events(TOUR)                                                   # "!" event: critical rhythm
     for d in days(date(2026, 12, 1), 3):
         env.run(d)

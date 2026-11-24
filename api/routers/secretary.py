@@ -131,6 +131,7 @@ async def overview(request: Request):
     return {
         "today": today.isoformat(),
         "nag_limit": cfg.settings["nag_limit"],
+        "critical_daily_days": cfg.settings.get("critical_daily_days", 3),
         "configured": cfg.settings_path is not None,
         "placeholders": cfg.placeholders,
         "proposals": sheet_proposals(),

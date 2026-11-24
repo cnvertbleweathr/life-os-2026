@@ -154,7 +154,7 @@ def test_every_tier_rule_fires_once(friday):
 
 # ── nag limit ────────────────────────────────────────────────────────────────
 
-def test_nag_limit_stops_the_important_birthday_but_never_the_critical_ones(friday):
+def test_nag_limit_stops_the_important_birthday_but_not_critical_ones_inside_three_days(friday):
     h = friday["heads"]
     sam = h["cal:birthdays:e1@7"]
     assert (sam["status"], sam["shown_count"], sam["last_shown_on"]) == ("open", 2, date(2026, 12, 9))

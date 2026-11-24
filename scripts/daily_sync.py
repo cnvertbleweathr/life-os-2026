@@ -664,6 +664,17 @@ def build_steps(year: int) -> List[Step]:
             required=True,
             tags=["dbt"],
         ),
+        # Check-in RECAPs posted in Slack (the check-in channel and the packets' threads,
+        # where voice-mode Claude posts them) → queued in recaps.jsonl like a website paste.
+        # Needs SLACK_BOT_TOKEN + SLACK_CHECKIN_CHANNEL_ID; without them it says so and exits 0.
+        Step(
+            name="slack_recaps",
+            cmd=["python3", "-m", "checkin.slack_recaps"],
+            run_if_exists=ROOT / "checkin/slack_recaps.py",
+            required=False,
+            tags=["secretary", "checkin"],
+            timeout_s=120,
+        ),
         # Check-in RECAPs pasted on the website (data/checkin/recaps.jsonl): Done lines
         # → milestone_log.jsonl, New project / New critical person → *.proposed.yaml
         # (never active on their own). Files only; first, so secretary_config publishes them.
