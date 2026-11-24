@@ -71,6 +71,18 @@ body { margin: 0; color: #111; font-family: Georgia, "Times New Roman", serif; f
 .src { font-style: italic; font-size: 7.5pt; color: #444; margin-top: 1.5pt; }
 .tip { border: 1pt solid #111; padding: 5pt 7pt; }
 .tip .kicker { border-top: 0; margin-top: 0; }
+.sec-lead { border: 2pt solid #111; padding: 4pt 8pt; margin: 6pt 0 0; text-align: center;
+            font-family: Helvetica, Arial, sans-serif; font-size: 12pt; font-weight: 700; }
+.secretary { display: flex; gap: 14pt; border-bottom: 0.75pt solid #111; padding: 0 0 6pt; margin: 0 0 8pt;
+             font-family: Helvetica, Arial, sans-serif; font-size: 8pt; line-height: 1.3; }
+.secretary > div { flex: 1; }
+.secretary .kicker { margin-bottom: 3pt; }
+.secretary ul { list-style: none; margin: 0; padding: 0; }
+.secretary li { margin: 0 0 1.5pt; padding-left: 9pt; text-indent: -9pt; }
+.secretary .critical { font-weight: 700; }
+.secretary .trivia, .secretary .nice_to_know { color: #333; }
+.secretary .trivia { font-style: italic; }
+.secretary .more { color: #555; font-style: italic; }
 .foot { margin-top: 6pt; border-top: 0.75pt solid #111; padding-top: 3pt; text-align: center;
         font-family: Helvetica, Arial, sans-serif; font-size: 6.5pt; color: #555; letter-spacing: .08em; }
 """
@@ -106,6 +118,53 @@ def calendar_notice(day: date) -> str:
     return msg if msg.startswith("Calendar unavailable") else f"Calendar unavailable today: {msg}."
 
 
+MARK = {"critical": "■", "important": "●", "nice_to_know": "○", "trivia": "·"}
+
+
+def secretary_sheet(day: date) -> dict[str, Any] | None:
+    """The secretary's saved day sheet (secretary/sheet.py), or None before it existed."""
+    try:
+        from secretary import sheet
+        return sheet.load(day)
+    except Exception:
+        return None
+
+
+def secretary_html(day: date) -> tuple[str, str]:
+    """(lead bar, Today / This Weekend / Coming Up strip) for the paper. Critical lines are bold."""
+    s = secretary_sheet(day)
+    if not s:
+        return "", ""
+    lead = "".join(f'<div class="sec-lead">■ {_e(h["text"])}</div>' for h in s.get("lead", []))
+
+    def li(tier: str, text: str) -> str:
+        return f'<li class="{_e(tier)}">{MARK.get(tier, "·")} {_e(text)}</li>'
+
+    cells = []
+    today = [li(h["tier"], h["text"]) for h in s.get("today", [])]
+    if today:
+        cells.append(("Today", today))
+    if s.get("weekend"):
+        cells.append(("This Weekend", [li(e["tier"], f'{e["label"][:3]}{" " + e["time"] if e["time"] else ""} · {e["title"]}')
+                                       for e in s["weekend"]]))
+    coming = s.get("coming_up", [])
+    if coming:
+        rows = [li(e["tier"], f'{e["label"]}{" " + e["time"] if e["time"] else ""} · {e["title"]}')
+                for e in coming[:PAPER_COMING_UP_MAX]]
+        if len(coming) > PAPER_COMING_UP_MAX:
+            rows.append(f'<li class="more">+{len(coming) - PAPER_COMING_UP_MAX} more on the website</li>')
+        cells.append(("Coming Up", rows))
+    strip = ""
+    if cells:
+        strip = '<section class="secretary">' + "".join(
+            f'<div><div class="kicker">{name}</div><ul>{"".join(rows)}</ul></div>' for name, rows in cells
+        ) + "</section>"
+    return lead, strip
+
+
+PAPER_COMING_UP_MAX = 8
+
+
 def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
     ed = result["edition"]
     d = date.fromisoformat(ed["date"])
@@ -124,6 +183,7 @@ def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
         parts.append(f'<div class="{cls}"><div class="kicker">{_e(s["name"])}</div>{"".join(items)}</div>')
     cal = calendar_notice(d)
     notice = f'<div class="notice"><b>{_e(cal)}</b></div>' if cal else ""
+    sec_lead, sec_strip = secretary_html(d)
     scores = (result.get("evaluation", {}).get("judge") or {}).get("scores") or {}
     foot = (f"Written {result.get('generated_at', '')[:16].replace('T', ' ')} · "
             f"{result.get('revisions', 0)} revision(s) · "
@@ -136,7 +196,9 @@ def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
 <div class="dateline"><span>Vol. 1 · No. {edition_number(ed['date'])}</span>
 <span>{d.strftime('%A, %B')} {d.day}, {d.year}</span><span>Printed for one</span></div>
 {notice}
+{sec_lead}
 <div class="lead">{_e(ed['lead_headline'])}</div>
+{sec_strip}
 <main class="columns">{''.join(parts)}</main>
 <div class="foot">{_e(foot)}</div>
 </body></html>"""

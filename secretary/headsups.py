@@ -27,7 +27,8 @@ daily, the check-in packet on ONS_CHECKIN_CADENCE days.
 The paper and the packet (written later in the same sync) read today's picks with
 `shown_today()`; the website lists `open_headsups()`. Nothing here sends to a phone.
 
-  python -m secretary.headsups --refresh [--date YYYY-MM-DD]   # the sync step (writes)
+  python -m secretary.headsups --refresh [--date YYYY-MM-DD]   # the sync step (writes; then the
+                                                               # day sheet, secretary/sheet.py)
   python -m secretary.headsups [--date …]                      # what's open/shown (read-only)
   python -m secretary.headsups --done ID | --dismiss ID | --reopen ID   # appends to the log
 """
@@ -301,6 +302,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"✗ heads-ups not refreshed: {e}", file=sys.stderr)
             return 1
         print("refreshed: " + ", ".join(f"{k} {v}" for k, v in counts.items()))
+        from secretary import sheet
+        try:
+            print(f"day sheet: {sheet.build_and_write(today)}")
+        except Exception as e:
+            print(f"✗ day sheet not written: {e}", file=sys.stderr)
+            return 1
 
     import duckdb
     try:

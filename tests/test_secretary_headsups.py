@@ -70,9 +70,11 @@ def env(tmp_path, monkeypatch):
         con.execute("CREATE SCHEMA IF NOT EXISTS main_intermediate")
         con.execute("""CREATE OR REPLACE TABLE main_intermediate.int_events_tiered (
                          event_key VARCHAR, source VARCHAR, display_title VARCHAR, tier VARCHAR,
-                         event_date DATE, is_birthday BOOLEAN, template_key VARCHAR)""")
+                         event_date DATE, is_birthday BOOLEAN, template_key VARCHAR,
+                         start_at TIMESTAMPTZ, all_day BOOLEAN DEFAULT true)""")
         if rows:
-            con.executemany("INSERT INTO main_intermediate.int_events_tiered VALUES (?,?,?,?,?,?,?)", list(rows))
+            rows = [r if len(r) == 9 else (*r, None, True) for r in rows]
+            con.executemany("INSERT INTO main_intermediate.int_events_tiered VALUES (?,?,?,?,?,?,?,?,?)", rows)
         con.close()
 
     def run(day, surfaces=ALL):
@@ -92,7 +94,7 @@ def env(tmp_path, monkeypatch):
         return out
 
     return type("Env", (), {"events": staticmethod(events), "run": staticmethod(run),
-                            "rows": staticmethod(rows), "picked": staticmethod(picked), "cfg": cfg})
+                            "rows": staticmethod(rows), "picked": staticmethod(picked), "cfg": cfg, "db": db})
 
 
 def days(start: date, n: int):
@@ -233,6 +235,80 @@ def test_event_removed_from_calendar_is_marked_gone(env):
 def test_bad_action_is_refused():
     with pytest.raises(ValueError):
         H.record_action("x", "snooze")
+
+
+# ── the paper (day sheet → print_edition) ─────────────────────────────────────
+
+FRIDAY = date(2026, 12, 11)
+DENTIST_MON = ("cal:p:dentist2", "calendar", "Dentist", "nice_to_know", date(2026, 12, 14), False, None,
+               datetime(2026, 12, 14, 15, 30, tzinfo=SC.TZ), False)
+TOUR_WED = ("cal:p:tour2", "calendar", "Preschool tour", "critical", date(2026, 12, 16), False, None)
+SAM_LATER = ("cal:b:sam2", "calendar", "Sam Example", "important", date(2026, 12, 20), True, None)
+BRUNCH_SUN = ("cal:p:brunch", "calendar", "Brunch", "nice_to_know", date(2026, 12, 13), False, None)
+
+
+def paper(env, day):
+    import json
+    from secretary import sheet as S
+    from agents.morning_brief import print_edition as P
+    con = duckdb.connect(str(env.db), read_only=True)
+    s = S.build(con, env.cfg, day)
+    con.close()
+    S.write(s)
+    edition = json.loads((ROOT / "tests" / "fixtures" / "morning_brief" / "edition_sample.json").read_text())
+    edition["date"] = day.isoformat()
+    return s, P.render_html({"status": "published", "edition": edition, "revisions": 0})
+
+
+def test_friday_paper_has_today_this_weekend_and_coming_up(env):
+    env.events(ROBIN, DENTIST_MON, TOUR_WED, SAM_LATER, BRUNCH_SUN)
+    env.run(FRIDAY)
+    s, page = paper(env, FRIDAY)
+    assert [h["text"] for h in s["today"]] == ["Robin's birthday tomorrow: card and plans sorted?",
+                                               "Preschool tour in 5 days (Wed Dec 16)."]
+    assert [e["title"] for e in s["weekend"]] == ["Robin's birthday"]          # Sat; Sunday brunch isn't important
+    assert [(e["title"], e["tier"]) for e in s["coming_up"]] == [             # by tier, then date; minus Today's
+        ("Sam Example", "important"), ("Brunch", "nice_to_know"), ("Dentist", "nice_to_know")]
+    assert s["coming_up"][2]["time"] == "3:30pm"
+    assert [e["title"] for e in s["checkin_coming_up"]] == ["Robin's birthday", "Preschool tour", "Sam Example"]
+
+    strip = page[page.index('<section class="secretary">'):page.index("</section>")]
+    assert strip.index(">Today<") < strip.index(">This Weekend<") < strip.index(">Coming Up<")
+    assert '<li class="critical">■ Robin&#x27;s birthday tomorrow: card and plans sorted?</li>' in strip
+    assert '<li class="critical">■ Sat · Robin&#x27;s birthday</li>' in strip
+    assert '<li class="nice_to_know">○ Mon Dec 14 3:30pm · Dentist</li>' in strip
+    assert page.index('class="lead"') < page.index('class="secretary"') < page.index('class="columns"')
+    assert "sec-lead" not in page.split("<style>")[1].split("</style>")[1]   # no day-of lead yet
+
+
+def test_day_of_critical_is_the_lead_bar_and_weekdays_have_no_weekend_box(env):
+    env.events(ROBIN, TOUR_WED)
+    env.run(date(2026, 12, 12))
+    s, page = paper(env, date(2026, 12, 12))
+    assert [h["text"] for h in s["lead"]] == ["Today: Robin's birthday."]
+    assert [h["text"] for h in s["today"]] == ["Preschool tour in 4 days (Wed Dec 16)."]
+    body = page.split("</style>")[1]
+    assert '<div class="sec-lead">■ Today: Robin&#x27;s birthday.</div>' in body
+    assert body.index("sec-lead") < body.index('class="lead"')
+    assert s["weekend"] == [] and "This Weekend" not in body                    # Saturday, not Friday
+
+
+def test_coming_up_is_capped_on_paper(env):
+    many = [(f"cal:p:{i}", "calendar", f"Thing {i}", "nice_to_know", date(2026, 12, 1) + timedelta(days=i % 13 + 1),
+             False, None) for i in range(11)]
+    env.events(*many)
+    env.run(date(2026, 12, 1))
+    s, page = paper(env, date(2026, 12, 1))
+    assert len(s["coming_up"]) == 11
+    assert page.count('<li class="nice_to_know">') == 8 and "+3 more on the website" in page
+
+
+def test_paper_without_a_sheet_is_unchanged(env):
+    from agents.morning_brief import print_edition as P
+    import json
+    edition = json.loads((ROOT / "tests" / "fixtures" / "morning_brief" / "edition_sample.json").read_text())
+    page = P.render_html({"status": "published", "edition": edition, "revisions": 0})
+    assert 'class="secretary"' not in page and 'class="sec-lead"' not in page
 
 
 # ── wiring ────────────────────────────────────────────────────────────────────
