@@ -65,7 +65,8 @@ DEFAULT_RHYTHMS: dict[str, list[dict]] = {
 
 DEFAULTS: dict[str, Any] = {
     "critical_people": [],
-    "nag_limit": 2,                 # a non-critical heads-up shows at most this many times
+    "nag_limit": 2,                 # a heads-up shows on at most this many days...
+    "critical_daily_days": 3,       # ...except critical ones this close to the event: daily through the day
     "coming_up_days": 14,           # nice_to_know reach for the paper's Coming Up box
     "phone_notifications": False,   # disabled; output is the paper, the website and the Slack packet
     "rhythms": DEFAULT_RHYTHMS,
@@ -334,7 +335,8 @@ def publish(cfg: Config, today: date, path: Path | None = None) -> dict[str, int
 
 def report(cfg: Config, today: date) -> str:
     lines = [f"settings: {cfg.settings_path or '(none: using defaults)'}",
-             f"nag_limit: {cfg.settings['nag_limit']} · phone_notifications: "
+             f"nag_limit: {cfg.settings['nag_limit']} · critical daily from {cfg.settings['critical_daily_days']} days out"
+             f" · phone_notifications: "
              f"{'on' if cfg.settings['phone_notifications'] else 'off'}",
              f"critical people: {len(cfg.critical_people)} · templates: {len(cfg.templates)}"]
     for p in cfg.problems:

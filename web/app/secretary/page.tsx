@@ -26,18 +26,26 @@ function Tier({ tier }: { tier: SecretaryTier }) {
 }
 
 /** Where the heads-up stands today, in the page's own words. */
-function standing(h: Headsup, nag: number): { text: string; on?: boolean } | null {
+/** The nag limit and its one exception: critical heads-ups show daily from `daily` days out through the day. */
+type Nag = { limit: number; daily: number };
+
+function standing(h: Headsup, nag: Nag): { text: string; on?: boolean } | null {
   if (h.queued) return { text: h.status === "open" ? "Reopened · syncs at 4am" : "Saved · syncs at 4am" };
   if (h.status !== "open") return null;
   if (h.shown_today) {
     const paper = h.surfaces.includes("paper") || h.surfaces.includes("paper_lead");
     return { text: paper ? "On today's paper" : "In today's check-in", on: true };
   }
-  if (h.tier !== "critical" && h.shown_count >= nag) return { text: `Shown ${plural(h.shown_count, "day")} · off the paper now` };
+  const daily = h.tier === "critical" && h.days_to_go <= nag.daily;
+  if (!daily && h.shown_count >= nag.limit) {
+    return { text: h.tier === "critical"
+      ? `Shown ${plural(h.shown_count, "day")} · back daily from ${plural(nag.daily, "day")} out`
+      : `Shown ${plural(h.shown_count, "day")} · off the paper now` };
+  }
   return null;
 }
 
-function Row({ h, nag, busy, onAct }: { h: Headsup; nag: number; busy: boolean; onAct: (h: Headsup, a: "done" | "dismiss" | "reopen") => void }) {
+function Row({ h, nag, busy, onAct }: { h: Headsup; nag: Nag; busy: boolean; onAct: (h: Headsup, a: "done" | "dismiss" | "reopen") => void }) {
   const closed = h.status !== "open";
   const s = standing(h, nag);
   return (
@@ -114,6 +122,7 @@ export default function SecretaryPage() {
   const onPaper = open.filter((h) => h.shown_today && (h.surfaces.includes("paper") || h.surfaces.includes("paper_lead")));
   const sentence = (t: string) => (/[.?!]$/.test(t.trim()) ? t.trim() : `${t.trim()}.`);
   const nextCritical = ov.upcoming.find((e) => e.tier === "critical");
+  const nag: Nag = { limit: ov.nag_limit, daily: ov.critical_daily_days ?? 3 };
   const proposed = [
     ...(ov.proposals?.projects ?? []).map((n) => `Proposed project: ${n}`),
     ...(ov.proposals?.people ?? []).map((n) => `Proposed critical person: ${n}`),
@@ -159,12 +168,12 @@ export default function SecretaryPage() {
           <div className="ons-ch"><h2 id="sc-h">Heads-ups</h2><span className="aside">{open.length} open{closed.length ? ` · ${closed.length} handled` : ""}</span></div>
           {rowError && <p role="alert" style={{ color: "var(--neg)", fontSize: 13, margin: "0 0 12px" }}>{rowError}</p>}
           {open.length === 0 && <p className="ons-note m-0">No open heads-ups. New ones arrive with the 4am sync as dates come into range.</p>}
-          {open.map((h) => <Row key={h.headsup_id} h={h} nag={ov.nag_limit} busy={busy === h.headsup_id} onAct={act} />)}
+          {open.map((h) => <Row key={h.headsup_id} h={h} nag={nag} busy={busy === h.headsup_id} onAct={act} />)}
           {closed.length > 0 && <>
             <button type="button" className="ons-btn ons-tap" style={{ marginTop: 16 }} onClick={() => setShowClosed((s) => !s)} aria-expanded={showClosed}>
               {showClosed ? "Hide handled" : `Show handled (${closed.length})`}
             </button>
-            {showClosed && <div style={{ marginTop: 12 }}>{closed.map((h) => <Row key={h.headsup_id} h={h} nag={ov.nag_limit} busy={busy === h.headsup_id} onAct={act} />)}</div>}
+            {showClosed && <div style={{ marginTop: 12 }}>{closed.map((h) => <Row key={h.headsup_id} h={h} nag={nag} busy={busy === h.headsup_id} onAct={act} />)}</div>}
           </>}
         </section>
 

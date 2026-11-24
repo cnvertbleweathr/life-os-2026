@@ -1561,6 +1561,8 @@ export interface SecretaryEvent {
 export interface SecretaryOverview {
   today: string;
   nag_limit: number;
+  /** Critical heads-ups show daily from this many days out through the day (default 3). */
+  critical_daily_days?: number;
   configured: boolean;
   placeholders: string[];
   problems: string[];
