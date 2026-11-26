@@ -180,13 +180,19 @@ def write_latest_pointer(
     *,
     description: str = "",
     tewnidge_artists: list[str] | None = None,
+    tracks: list[dict] | None = None,
 ):
+    tracks = tracks or []
     payload = {
         "date": date_str,
         "playlist_id": playlist_id,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         "description": description,
         "tewnidge_artists": tewnidge_artists or [],
+        # read by spotify_daily10_cover.py (headliners, mix line, track ticks)
+        "tracks": tracks,
+        "bucket_a_count": sum(1 for t in tracks if t.get("bucket") == "A"),
+        "bucket_b_count": sum(1 for t in tracks if t.get("bucket") == "B"),
     }
     LATEST_JSON.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote latest pointer: {LATEST_JSON}")
@@ -223,7 +229,10 @@ def main() -> int:
     p.add_argument("--top-picks", type=int, default=5)
     p.add_argument("--b-picks", type=int, default=5)
     p.add_argument("--public", action="store_true")
-    p.add_argument("--no-decorate", action="store_true")
+    # Cover art is its own daily_sync step now (spotify_daily10_cover.py, COVER_MODE).
+    # --decorate runs the old AI decorate inline; --no-decorate is kept for old callers.
+    p.add_argument("--decorate", action="store_true", help="run the old AI cover inline")
+    p.add_argument("--no-decorate", action="store_true", help=argparse.SUPPRESS)
     p.add_argument(
         "--tewnidge-playlist-id",
         default=os.getenv("SPOTIFY_TEWNIDGE_PLAYLIST_ID", "").strip(),
@@ -252,6 +261,7 @@ def main() -> int:
     bucket_b_artists = rng.sample(tewnidge_artists, min(args.b_picks * 3, len(tewnidge_artists)))
 
     final_uris = []
+    tracks_out: list[dict] = []   # in playlist order, for the cover
 
     # Bucket A — top 500 random tracks
     for tk in bucket_a:
@@ -260,6 +270,8 @@ def main() -> int:
         items = res["tracks"]["items"]
         if items:
             final_uris.append(items[0]["uri"])
+            tracks_out.append({"artist": (items[0].get("artists") or [{}])[0].get("name") or tk.artist,
+                               "name": items[0].get("name") or tk.track, "uri": items[0]["uri"], "bucket": "A"})
 
     # Bucket B — unheard tracks from random Tewnidge artists
     b_count = 0
@@ -283,6 +295,7 @@ def main() -> int:
                 continue
             # Also skip if it's in tewnidge already (we want new discoveries)
             final_uris.append(uri)
+            tracks_out.append({"artist": artist_name, "name": track["name"], "uri": uri, "bucket": "B"})
             b_count += 1
             used_b_artists.append(artist_name)
             print(f"  Bucket B: {artist_name} — {track['name']}")
@@ -315,12 +328,13 @@ def main() -> int:
         playlist_id,
         description=description,
         tewnidge_artists=used_b_artists,
+        tracks=tracks_out,
     )
 
     print(f"Created/Replaced playlist: {playlist_name}")
     print(f"DAILY10_PLAYLIST_ID={playlist_id}")
 
-    if not args.no_decorate:
+    if args.decorate and not args.no_decorate:
         maybe_run_decorate(args.date, playlist_id)
 
     return 0
