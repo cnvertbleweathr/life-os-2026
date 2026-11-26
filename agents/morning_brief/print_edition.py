@@ -4,8 +4,9 @@ Print the morning paper: a saved edition → a one-page newspaper PDF → the pr
     data/brief/<date>.json ──► HTML (newspaper layout) ──► Chrome headless ──► <date>.pdf ──► lp
 
 Rules:
-- Only published editions print automatically; needs_review editions print
-  only when asked by date with --force (they carry a "needs review" banner).
+- Published and needs_review editions both print, automatically too (owner's
+  choice, Nov 25 2026); a needs_review edition carries a "needs review" banner
+  and the 5:00 job also posts a short note to the check-in Slack channel.
 - --auto (the daily_sync path) prints Monday–Friday only, as chosen Nov 2026.
 - An edition prints once; --force prints it again.
 - Black and white on Letter by default (ColorModel=Mono) to save colour ink.
@@ -165,13 +166,16 @@ def secretary_html(day: date) -> tuple[str, str]:
 PAPER_COMING_UP_MAX = 8
 
 
+PRINTABLE = {"published", "needs_review"}   # statuses that print without --force
+
+
 def render_html(result: dict[str, Any], zoom: float = 1.0) -> str:
     ed = result["edition"]
     d = date.fromisoformat(ed["date"])
     banner = ""
     if result.get("status") != "published":
         banner = ('<div class="banner"><b>NEEDS REVIEW</b> · this edition failed its checks; '
-                  "facts may be off. Printed on request.</div>")
+                  "facts may be off.</div>")
     parts = []
     for s in ed["sections"]:
         items = []
@@ -260,12 +264,12 @@ def print_edition(path: Path, *, auto: bool = False, force: bool = False, pdf_on
     """Make the PDF and (maybe) print it. Returns what happened; records it in the JSON.
 
     auto (launchd at 5:00 and the end of daily_sync): weekdays only, published
-    only, and not before ONS_PRINT_AT. Whichever runs first after that time
+    or needs_review, and not before ONS_PRINT_AT. Whichever runs first after that time
     prints; printed_at stops the other.
     """
     result = json.loads(path.read_text())
     day = date.fromisoformat(result["date"])
-    if result.get("status") != "published" and (auto or not force):
+    if result.get("status") not in PRINTABLE and not force:
         return {"printed": False, "reason": f"edition is {result.get('status')}; not printed"}
     if auto and (today or (now.date() if now else None) or today_local()).weekday() >= 5:
         return {"printed": False, "reason": "weekend: automatic printing is weekdays only"}
@@ -311,12 +315,11 @@ def _load_today(day: date) -> dict[str, Any] | None:
 def review_note(day: date, result: dict[str, Any]) -> str:
     lead = (result.get("edition") or {}).get("lead_headline", "(no headline)")
     problems = (result.get("evaluation") or {}).get("problems") or []
-    lines = [f"ONS MORNING BRIEF — {day.isoformat()}: needs review, not printed.",
+    lines = [f"ONS MORNING BRIEF — {day.isoformat()}: needs review, printed with a banner.",
              f"Lead: \"{lead}\" ({result.get('revisions', '?')} revisions)."]
     if problems:
         lines.append(f"Still flagged: {problems[0][:200]}" + (f" (+{len(problems) - 1} more)" if len(problems) > 1 else ""))
-    lines.append(f"Read it in data/brief/{day.isoformat()}.md; print with "
-                 f"`python -m agents.morning_brief.print_edition --date {day.isoformat()} --force`.")
+    lines.append(f"Read it in data/brief/{day.isoformat()}.md.")
     return "\n".join(lines)
 
 
@@ -333,7 +336,7 @@ def scheduled_print(day: date | None = None, *, now=now_local, sleep=None,
     """Print today's edition between ONS_PRINT_AT and ONS_PRINT_UNTIL (5:00–6:00).
 
     Missing: look again every 10 minutes; at the cutoff, skip and log it.
-    needs_review: never printed; one short note to the check-in Slack channel.
+    needs_review: printed (with its banner), plus one short note to the check-in Slack channel.
     Every outcome is logged to data/brief/print_log.jsonl.
     """
     import time
@@ -351,17 +354,16 @@ def scheduled_print(day: date | None = None, *, now=now_local, sleep=None,
         result = _load_today(day)
         if result is not None:
             status = result.get("status")
-            if status == "needs_review":
-                already = any(r.get("date") == day.isoformat() and r.get("outcome") == "needs_review_noted"
-                              for r in print_log().rows())
-                if already:
-                    return done("needs_review_already_noted")
-                sent = notify(review_note(day, result))
-                return done("needs_review_noted" if sent else "needs_review_note_failed")
-            if status != "published":
+            if status not in PRINTABLE:
                 return done("skipped_status", status=status)
             out = print_edition(brief_dir() / f"{day.isoformat()}.json", auto=True, today=day, now=now())
-            return done("printed" if out["printed"] else "not_printed", job=out.get("job"), reason=out.get("reason"))
+            extra = {"job": out.get("job"), "reason": out.get("reason")}
+            if status == "needs_review":
+                extra["status"] = status
+                already = any(r.get("date") == day.isoformat() and r.get("note_sent") for r in print_log().rows())
+                if out["printed"] and not already:
+                    extra["note_sent"] = bool(notify(review_note(day, result)))
+            return done("printed" if out["printed"] else "not_printed", **extra)
         if now() >= cutoff:
             return done("skipped_no_edition", reason=f"no edition for {day} by {print_until().strftime('%H:%M')}")
         sleep(min(every_s, max(1.0, (cutoff - now()).total_seconds())))
@@ -371,13 +373,13 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--date", type=date.fromisoformat, help="edition date (default: today)")
     p.add_argument("--file", type=Path, help="a saved edition JSON anywhere (e.g. a fixture run)")
-    p.add_argument("--auto", action="store_true", help="daily_sync mode: weekdays only, published only")
-    p.add_argument("--force", action="store_true", help="print again, or print a needs_review edition")
+    p.add_argument("--auto", action="store_true", help="daily_sync mode: weekdays only, published or needs_review")
+    p.add_argument("--force", action="store_true", help="print again, or print an edition of any status")
     p.add_argument("--pdf-only", action="store_true", help="make the PDF next to the JSON; don't print")
     p.add_argument("--printer", default=PRINTER, help="CUPS queue (default: ONS_PRINTER or system default)")
     p.add_argument("--scheduled", action="store_true",
                    help="the 5:00 launchd job: today's edition only, retry every 10 min until 06:00, "
-                        "needs_review → Slack note instead of printing")
+                        "needs_review prints too, with a Slack note")
     args = p.parse_args(argv)
     if args.scheduled:
         scheduled_print()

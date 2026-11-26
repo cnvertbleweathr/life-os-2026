@@ -161,19 +161,20 @@ def test_scheduled_never_prints_yesterdays_edition(window, tmp_path):
     assert not out["printed"] and window.calls["lp"] == []
 
 
-def test_needs_review_posts_a_slack_note_instead_of_printing(window, tmp_path):
+def test_needs_review_prints_and_posts_a_slack_note(window, tmp_path):
     write_edition(tmp_path, MONDAY, status="needs_review")
     notes = []
     clock = Clock(datetime(2026, 11, 23, 5, 0))
     out = P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: notes.append(t) or True)
-    assert not out["printed"] and window.calls["lp"] == []
+    assert out["printed"] and len(window.calls["lp"]) == 1
     [note] = notes
-    assert note.startswith("ONS MORNING BRIEF — 2026-11-23: needs review, not printed")
+    assert note.startswith("ONS MORNING BRIEF — 2026-11-23: needs review, printed with a banner")
     assert "Number 7" in note
-    assert print_log(tmp_path)[-1]["outcome"] == "needs_review_noted"
-    # a second run the same day doesn't post again
+    last = print_log(tmp_path)[-1]
+    assert last["outcome"] == "printed" and last["status"] == "needs_review" and last["note_sent"]
+    # a second run the same day neither prints nor posts again
     P.scheduled_print(MONDAY, now=clock.now, sleep=clock.sleep, notify=lambda t: notes.append(t) or True)
-    assert len(notes) == 1
+    assert len(notes) == 1 and len(window.calls["lp"]) == 1
 
 
 def test_manual_print_ignores_print_time(saved, monkeypatch):
@@ -191,12 +192,17 @@ def test_cli_reports_missing_edition_without_failing(saved, capsys):
     assert "No edition" in capsys.readouterr().out
 
 
-def test_needs_review_prints_only_when_forced(saved):
+def test_needs_review_prints_with_a_banner(saved):
     path = saved(status="needs_review")
+    assert P.print_edition(path, auto=True, today=MONDAY, now=datetime(2026, 11, 23, 5, 0))["printed"]
+    assert "NEEDS REVIEW" in saved.calls["pdf"][-1]
+
+
+def test_other_statuses_print_only_when_forced(saved):
+    path = saved(status="failed")
     assert not P.print_edition(path, auto=True, today=MONDAY)["printed"]
     assert not P.print_edition(path, today=MONDAY)["printed"]
     assert P.print_edition(path, force=True, today=MONDAY)["printed"]
-    assert "NEEDS REVIEW" in saved.calls["pdf"][-1]
 
 
 def test_shrinks_until_it_fits_one_page(saved, monkeypatch):
