@@ -17,7 +17,7 @@ its stories are not recorded as featured, so they stay fresh for tomorrow.
     uv run python -m agents.morning_brief.run --dry-run       # full loop, prints, writes nothing
     uv run python -m agents.morning_brief.run --fixture       # committed sample; saves under fixture_runs/
     uv run python -m agents.morning_brief.run --force         # redo a day that's already published
-    uv run python -m agents.morning_brief.run --print         # also print it (weekdays, published only)
+    uv run python -m agents.morning_brief.run --print         # also print it (weekdays; needs_review too)
     uv run python -m agents.morning_brief.run --record-featured 2026-11-22   # retry recording after a lock error
 
 Exit codes: 0 published (or already published), 2 saved as needs_review, 1 error.
@@ -156,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--record-featured", metavar="DATE", help="retry record_featured for a saved edition and exit")
     p.add_argument("--max-revisions", type=int, default=MAX_REVISIONS)
     p.add_argument("--print", dest="print_it", action="store_true",
-                   help="print a published live edition (weekdays only; see print_edition.py)")
+                   help="print the live edition, even a needs_review one (weekdays only; see print_edition.py)")
     args = p.parse_args(argv)
 
     if args.record_featured:
