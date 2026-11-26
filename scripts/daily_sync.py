@@ -418,6 +418,16 @@ def build_steps(year: int) -> List[Step]:
             run_if_exists=ROOT / "scripts/spotify_daily10_playlist.py",
             tags=["spotify"],
         ),
+        # Cover art for today's Daily 10. COVER_MODE (env / .env): vector (default,
+        # VectorCraft template, headless; the app needn't be open) | ai (old gpt-image
+        # decorate) | off. Fails soft: no VectorCraft or no upload still exits 0.
+        Step(
+            name="spotify_daily10_cover",
+            cmd=["python3", "scripts/spotify_daily10_cover.py"],
+            run_if_exists=ROOT / "scripts/spotify_daily10_cover.py",
+            tags=["spotify"],
+            timeout_s=300,
+        ),
 
         # ------------------------------------------------------------------
         # WOD (Park Hill CrossFit — Playwright headless)
