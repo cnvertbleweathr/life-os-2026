@@ -27,13 +27,11 @@ from spotipy.oauth2 import SpotifyOAuth
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spotify_auth import SCOPE, TOKEN_CACHE  # noqa: E402  (the shared ONS sign-in)
 from spotify_compat import PlaylistNotReadable, entry_track, iter_playlist_tracks  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
-TOKEN_CACHE = ROOT / "secrets" / "spotify_token_cache.json"   # spotify_daily10_playlist.py
-SCOPE = ("playlist-modify-private playlist-modify-public playlist-read-private "
-         "playlist-read-collaborative ugc-image-upload")
 PLAYLISTS = {
     "Tewnidge": os.getenv("SPOTIFY_TEWNIDGE_PLAYLIST_ID", "").strip() or "7hxa1w4AzUjm6xgvU3Zf3x",
     "Deeds": os.getenv("SPOTIFY_DEEDS_PLAYLIST_ID", "").strip() or "6GP6ERcYJArZ7WWaC2g0Xv",

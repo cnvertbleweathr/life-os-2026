@@ -19,6 +19,7 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spotify_auth import SCOPE, TOKEN_CACHE  # noqa: E402
 from spotify_compat import first_artist_names, iter_playlist_tracks  # noqa: E402
 
 load_dotenv()
@@ -33,7 +34,6 @@ URI_CACHE_CSV = OUT_DIR / "spotify_uri_cache.csv"
 DAILY_AUDIT_CSV = OUT_DIR / "daily10_audit.csv"
 LATEST_JSON = OUT_DIR / "daily10_latest.json"
 
-TOKEN_CACHE = ROOT / "secrets" / "spotify_token_cache.json"
 
 
 # --------------------
@@ -76,21 +76,13 @@ def build_spotify_client() -> spotipy.Spotify:
     if not client_id or not client_secret:
         raise SystemExit("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET")
 
-    scope = (
-        "playlist-modify-private "
-        "playlist-modify-public "
-        "playlist-read-private "
-        "playlist-read-collaborative "
-        "ugc-image-upload"
-    )
-
     TOKEN_CACHE.parent.mkdir(parents=True, exist_ok=True)
 
     auth = SpotifyOAuth(
         client_id=client_id,
         client_secret=client_secret,
         redirect_uri=redirect_uri,
-        scope=scope,
+        scope=SCOPE,  # the shared ONS sign-in: see spotify_auth.py
         cache_path=str(TOKEN_CACHE),
         open_browser=True,
     )
