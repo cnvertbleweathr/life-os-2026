@@ -28,6 +28,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spotify_auth import SCOPE, TOKEN_CACHE  # noqa: E402
 from spotify_compat import iter_playlist_tracks  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,11 +49,14 @@ DENVER_TZ      = ZoneInfo("America/Denver")
 def get_sp() -> spotipy.Spotify:
     return spotipy.Spotify(
         auth_manager=SpotifyOAuth(
-            scope="playlist-read-private playlist-read-collaborative",
+            # The shared ONS sign-in (see spotify_auth.py). This script only reads
+            # playlists, but it must request the full shared SCOPE: a narrower
+            # request would shrink the cached scope on refresh and break Daily 10.
+            scope=SCOPE,
             client_id=os.getenv("SPOTIFY_CLIENT_ID"),
             client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
             redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI"),
-            cache_path=str(ROOT / "secrets" / ".spotify_cache"),
+            cache_path=str(TOKEN_CACHE),
         ),
         requests_timeout=30,
         retries=3,
